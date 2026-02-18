@@ -1,0 +1,33 @@
+{
+  "window": {
+    "width": 1000,
+    "height": 700,
+    "x": 220,
+    "y": 68,
+    "maximized": false
+  },
+  "graphics": {
+    "zoom_speed": 1.15,
+    "grid_enabled": false,
+    "grid_size": 20,
+    "snap_to_grid": false
+  },
+  "nodes": {
+    "auto_save_custom_nodes": true,
+    "auto_load_custom_nodes": true,
+    "confirm_node_deletion": true
+  },
+  "execution": {
+    "auto_run_on_change": false,
+    "show_execution_time": true,
+    "stop_on_error": true
+  },
+  "ui": {
+    "theme": "dark",
+    "font_size": 10,
+    "language": "zh_CN",
+    "show_tooltips": true
+  },
+  "recent_files": [],
+  "version": "1.0.0"
+}
