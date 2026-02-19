@@ -229,6 +229,7 @@ class NodeGraphicsView(QGraphicsView):
 
     def _show_node_create_menu(self, global_pos, scene_pos):
         from PySide6.QtWidgets import QMenu, QWidget, QVBoxLayout, QLineEdit
+        from ..nodes.node_library import NODE_LIBRARY_CATEGORIZED
         
         menu = QMenu(self)
         menu.setStyleSheet("""
@@ -243,26 +244,64 @@ class NodeGraphicsView(QGraphicsView):
         search_edit = QLineEdit()
         search_edit.setPlaceholderText("搜索节点...")
         search_edit.setStyleSheet("background: #3c3c3c; color: white; border: 1px solid #555; padding: 4px; border-radius: 3px;")
+        # 启用输入法支持中文输入
         search_edit.setAttribute(Qt.WA_InputMethodEnabled, True)
         search_edit.setFocusPolicy(Qt.StrongFocus)
+        # 设置输入法提示
+        from PySide6.QtGui import QInputMethodEvent
         search_layout.addWidget(search_edit)
         search_action = QWidgetAction(menu)
         search_action.setDefaultWidget(search_widget)
         menu.addAction(search_action)
         menu.addSeparator()
 
+        # 按分类组织节点菜单
         node_actions = {}
-        for name in LOCAL_NODE_LIBRARY:
-            a = menu.addAction(name)
-            node_actions[a] = name
+        category_menus = {}
+        
+        for category, nodes in NODE_LIBRARY_CATEGORIZED.items():
+            # 为每个分类创建子菜单
+            cat_menu = QMenu(category, menu)
+            cat_menu.setStyleSheet("""
+                QMenu { background: #2b2b2b; color: white; padding: 5px; }
+                QMenu::item { padding: 5px 20px; }
+                QMenu::item:selected { background: #4CAF50; }
+            """)
+            menu.addMenu(cat_menu)
+            category_menus[category] = cat_menu
+            
+            # 添加该分类下的所有节点
+            for name in nodes:
+                a = cat_menu.addAction(name)
+                node_actions[a] = name
 
         def filter_nodes(text):
             text = text.lower()
-            for act, name in node_actions.items():
-                act.setVisible(text == "" or text in name.lower())
+            # 如果搜索框为空，显示所有分类和节点
+            if text == "":
+                for cat_menu in category_menus.values():
+                    cat_menu.menuAction().setVisible(True)
+                    for act in cat_menu.actions():
+                        act.setVisible(True)
+                return
+            
+            # 否则根据搜索文本过滤
+            for category, cat_menu in category_menus.items():
+                has_visible = False
+                for act in cat_menu.actions():
+                    name = node_actions.get(act, "")
+                    visible = text in name.lower()
+                    act.setVisible(visible)
+                    if visible:
+                        has_visible = True
+                # 如果分类下没有可见的节点，隐藏该分类
+                cat_menu.menuAction().setVisible(has_visible)
 
         search_edit.textChanged.connect(filter_nodes)
-        menu.aboutToShow.connect(lambda: search_edit.setFocus(Qt.PopupFocusReason))
+        
+        # 使用定时器延迟设置焦点，确保输入法正常工作
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(10, lambda: search_edit.setFocus(Qt.PopupFocusReason))
 
         action = menu.exec(global_pos)
         if action in node_actions:
