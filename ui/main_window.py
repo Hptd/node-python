@@ -3,6 +3,7 @@
 import sys
 import json
 import inspect
+import os
 from PySide6.QtWidgets import (QMainWindow, QGraphicsScene, QDockWidget, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QTextEdit, QToolBar, QPushButton,
                                QInputDialog, QMessageBox, QApplication, QTreeWidgetItem,
@@ -23,6 +24,7 @@ from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRAR
 from ui.widgets.draggable_node_tree import DraggableNodeTree
 from ui.dialogs.custom_node_dialog import CustomNodeCodeDialog
 from utils.console_stream import EmittingStream
+from config.settings import settings
 
 
 class SimplePyFlowWindow(QMainWindow):
@@ -322,15 +324,129 @@ class SimplePyFlowWindow(QMainWindow):
 
     def setup_bottom_dock(self):
         dock = QDockWidget("💻 运行控制台", self)
+
+        # 创建主容器
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # 工具栏（设置日志路径按钮）
+        toolbar = QWidget()
+        toolbar_layout = QHBoxLayout(toolbar)
+        toolbar_layout.setContentsMargins(5, 2, 5, 2)
+
+        self.log_path_label = QLabel()
+        self.log_path_label.setStyleSheet("color: #888; font-size: 11px;")
+        toolbar_layout.addWidget(self.log_path_label)
+
+        toolbar_layout.addStretch()
+
+        set_log_path_btn = QPushButton("📁 设置日志路径")
+        set_log_path_btn.setStyleSheet("background: #4CAF50; color: white; border: none; padding: 3px 8px; border-radius: 3px; font-size: 11px;")
+        set_log_path_btn.clicked.connect(self._set_log_path)
+        toolbar_layout.addWidget(set_log_path_btn)
+
+        open_folder_btn = QPushButton("📂 打开文件夹")
+        open_folder_btn.setStyleSheet("background: #2196F3; color: white; border: none; padding: 3px 8px; border-radius: 3px; font-size: 11px;")
+        open_folder_btn.clicked.connect(self._open_log_folder)
+        toolbar_layout.addWidget(open_folder_btn)
+
+        clear_log_btn = QPushButton("🗑️ 清空控制台")
+        clear_log_btn.setStyleSheet("background: #f44336; color: white; border: none; padding: 3px 8px; border-radius: 3px; font-size: 11px;")
+        clear_log_btn.clicked.connect(self._clear_console)
+        toolbar_layout.addWidget(clear_log_btn)
+
+        layout.addWidget(toolbar)
+
+        # 控制台文本区域
         self.console = QTextEdit()
         self.console.setReadOnly(True)
         self.console.setStyleSheet("background-color: #1e1e1e; color: #00FF00; font-family: Consolas;")
-        dock.setWidget(self.console)
+        layout.addWidget(self.console)
+
+        dock.setWidget(container)
         self.addDockWidget(Qt.BottomDockWidgetArea, dock)
 
+        # 初始化日志流
         self._stream = EmittingStream()
         self._stream.textWritten.connect(self.normal_output)
         sys.stdout = self._stream
+
+        # 从设置加载日志配置
+        self._init_log_settings()
+
+    def _init_log_settings(self):
+        """初始化日志设置"""
+        log_dir = settings.get("logging.log_dir", "output_logs")
+        log_filename = settings.get("logging.log_filename", "output_log.txt")
+        enabled = settings.get("logging.enabled", True)
+
+        self._stream.set_log_path(log_dir, log_filename)
+        self._stream.set_enabled(enabled)
+
+        # 更新标签显示
+        log_file_path = self._stream.get_log_file_path()
+        self.log_path_label.setText(f"日志文件: {log_file_path}")
+
+    def _set_log_path(self):
+        """设置日志文件保存路径"""
+        current_dir = settings.get("logging.log_dir", "output_logs")
+
+        # 选择文件夹
+        new_dir = QFileDialog.getExistingDirectory(
+            self,
+            "选择日志保存文件夹",
+            current_dir,
+            QFileDialog.ShowDirsOnly
+        )
+
+        if new_dir:
+            # 更新设置
+            settings.set("logging.log_dir", new_dir)
+            settings.save()
+
+            # 更新日志流
+            log_filename = settings.get("logging.log_filename", "output_log.txt")
+            self._stream.set_log_path(new_dir, log_filename)
+
+            # 更新显示
+            log_file_path = self._stream.get_log_file_path()
+            self.log_path_label.setText(f"日志文件: {log_file_path}")
+
+            print(f"日志保存路径已设置为: {log_file_path}")
+            QMessageBox.information(self, "设置成功", f"日志保存路径已设置为:\n{log_file_path}")
+
+    def _open_log_folder(self):
+        """打开日志文件所在文件夹"""
+        import subprocess
+        import platform
+
+        log_file_path = self._stream.get_log_file_path()
+        log_dir = os.path.dirname(log_file_path)
+
+        # 确保目录存在
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+
+        # 根据操作系统打开文件夹
+        try:
+            system = platform.system()
+            if system == "Windows":
+                subprocess.run(["explorer", log_dir], check=True)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", log_dir], check=True)
+            else:  # Linux
+                subprocess.run(["xdg-open", log_dir], check=True)
+            print(f"已打开日志文件夹: {log_dir}")
+        except Exception as e:
+            QMessageBox.warning(self, "打开失败", f"无法打开文件夹:\n{e}")
+            print(f"[打开文件夹失败] {e}")
+
+    def _clear_console(self):
+        """清空控制台显示内容"""
+        self.console.clear()
+        print("控制台已清空")
 
     def normal_output(self, text):
         self.console.moveCursor(QTextCursor.End)

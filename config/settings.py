@@ -60,6 +60,11 @@ class Settings:
                 "language": "zh_CN",
                 "show_tooltips": True
             },
+            "logging": {
+                "log_dir": "output_logs",
+                "log_filename": "output_log.txt",
+                "enabled": True
+            },
             "recent_files": [],
             "version": "1.0.0"
         }

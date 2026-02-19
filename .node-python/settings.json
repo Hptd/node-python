@@ -4,7 +4,7 @@
     "height": 700,
     "x": 220,
     "y": 68,
-    "maximized": false
+    "maximized": true
   },
   "graphics": {
     "zoom_speed": 1.15,
@@ -27,6 +27,11 @@
     "font_size": 10,
     "language": "zh_CN",
     "show_tooltips": true
+  },
+  "logging": {
+    "log_dir": "output_logs",
+    "log_filename": "output_log.txt",
+    "enabled": true
   },
   "recent_files": [],
   "version": "1.0.0"
