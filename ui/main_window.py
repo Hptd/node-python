@@ -23,6 +23,7 @@ from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRAR
                                       is_custom_node, remove_node_from_library)
 from ui.widgets.draggable_node_tree import DraggableNodeTree
 from ui.dialogs.custom_node_dialog import CustomNodeCodeDialog
+from ui.dialogs.path_selector_dialog import PathSelectorDialog
 from utils.console_stream import EmittingStream
 from config.settings import settings
 
@@ -493,6 +494,7 @@ class SimplePyFlowWindow(QMainWindow):
     def _setup_param_inputs(self, node_item):
         """为节点设置参数输入控件"""
         self._clear_param_inputs()
+        self._current_node_item = node_item  # 保存当前节点引用
         
         # 获取参数信息
         if not hasattr(node_item, 'param_types') or not node_item.param_types:
@@ -515,12 +517,31 @@ class SimplePyFlowWindow(QMainWindow):
             # 根据类型创建不同的输入控件
             current_value = node_item.param_values.get(param_name)
             
-            if param_type == bool or param_type == 'bool':
+            # 特殊处理：数据提取节点的 path 参数
+            if node_item.name == "数据提取" and param_name == "path":
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText("点击右侧按钮选择路径...")
+                if current_value is not None:
+                    input_widget.setText(str(current_value))
+                input_widget.textChanged.connect(
+                    lambda text, name=param_name, node=node_item: self._on_param_value_changed(node, name, text)
+                )
+                row_layout.addWidget(input_widget)
+                
+                # 添加路径选择按钮
+                selector_btn = QPushButton("🔍")
+                selector_btn.setFixedWidth(30)
+                selector_btn.setToolTip("打开路径选择器")
+                selector_btn.setStyleSheet("background: #2196F3; color: white;")
+                selector_btn.clicked.connect(self._open_path_selector)
+                row_layout.addWidget(selector_btn)
+            elif param_type == bool or param_type == 'bool':
                 input_widget = QCheckBox()
                 input_widget.setChecked(bool(current_value) if current_value is not None else False)
                 input_widget.stateChanged.connect(
                     lambda state, name=param_name, node=node_item: self._on_param_value_changed(node, name, bool(state))
                 )
+                row_layout.addWidget(input_widget)
             elif param_type == int or param_type == 'int':
                 input_widget = QSpinBox()
                 input_widget.setRange(-999999, 999999)
@@ -528,6 +549,7 @@ class SimplePyFlowWindow(QMainWindow):
                 input_widget.valueChanged.connect(
                     lambda val, name=param_name, node=node_item: self._on_param_value_changed(node, name, val)
                 )
+                row_layout.addWidget(input_widget)
             elif param_type == float or param_type == 'float':
                 input_widget = QDoubleSpinBox()
                 input_widget.setRange(-999999.99, 999999.99)
@@ -536,6 +558,7 @@ class SimplePyFlowWindow(QMainWindow):
                 input_widget.valueChanged.connect(
                     lambda val, name=param_name, node=node_item: self._on_param_value_changed(node, name, val)
                 )
+                row_layout.addWidget(input_widget)
             else:  # 默认为字符串
                 input_widget = QLineEdit()
                 input_widget.setPlaceholderText("输入值...")
@@ -544,14 +567,32 @@ class SimplePyFlowWindow(QMainWindow):
                 input_widget.textChanged.connect(
                     lambda text, name=param_name, node=node_item: self._on_param_value_changed(node, name, text)
                 )
+                row_layout.addWidget(input_widget)
             
-            row_layout.addWidget(input_widget)
             self.params_layout.addWidget(row)
 
     def _on_param_value_changed(self, node_item, param_name, value):
         """参数值改变时的回调"""
         node_item.param_values[param_name] = value
         print(f"节点 '{node_item.name}' 的参数 '{param_name}' 设置为: {value}")
+
+    def _open_path_selector(self):
+        """打开数据提取路径选择对话框"""
+        # 获取当前 path 值
+        current_path = ""
+        if hasattr(self, '_current_node_item') and self._current_node_item:
+            current_path = self._current_node_item.param_values.get("path", "")
+        
+        # 打开路径选择对话框
+        dialog = PathSelectorDialog(self, current_path)
+        if dialog.exec() == QDialog.Accepted:
+            selected_path = dialog.get_selected_path()
+            if selected_path and hasattr(self, '_current_node_item'):
+                # 更新节点的 path 参数值
+                self._current_node_item.param_values["path"] = selected_path
+                # 刷新参数面板
+                self._setup_param_inputs(self._current_node_item)
+                print(f"数据提取路径已设置为: {selected_path}")
 
     def get_all_nodes(self):
         from core.graphics.simple_node_item import SimpleNodeItem

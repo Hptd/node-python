@@ -60,6 +60,69 @@ def const_dict(value: dict = None) -> dict:
     return value
 
 
+def extract_data(data: dict, path: str = "") -> any:
+    """
+    数据提取节点。
+    从输入的结构化数据（字典/JSON）中提取指定路径的字段内容。
+    
+    参数:
+        data: 原始的结构化数据（字典类型）
+        path: 提取路径，使用点号分隔嵌套层级，例如 "input.img_url"
+              支持数组索引访问，例如 "items.0.name" 或 "items[0].name"
+    
+    返回:
+        指定路径下的值，保留原始类型（列表返回列表，字典返回字典等）
+    
+    示例:
+        输入数据: {"input": {"img_url": ["url1", "url2"]}}
+        路径: "input.img_url"
+        输出: ["url1", "url2"]
+    """
+    if not data or not path:
+        return None
+    
+    if not isinstance(data, dict):
+        try:
+            import json
+            data = json.loads(data) if isinstance(data, str) else data
+        except Exception:
+            return None
+    
+    # 解析路径（支持点号和方括号两种格式）
+    import re
+    # 将 "items[0].name" 或 "items.0.name" 统一处理
+    tokens = re.findall(r'([^\.\[\]]+)|\[(\d+)\]', path)
+    keys = []
+    for token in tokens:
+        if token[0]:  # 字段名
+            keys.append(token[0])
+        elif token[1]:  # 数组索引
+            keys.append(int(token[1]))
+    
+    # 如果没有解析到任何key，尝试直接按点号分割
+    if not keys:
+        keys = path.split('.')
+    
+    # 遍历路径
+    current = data
+    try:
+        for key in keys:
+            if isinstance(current, dict):
+                current = current.get(key)
+            elif isinstance(current, list):
+                if isinstance(key, int) and 0 <= key < len(current):
+                    current = current[key]
+                else:
+                    return None
+            else:
+                return None
+            if current is None:
+                return None
+        return current
+    except Exception:
+        return None
+
+
 # 节点代码验证标准示例
 NODE_CODE_EXAMPLE = '''\
 def my_node(a: int, b: int) -> int:

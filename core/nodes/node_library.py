@@ -6,7 +6,7 @@ from typing import Dict, Any
 # 导入基础节点
 from .base_nodes import (node_print, NODE_CODE_EXAMPLE,
                          const_bool, const_int, const_float, const_string,
-                         const_list, const_dict)
+                         const_list, const_dict, extract_data)
 
 # ==========================================
 # 节点库：分类 -> {节点名: 函数}
@@ -22,6 +22,9 @@ NODE_LIBRARY_CATEGORIZED = {
         "字符串": const_string,
         "列表": const_list,
         "字典": const_dict,
+    },
+    "提取": {
+        "数据提取": extract_data,
     },
 }
 

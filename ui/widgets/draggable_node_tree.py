@@ -52,13 +52,11 @@ class DraggableNodeTree(QTreeWidget):
         node_name = item.data(0, Qt.UserRole)
         parent_item = item.parent()
 
-        # 只有叶子节点（有节点名的）且属于自定义分类的才显示菜单
+        # 只有叶子节点（有节点名的）才显示菜单
         if node_name and parent_item:
-            category_name = parent_item.text(0)
-            if category_name in self._custom_categories:
-                # 发射信号，让主窗口处理菜单显示
-                global_pos = self.mapToGlobal(event.pos())
-                self.node_right_clicked.emit(node_name, global_pos)
-                return
+            # 发射信号，让主窗口处理菜单显示
+            global_pos = self.mapToGlobal(event.pos())
+            self.node_right_clicked.emit(node_name, global_pos)
+            return
 
         super().contextMenuEvent(event)
