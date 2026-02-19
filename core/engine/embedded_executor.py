@@ -71,8 +71,22 @@ class EmbeddedPythonExecutor:
         if not Path(self.python_exe).exists():
             raise RuntimeError(f"Python 解释器不存在: {self.python_exe}")
         
-        # 确保 site-packages 目录存在
-        self.site_packages.mkdir(parents=True, exist_ok=True)
+        # 查找 site-packages 目录（可能在不同位置）
+        possible_paths = [
+            Path(self.python_exe).parent / "Lib" / "site-packages",
+            Path(self.python_exe).parent / "lib" / "python3.10" / "site-packages",
+            Path(self.python_exe).parent / "lib" / "python3.11" / "site-packages",
+            Path(self.python_exe).parent / "lib" / "python3.12" / "site-packages",
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                self.site_packages = path
+                break
+        else:
+            # 使用默认路径并创建
+            self.site_packages = Path(self.python_exe).parent / "Lib" / "site-packages"
+            self.site_packages.mkdir(parents=True, exist_ok=True)
     
     def execute_node(
         self, 
@@ -96,6 +110,11 @@ class EmbeddedPythonExecutor:
             RuntimeError: 执行失败
             TimeoutError: 执行超时
         """
+        # 调试信息
+        print(f"  [调试] Python: {self.python_exe}")
+        print(f"  [调试] Site-packages: {self.site_packages}")
+        print(f"  [调试] Imports: {imports}")
+        
         # 构建执行脚本
         script = self._build_execution_script(func_code, args, imports)
         
@@ -163,9 +182,12 @@ class EmbeddedPythonExecutor:
 import sys
 import json
 import traceback
+import site
 
-# 添加 site-packages 到路径
-sys.path.insert(0, r'{self.site_packages}')
+# 确保 site-packages 在路径中
+for p in site.getsitepackages():
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 # 预导入模块
 {import_lines}

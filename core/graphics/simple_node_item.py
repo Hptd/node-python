@@ -30,6 +30,10 @@ class SimpleNodeItem(QGraphicsRectItem):
         
         # 存储参数默认值 {参数名: 值}
         self.param_values = {}
+        
+        # 检测是否为自定义节点
+        self.is_custom_node = hasattr(func, '_custom_source')
+        self.source_code = getattr(func, '_custom_source', None)
 
     def setup_ports(self):
         sig = inspect.signature(self.func)
