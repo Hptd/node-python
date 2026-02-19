@@ -123,6 +123,48 @@ def extract_data(data: dict, path: str = "") -> any:
         return None
 
 
+def type_test(data) -> None:
+    """
+    数据类型检测节点。
+    检测并打印输入数据的类型信息。
+    """
+    print(f"输入数据类型为：{type(data)}")
+
+
+def debug_length(data) -> int:
+    """
+    数据长度节点。
+    返回数据的长度，支持字符串、列表、字典、元组等可迭代对象。
+    """
+    try:
+        length = len(data)
+        print(f"数据长度为：{length}")
+        return length
+    except TypeError:
+        print(f"数据类型 {type(data)} 不支持长度计算")
+        return 0
+
+
+def debug_breakpoint(data, pause: float = 0.0) -> any:
+    """
+    断点暂停节点。
+    模拟断点，打印数据信息并可选择暂停执行，然后透传数据。
+
+    参数:
+        data: 输入数据
+        pause: 暂停时间（秒），0表示不暂停
+
+    返回:
+        透传的输入数据
+    """
+    import time
+    print(f"[断点] 数据: {data} (类型: {type(data).__name__})")
+    if pause > 0:
+        time.sleep(pause)
+        print(f"[断点] 暂停 {pause} 秒后继续")
+    return data
+
+
 # 节点代码验证标准示例
 NODE_CODE_EXAMPLE = '''\
 def my_node(a: int, b: int) -> int:
