@@ -28,7 +28,7 @@ from utils.console_stream import EmittingStream
 class SimplePyFlowWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("简易中文节点编辑器")
+        self.setWindowTitle("中文节点py编辑器")
         self.resize(1000, 700)
 
         self.setup_bottom_dock()

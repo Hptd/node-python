@@ -13,7 +13,7 @@ from config.settings import settings
 def setup_application() -> bool:
     """设置应用程序"""
     print("=" * 50)
-    print("启动简易中文节点编辑器")
+    print("启动中文节点python编辑器")
     print("=" * 50)
     
     # 加载设置
