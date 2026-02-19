@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QMainWindow, QGraphicsScene, QDockWidget, QWidget
                                QHBoxLayout, QLabel, QTextEdit, QToolBar, QPushButton,
                                QInputDialog, QMessageBox, QApplication, QTreeWidgetItem,
                                QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox,
-                               QMenu)
+                               QMenu, QDialog)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QTextCursor
 

@@ -109,14 +109,11 @@ def load_custom_nodes() -> bool:
                     continue
                 
                 func_name = func_defs[0].name
-                if func_name != name:
-                    print(f"节点 '{name}' 函数名不匹配: {func_name}")
-                    continue
                 
                 # 编译执行
                 namespace = {}
                 exec(compile(tree, f"<custom_node_{name}>", "exec"), namespace)
-                func = namespace[name]
+                func = namespace[func_name]
                 
                 if not callable(func):
                     print(f"节点 '{name}' 不是可调用函数")
