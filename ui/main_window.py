@@ -6,14 +6,20 @@ import inspect
 from PySide6.QtWidgets import (QMainWindow, QGraphicsScene, QDockWidget, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QTextEdit, QToolBar, QPushButton,
                                QInputDialog, QMessageBox, QApplication, QTreeWidgetItem,
-                               QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox)
+                               QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox,
+                               QMenu)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QTextCursor
 
 from core.graphics.node_graphics_view import NodeGraphicsView
+from core.graphics.simple_node_item import SimpleNodeItem
+from core.graphics.connection_item import ConnectionItem
+from core.graphics.port_item import PortItem
 from core.engine.graph_executor import execute_graph
 from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRARY,
-                                      CUSTOM_CATEGORIES, add_node_to_library)
+                                      CUSTOM_CATEGORIES, add_node_to_library,
+                                      get_node_source_code, get_node_category,
+                                      is_custom_node, remove_node_from_library)
 from ui.widgets.draggable_node_tree import DraggableNodeTree
 from ui.dialogs.custom_node_dialog import CustomNodeCodeDialog
 from utils.console_stream import EmittingStream
@@ -83,6 +89,9 @@ class SimplePyFlowWindow(QMainWindow):
         # 树形节点列表
         self.node_tree = DraggableNodeTree()
         self.node_tree.itemDoubleClicked.connect(self._on_tree_double_click)
+        # 连接右键菜单信号
+        self.node_tree.node_right_clicked.connect(self._on_node_right_click)
+        self.node_tree.node_delete_requested.connect(self._on_node_delete_requested)
         layout.addWidget(self.node_tree)
 
         dock.setWidget(container)
@@ -92,6 +101,9 @@ class SimplePyFlowWindow(QMainWindow):
 
     def _refresh_node_tree(self):
         self.node_tree.clear()
+        # 更新自定义分类列表（用于右键菜单判断）
+        self.node_tree.set_custom_categories(CUSTOM_CATEGORIES)
+        
         for category, nodes in NODE_LIBRARY_CATEGORIZED.items():
             cat_item = QTreeWidgetItem(self.node_tree, [category])
             cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsDragEnabled)
@@ -103,7 +115,6 @@ class SimplePyFlowWindow(QMainWindow):
     def _on_tree_double_click(self, item, column):
         node_name = item.data(0, Qt.UserRole)
         if node_name and node_name in LOCAL_NODE_LIBRARY:
-            from core.graphics.simple_node_item import SimpleNodeItem
             func = LOCAL_NODE_LIBRARY[node_name]
             node = SimpleNodeItem(node_name, func, x=0, y=0)
             self.scene.addItem(node)
@@ -130,6 +141,155 @@ class SimplePyFlowWindow(QMainWindow):
             # 信号已经在创建时触发刷新，这里做最终确认
             self._refresh_node_tree()
             print(f"自定义节点 '{dlg.generated_name}' 已添加到节点库。")
+
+    def _on_node_right_click(self, node_name, global_pos):
+        """处理节点树右键点击事件"""
+        # 创建右键菜单
+        menu = QMenu(self)
+        
+        edit_action = QAction("✏️ 编辑节点", self)
+        edit_action.triggered.connect(lambda: self._edit_custom_node(node_name))
+        menu.addAction(edit_action)
+        
+        delete_action = QAction("🗑️ 删除节点", self)
+        delete_action.triggered.connect(lambda: self._on_node_delete_requested(node_name))
+        menu.addAction(delete_action)
+        
+        menu.exec(global_pos)
+
+    def _edit_custom_node(self, node_name):
+        """编辑自定义节点"""
+        # 获取节点的源代码和分类
+        source_code = get_node_source_code(node_name)
+        category = get_node_category(node_name)
+        
+        if not source_code:
+            QMessageBox.warning(self, "警告", f"无法获取节点 '{node_name}' 的源代码。")
+            return
+        
+        # 打开编辑对话框
+        dlg = CustomNodeCodeDialog(
+            parent=self,
+            edit_mode=True,
+            original_name=node_name,
+            original_code=source_code,
+            original_display_name=node_name,
+            original_category=category
+        )
+        
+        # 连接更新信号
+        dlg.node_updated.connect(self._on_node_updated)
+        
+        if dlg.exec() == QDialog.Accepted:
+            print(f"节点 '{node_name}' 编辑完成。")
+
+    def _on_node_updated(self, original_name, new_name, category):
+        """处理节点更新事件，同步更新画布中的节点引用"""
+        # 刷新节点树
+        self._refresh_node_tree()
+        
+        # 同步更新画布中所有该节点的引用
+        updated_count = 0
+        for item in self.scene.items():
+            if isinstance(item, SimpleNodeItem) and item.name == original_name:
+                # 保存旧的连接关系（按端口名）
+                old_input_connections = {}
+                old_output_connections = {}
+                
+                for port in item.input_ports:
+                    if port.connections:
+                        # 保存连接的源端口信息
+                        connections_info = []
+                        for conn in port.connections:
+                            if conn.start_port:
+                                connections_info.append({
+                                    'source_port': conn.start_port,
+                                    'source_node': conn.start_port.parent_node
+                                })
+                        old_input_connections[port.port_name] = connections_info
+                
+                for port in item.output_ports:
+                    if port.connections:
+                        # 保存连接的目标端口信息
+                        connections_info = []
+                        for conn in port.connections:
+                            if conn.end_port:
+                                connections_info.append({
+                                    'target_port': conn.end_port,
+                                    'target_node': conn.end_port.parent_node
+                                })
+                        old_output_connections[port.port_name] = connections_info
+                
+                # 移除所有现有连接
+                all_ports = item.input_ports + item.output_ports
+                for port in all_ports:
+                    for conn in port.connections[:]:
+                        conn.remove_connection()
+                
+                # 更新节点名称
+                item.name = new_name
+                # 更新节点函数
+                item.func = LOCAL_NODE_LIBRARY.get(new_name)
+                
+                # 清除端口列表
+                item.input_ports = []
+                item.output_ports = []
+                
+                # 重新设置端口（因为函数签名可能改变）
+                item.setup_ports()
+                
+                # 尝试恢复连接（如果端口名仍然存在）
+                for port in item.input_ports:
+                    if port.port_name in old_input_connections:
+                        for conn_info in old_input_connections[port.port_name]:
+                            source_port = conn_info['source_port']
+                            # 检查源端口是否仍然有效
+                            if source_port and source_port.scene():
+                                # 重新创建连接
+                                new_conn = ConnectionItem(source_port, port)
+                                self.scene.addItem(new_conn)
+                                new_conn.finalize_connection(port)
+                
+                for port in item.output_ports:
+                    if port.port_name in old_output_connections:
+                        for conn_info in old_output_connections[port.port_name]:
+                            target_port = conn_info['target_port']
+                            # 检查目标端口是否仍然有效
+                            if target_port and target_port.scene():
+                                # 重新创建连接
+                                new_conn = ConnectionItem(port, target_port)
+                                self.scene.addItem(new_conn)
+                                new_conn.finalize_connection(target_port)
+                
+                # 触发重绘
+                item.update()
+                updated_count += 1
+        
+        if updated_count > 0:
+            print(f"已同步更新画布中 {updated_count} 个 '{original_name}' 节点引用为 '{new_name}'。")
+        
+        # 刷新属性面板（如果当前选中的是被更新的节点或同类型节点）
+        selected_items = self.scene.selectedItems()
+        if selected_items:
+            for selected in selected_items:
+                if isinstance(selected, SimpleNodeItem) and selected.name == new_name:
+                    self.on_selection_changed()
+                    break
+
+    def _on_node_delete_requested(self, node_name):
+        """处理节点删除请求"""
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除自定义节点 '{node_name}' 吗？\n\n注意：画布中已存在的该节点实例将保留，但无法再添加新实例。",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            if remove_node_from_library(node_name):
+                self._refresh_node_tree()
+                print(f"节点 '{node_name}' 已从节点库中删除。")
+            else:
+                QMessageBox.warning(self, "删除失败", f"无法删除节点 '{node_name}'。")
 
     def setup_right_dock(self):
         dock = QDockWidget("📝 节点属性", self)
@@ -307,9 +467,6 @@ class SimplePyFlowWindow(QMainWindow):
         # 收集图表数据
         graph_data = {"nodes": [], "connections": []}
 
-        from core.graphics.simple_node_item import SimpleNodeItem
-        from core.graphics.connection_item import ConnectionItem
-
         for item in self.scene.items():
             if isinstance(item, SimpleNodeItem):
                 node_data = {
@@ -357,7 +514,6 @@ class SimplePyFlowWindow(QMainWindow):
 
             # 创建节点
             node_map = {}  # id -> node对象
-            from core.graphics.simple_node_item import SimpleNodeItem
 
             for node_data in graph_data.get("nodes", []):
                 node_id = node_data.get("id")
@@ -379,9 +535,6 @@ class SimplePyFlowWindow(QMainWindow):
                     node_map[node_id] = node
 
             # 创建连接
-            from core.graphics.connection_item import ConnectionItem
-            from core.graphics.port_item import PortItem
-
             for conn_data in graph_data.get("connections", []):
                 from_node_id = conn_data.get("from_node")
                 to_node_id = conn_data.get("to_node")

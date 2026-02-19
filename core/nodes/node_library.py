@@ -98,3 +98,38 @@ def clear_custom_nodes() -> None:
     NODE_LIBRARY_CATEGORIZED = system_categories
     LOCAL_NODE_LIBRARY = system_nodes
     CUSTOM_CATEGORIES = []
+
+
+def get_node_source_code(name: str) -> str:
+    """获取节点的源代码"""
+    func = LOCAL_NODE_LIBRARY.get(name)
+    if not func:
+        return ""
+    
+    # 优先使用保存的自定义源代码
+    if hasattr(func, '_custom_source'):
+        return func._custom_source
+    
+    # 否则尝试使用 inspect 获取
+    try:
+        import inspect
+        return inspect.getsource(func)
+    except Exception:
+        return ""
+
+
+def is_custom_node(name: str) -> bool:
+    """检查节点是否是自定义节点"""
+    # 检查节点所在分类是否属于自定义分类
+    for category, nodes in NODE_LIBRARY_CATEGORIZED.items():
+        if name in nodes and category in CUSTOM_CATEGORIES:
+            return True
+    return False
+
+
+def get_node_category(name: str) -> str:
+    """获取节点所在的分类"""
+    for category, nodes in NODE_LIBRARY_CATEGORIZED.items():
+        if name in nodes:
+            return category
+    return ""
