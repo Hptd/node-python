@@ -24,6 +24,7 @@ from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRAR
 from ui.widgets.draggable_node_tree import DraggableNodeTree
 from ui.dialogs.custom_node_dialog import CustomNodeCodeDialog
 from ui.dialogs.path_selector_dialog import PathSelectorDialog
+from ui.dialogs.package_manager_dialog import PackageManagerDialog
 from utils.console_stream import EmittingStream
 from config.settings import settings
 
@@ -67,6 +68,18 @@ class SimplePyFlowWindow(QMainWindow):
         load_action = QAction("📂 加载 JSON", self)
         load_action.triggered.connect(self.load_from_json)
         toolbar.addAction(load_action)
+
+        toolbar.addSeparator()
+
+        # 依赖包管理
+        pkg_action = QAction("📦 依赖管理", self)
+        pkg_action.triggered.connect(self._open_package_manager)
+        toolbar.addAction(pkg_action)
+
+        # 嵌入式 Python 环境初始化
+        setup_action = QAction("🔧 初始化环境", self)
+        setup_action.triggered.connect(self._setup_embedded_python)
+        toolbar.addAction(setup_action)
 
     def setup_left_dock(self):
         dock = QDockWidget("📦 本地节点库", self)
@@ -727,3 +740,106 @@ class SimplePyFlowWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "加载失败", f"加载 JSON 文件失败:\n{e}")
             print(f"加载图表失败: {e}")
+
+    def _open_package_manager(self):
+        """打开依赖包管理器"""
+        try:
+            from core.engine.embedded_executor import get_executor
+            executor = get_executor()
+            
+            dialog = PackageManagerDialog(self, executor)
+            dialog.exec()
+            
+        except RuntimeError as e:
+            # 嵌入式 Python 未安装
+            reply = QMessageBox.question(
+                self, "环境未初始化",
+                f"嵌入式 Python 环境未初始化。\n\n{e}\n\n是否立即初始化？",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self._setup_embedded_python()
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"打开包管理器失败:\n{e}")
+
+    def _setup_embedded_python(self):
+        """初始化嵌入式 Python 环境"""
+        import platform
+        
+        # 检查平台
+        if platform.system() != "Windows":
+            QMessageBox.information(
+                self, "平台提示",
+                "嵌入式 Python 主要针对 Windows 设计。\n\n"
+                f"当前平台: {platform.system()}\n"
+                "在 macOS/Linux 上，建议使用系统 Python 或 pyenv 管理环境。\n\n"
+                "如需在 Windows 上使用，请在 Windows 环境下运行此功能。"
+            )
+            return
+        
+        reply = QMessageBox.question(
+            self, "初始化嵌入式 Python",
+            "这将下载并配置嵌入式 Python 环境（约 15-20MB）。\n"
+            "安装后可在节点中使用第三方库（如 requests、pandas 等）。\n\n"
+            "是否继续？",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        # 显示进度对话框
+        from PySide6.QtWidgets import QProgressDialog
+        
+        progress = QProgressDialog("正在初始化嵌入式 Python...", "取消", 0, 100, self)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setWindowTitle("初始化中")
+        progress.show()
+        
+        # 在后台线程中执行初始化
+        from PySide6.QtCore import QThread, Signal
+        
+        class SetupThread(QThread):
+            progress_signal = Signal(str, int)
+            finished_signal = Signal(bool, str)
+            
+            def run(self):
+                try:
+                    from utils.setup_embedded_python import EmbeddedPythonSetup
+                    
+                    def progress_callback(message, percent):
+                        self.progress_signal.emit(message, percent)
+                    
+                    setup = EmbeddedPythonSetup(progress_callback=progress_callback)
+                    success = setup.install()
+                    
+                    if success:
+                        self.finished_signal.emit(True, "初始化完成！")
+                    else:
+                        self.finished_signal.emit(False, "初始化失败，请查看控制台输出。")
+                        
+                except Exception as e:
+                    self.finished_signal.emit(False, str(e))
+        
+        self.setup_thread = SetupThread()
+        self.setup_thread.progress_signal.connect(
+            lambda msg, pct: (progress.setLabelText(msg), progress.setValue(pct))
+        )
+        self.setup_thread.finished_signal.connect(
+            lambda success, msg: self._on_setup_finished(success, msg, progress)
+        )
+        self.setup_thread.start()
+
+    def _on_setup_finished(self, success: bool, message: str, progress_dialog):
+        """初始化完成回调"""
+        progress_dialog.close()
+        
+        if success:
+            QMessageBox.information(self, "成功", message)
+            print("嵌入式 Python 环境初始化成功！")
+        else:
+            QMessageBox.critical(self, "失败", f"初始化失败:\n{message}")
+            print(f"嵌入式 Python 环境初始化失败: {message}")
+        
+        # 清理线程引用
+        self.setup_thread = None
