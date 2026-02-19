@@ -1,14 +1,5 @@
 """基础节点函数定义"""
 
-
-def node_add(a: int, b: int) -> int:
-    """
-    这是一个加法节点。
-    输入两个数字，返回它们的和。
-    """
-    return a + b
-
-
 def node_print(data):
     """
     打印输出节点。

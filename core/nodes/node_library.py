@@ -4,7 +4,7 @@ import inspect
 from typing import Dict, Any
 
 # 导入基础节点
-from .base_nodes import (node_add, node_print, NODE_CODE_EXAMPLE,
+from .base_nodes import (node_print, NODE_CODE_EXAMPLE,
                          const_bool, const_int, const_float, const_string,
                          const_list, const_dict)
 
@@ -12,9 +12,6 @@ from .base_nodes import (node_add, node_print, NODE_CODE_EXAMPLE,
 # 节点库：分类 -> {节点名: 函数}
 # ==========================================
 NODE_LIBRARY_CATEGORIZED = {
-    "基础运算": {
-        "加法节点": node_add,
-    },
     "输出": {
         "打印节点": node_print,
     },
