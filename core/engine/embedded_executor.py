@@ -35,35 +35,42 @@ class EmbeddedPythonExecutor:
     def _find_embedded_python(self) -> str:
         """查找嵌入式 Python 解释器路径
         
-        查找顺序：
-        1. 环境变量 NODE_PYTHON_EMBEDDED
-        2. 项目目录下的 python_embedded/python.exe
-        3. 可执行文件同级目录的 python_embedded/python.exe
+        查找顺序（优先exe同级目录）：
+        1. 可执行文件同级目录的 python_embedded/python.exe（打包后主要使用）
+        2. 环境变量 NODE_PYTHON_EMBEDDED
+        3. 项目目录下的 python_embedded/python.exe（开发环境）
         """
         import sys
         
-        # 1. 环境变量
+        # 1. 可执行文件同级目录（打包后的主要使用场景）
+        if hasattr(sys, '_MEIPASS'):  # PyInstaller 打包环境
+            exe_dir = Path(sys.executable).parent
+        else:
+            exe_dir = Path(sys.executable).parent
+        
+        embedded_path = exe_dir / "python_embedded" / "python.exe"
+        if embedded_path.exists():
+            return str(embedded_path.resolve())
+        
+        # 2. 环境变量
         env_path = os.environ.get("NODE_PYTHON_EMBEDDED")
         if env_path and Path(env_path).exists():
             return str(Path(env_path).resolve())
         
-        # 2. 项目目录
+        # 3. 项目目录（开发环境备用）
         project_dir = Path(__file__).parent.parent.parent
         embedded_path = project_dir / "python_embedded" / "python.exe"
         if embedded_path.exists():
             return str(embedded_path.resolve())
         
-        # 3. 可执行文件目录（PyInstaller 打包后）
-        if hasattr(sys, '_MEIPASS'):
-            exe_dir = Path(sys.executable).parent
-            embedded_path = exe_dir / "python_embedded" / "python.exe"
-            if embedded_path.exists():
-                return str(embedded_path.resolve())
-        
         raise RuntimeError(
             "未找到嵌入式 Python 环境。\n"
-            "请设置环境变量 NODE_PYTHON_EMBEDDED，\n"
-            "或运行 python -m utils.setup_embedded_python 进行初始化。"
+            f"请检查以下位置是否存在 python_embedded/python.exe：\n"
+            f"1. {exe_dir / 'python_embedded'}（exe同级目录，打包后主要使用）\n"
+            f"2. 环境变量 NODE_PYTHON_EMBEDDED 指定的路径\n"
+            f"3. {project_dir / 'python_embedded'}（开发环境）\n\n"
+            "注意：所有节点（包括内置节点）都将在外部 python_embedded 环境中执行。\n"
+            "请运行 python -m utils.setup_embedded_python install 进行初始化。"
         )
     
     def _check_environment(self):
@@ -245,6 +252,7 @@ if __name__ == "__main__":
         """解析执行结果
         
         从 stdout 中提取 JSON 格式的结果
+        同时捕获打印输出并显示到主控制台
         """
         # 查找结果标记
         start_marker = "__RESULT_START__"
@@ -252,6 +260,13 @@ if __name__ == "__main__":
         
         start_idx = stdout.find(start_marker)
         end_idx = stdout.find(end_marker)
+        
+        # 捕获并显示打印输出（结果标记之前的内容）
+        if start_idx > 0:
+            printed_output = stdout[:start_idx].strip()
+            if printed_output:
+                # 将嵌入式环境的打印输出显示到主控制台
+                print(f"  [节点输出] {printed_output}")
         
         if start_idx == -1 or end_idx == -1:
             # 没有找到标记，可能是旧格式或错误
@@ -279,7 +294,9 @@ if __name__ == "__main__":
         try:
             data = json.loads(json_str)
             if data.get("success"):
-                return data.get("result")
+                result = data.get("result")
+                # 对于返回 None 的节点，打印节点的输出已经在前面显示了
+                return result
             else:
                 raise RuntimeError(data.get("error", "未知错误"))
         except json.JSONDecodeError as e:

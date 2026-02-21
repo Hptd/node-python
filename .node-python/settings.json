@@ -2,9 +2,9 @@
   "window": {
     "width": 1000,
     "height": 700,
-    "x": 220,
-    "y": 68,
-    "maximized": true
+    "x": 222,
+    "y": 194,
+    "maximized": false
   },
   "graphics": {
     "zoom_speed": 1.15,
@@ -21,6 +21,11 @@
     "auto_run_on_change": false,
     "show_execution_time": true,
     "stop_on_error": true
+  },
+  "embedded_python": {
+    "path": null,
+    "auto_init": false,
+    "use_for_custom_nodes": true
   },
   "ui": {
     "theme": "dark",

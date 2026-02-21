@@ -204,10 +204,8 @@ class SandboxChecker(ast.NodeVisitor):
         
         self.generic_visit(node)
     
-    def visit_Exec(self, node: ast.Exec):
-        """检查 exec 语句（Python 2）"""
-        self.errors.append("禁止使用 exec 语句")
-        self.generic_visit(node)
+    # Python 3 中已移除 ast.Exec 节点类型，exec 现在是内置函数
+    # 在 visit_Call 方法中已检查 exec() 函数调用
 
 
 def check_code_safety(

@@ -613,7 +613,8 @@ class SimplePyFlowWindow(QMainWindow):
 
     def run_graph(self):
         nodes = self.get_all_nodes()
-        execute_graph(nodes)
+        from core.engine.graph_executor import execute_graph_embedded
+        execute_graph_embedded(nodes)
 
     def stop_graph(self):
         print("已发送停止信号。")
