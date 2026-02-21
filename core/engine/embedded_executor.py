@@ -162,13 +162,13 @@ class EmbeddedPythonExecutor:
                 pass
     
     def _build_execution_script(
-        self, 
-        func_code: str, 
-        args: Dict[str, Any], 
+        self,
+        func_code: str,
+        args: Dict[str, Any],
         imports: Optional[List[str]]
     ) -> str:
         """构建执行脚本
-        
+
         生成的脚本包含：
         1. 环境设置（添加 site-packages 到路径）
         2. 预导入模块
@@ -180,10 +180,13 @@ class EmbeddedPythonExecutor:
         if imports:
             for imp in imports:
                 import_lines += f"import {imp}\n"
-        
+
         # 提取函数名
         func_name = self._extract_func_name(func_code)
-        
+
+        # 使用 JSON 序列化参数，确保列表和字典类型正确传递
+        args_json = json.dumps(args, ensure_ascii=False, default=str)
+
         # 构建脚本
         script = f'''# -*- coding: utf-8 -*-
 import sys
@@ -205,7 +208,7 @@ for p in site.getsitepackages():
 # 执行函数并输出结果
 if __name__ == "__main__":
     try:
-        args = {repr(args)}
+        args = json.loads('{args_json}')
         result = {func_name}(**args)
         
         # 序列化结果

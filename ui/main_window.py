@@ -23,6 +23,7 @@ from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRAR
                                       is_custom_node, remove_node_from_library)
 from ui.widgets.draggable_node_tree import DraggableNodeTree
 from ui.dialogs.custom_node_dialog import CustomNodeCodeDialog
+from ui.dialogs.ai_node_generator_dialog import AINodeGeneratorDialog
 from ui.dialogs.path_selector_dialog import PathSelectorDialog
 from ui.dialogs.package_manager_dialog import PackageManagerDialog
 from utils.console_stream import EmittingStream
@@ -71,6 +72,15 @@ class SimplePyFlowWindow(QMainWindow):
 
         toolbar.addSeparator()
 
+        toolbar.addSeparator()
+        
+        # AI生成节点
+        ai_gen_action = QAction("🤖 Ai节点模板", self)
+        ai_gen_action.triggered.connect(self._open_ai_node_generator)
+        toolbar.addAction(ai_gen_action)
+        
+        toolbar.addSeparator()
+        
         # 依赖包管理
         pkg_action = QAction("📦 依赖管理", self)
         pkg_action.triggered.connect(self._open_package_manager)
@@ -99,6 +109,11 @@ class SimplePyFlowWindow(QMainWindow):
         custom_node_btn.setStyleSheet("background: #FF9800; color: white; border: none; padding: 4px 8px; border-radius: 3px;")
         custom_node_btn.clicked.connect(self._open_custom_node_editor)
         cat_btn_layout.addWidget(custom_node_btn)
+        
+        ai_gen_btn = QPushButton("🤖 AI模板")
+        ai_gen_btn.setStyleSheet("background: #9C27B0; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-weight: bold;")
+        ai_gen_btn.clicked.connect(self._open_ai_node_generator)
+        cat_btn_layout.addWidget(ai_gen_btn)
 
         layout.addLayout(cat_btn_layout)
 
@@ -157,6 +172,15 @@ class SimplePyFlowWindow(QMainWindow):
             # 信号已经在创建时触发刷新，这里做最终确认
             self._refresh_node_tree()
             print(f"自定义节点 '{dlg.generated_name}' 已添加到节点库。")
+
+    def _open_ai_node_generator(self):
+        """打开AI节点生成器对话框"""
+        dlg = AINodeGeneratorDialog(self)
+        # 连接信号：节点创建成功后刷新列表
+        dlg.node_created.connect(lambda name, category: self._refresh_node_tree())
+        if dlg.exec() == QDialog.Accepted:
+            self._refresh_node_tree()
+            print(f"AI生成节点 '{dlg.generated_name}' 已添加到节点库。")
 
     def _on_node_right_click(self, node_name, global_pos):
         """处理节点树右键点击事件"""
@@ -508,28 +532,28 @@ class SimplePyFlowWindow(QMainWindow):
         """为节点设置参数输入控件"""
         self._clear_param_inputs()
         self._current_node_item = node_item  # 保存当前节点引用
-        
+
         # 获取参数信息
         if not hasattr(node_item, 'param_types') or not node_item.param_types:
             no_params_label = QLabel("<i>该节点无输入参数</i>")
             no_params_label.setStyleSheet("color: #888;")
             self.params_layout.addWidget(no_params_label)
             return
-        
+
         for param_name, param_type in node_item.param_types.items():
             # 参数行布局
             row = QWidget()
             row_layout = QHBoxLayout(row)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            
+
             # 参数名标签
             label = QLabel(f"{param_name}:")
             label.setFixedWidth(80)
             row_layout.addWidget(label)
-            
+
             # 根据类型创建不同的输入控件
             current_value = node_item.param_values.get(param_name)
-            
+
             # 特殊处理：数据提取节点的 path 参数
             if node_item.name == "数据提取" and param_name == "path":
                 input_widget = QLineEdit()
@@ -540,7 +564,7 @@ class SimplePyFlowWindow(QMainWindow):
                     lambda text, name=param_name, node=node_item: self._on_param_value_changed(node, name, text)
                 )
                 row_layout.addWidget(input_widget)
-                
+
                 # 添加路径选择按钮
                 selector_btn = QPushButton("🔍")
                 selector_btn.setFixedWidth(30)
@@ -572,6 +596,38 @@ class SimplePyFlowWindow(QMainWindow):
                     lambda val, name=param_name, node=node_item: self._on_param_value_changed(node, name, val)
                 )
                 row_layout.addWidget(input_widget)
+            elif param_type == list or param_type == 'list':
+                # 列表类型：使用 JSON 格式输入
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText('输入 JSON 格式，如: [1, 2, 3] 或 []')
+                if current_value is not None:
+                    import json
+                    try:
+                        input_widget.setText(json.dumps(current_value, ensure_ascii=False))
+                    except:
+                        input_widget.setText(str(current_value))
+                else:
+                    input_widget.setText("[]")
+                input_widget.textChanged.connect(
+                    lambda text, name=param_name, node=node_item: self._on_list_param_value_changed(node, name, text)
+                )
+                row_layout.addWidget(input_widget)
+            elif param_type == dict or param_type == 'dict':
+                # 字典类型：使用 JSON 格式输入
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText('输入 JSON 格式，如: {"key": "value"} 或 {}')
+                if current_value is not None:
+                    import json
+                    try:
+                        input_widget.setText(json.dumps(current_value, ensure_ascii=False))
+                    except:
+                        input_widget.setText(str(current_value))
+                else:
+                    input_widget.setText("{}")
+                input_widget.textChanged.connect(
+                    lambda text, name=param_name, node=node_item: self._on_dict_param_value_changed(node, name, text)
+                )
+                row_layout.addWidget(input_widget)
             else:  # 默认为字符串
                 input_widget = QLineEdit()
                 input_widget.setPlaceholderText("输入值...")
@@ -581,13 +637,49 @@ class SimplePyFlowWindow(QMainWindow):
                     lambda text, name=param_name, node=node_item: self._on_param_value_changed(node, name, text)
                 )
                 row_layout.addWidget(input_widget)
-            
+
             self.params_layout.addWidget(row)
 
     def _on_param_value_changed(self, node_item, param_name, value):
         """参数值改变时的回调"""
         node_item.param_values[param_name] = value
         print(f"节点 '{node_item.name}' 的参数 '{param_name}' 设置为: {value}")
+
+    def _on_list_param_value_changed(self, node_item, param_name, text):
+        """列表类型参数值改变时的回调"""
+        try:
+            import json
+            if text.strip():
+                value = json.loads(text)
+                if isinstance(value, list):
+                    node_item.param_values[param_name] = value
+                    print(f"节点 '{node_item.name}' 的参数 '{param_name}' 设置为列表: {value}")
+                else:
+                    print(f"警告: 参数 '{param_name}' 的值不是有效的列表格式")
+            else:
+                node_item.param_values[param_name] = []
+        except json.JSONDecodeError as e:
+            # 解析失败时暂时存储原始文本，但不报错
+            node_item.param_values[param_name] = text
+            print(f"节点 '{node_item.name}' 的参数 '{param_name}' 输入中: {text}")
+
+    def _on_dict_param_value_changed(self, node_item, param_name, text):
+        """字典类型参数值改变时的回调"""
+        try:
+            import json
+            if text.strip():
+                value = json.loads(text)
+                if isinstance(value, dict):
+                    node_item.param_values[param_name] = value
+                    print(f"节点 '{node_item.name}' 的参数 '{param_name}' 设置为字典: {value}")
+                else:
+                    print(f"警告: 参数 '{param_name}' 的值不是有效的字典格式")
+            else:
+                node_item.param_values[param_name] = {}
+        except json.JSONDecodeError as e:
+            # 解析失败时暂时存储原始文本，但不报错
+            node_item.param_values[param_name] = text
+            print(f"节点 '{node_item.name}' 的参数 '{param_name}' 输入中: {text}")
 
     def _open_path_selector(self):
         """打开数据提取路径选择对话框"""
