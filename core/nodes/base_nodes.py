@@ -5,7 +5,7 @@ def node_print(data):
     打印输出节点。
     将输入的数据打印到下方的控制台中。
     """
-    print(f"执行结果: {data}")
+    print(data)
 
 
 def const_bool(value: bool = True) -> bool:
@@ -128,42 +128,7 @@ def type_test(data) -> None:
     数据类型检测节点。
     检测并打印输入数据的类型信息。
     """
-    print(f"输入数据类型为：{type(data)}")
-
-
-def debug_length(data) -> int:
-    """
-    数据长度节点。
-    返回数据的长度，支持字符串、列表、字典、元组等可迭代对象。
-    """
-    try:
-        length = len(data)
-        print(f"数据长度为：{length}")
-        return length
-    except TypeError:
-        print(f"数据类型 {type(data)} 不支持长度计算")
-        return 0
-
-
-def debug_breakpoint(data, pause: float = 0.0) -> any:
-    """
-    断点暂停节点。
-    模拟断点，打印数据信息并可选择暂停执行，然后透传数据。
-
-    参数:
-        data: 输入数据
-        pause: 暂停时间（秒），0表示不暂停
-
-    返回:
-        透传的输入数据
-    """
-    import time
-    print(f"[断点] 数据: {data} (类型: {type(data).__name__})")
-    if pause > 0:
-        time.sleep(pause)
-        print(f"[断点] 暂停 {pause} 秒后继续")
-    return data
-
+    print(type(data))
 
 # 节点代码验证标准示例
 NODE_CODE_EXAMPLE = '''\
@@ -175,7 +140,7 @@ def my_node(a: int, b: int) -> int:
 
 # 规则：
 # 1. 必须定义且仅定义一个顶层函数（def）
-# 2. 函数名即为节点名
+# 2. 不填写自定义名称：函数名即为节点名
 # 3. 参数即为输入端口，带返回类型注解则有输出端口
 # 4. 代码必须是合法的 Python 语法
 '''
