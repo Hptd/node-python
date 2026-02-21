@@ -9,7 +9,7 @@ class ConnectionItem(QGraphicsLineItem):
         super().__init__()
         self.start_port = start_port
         self.end_port = end_port
-        self.setPen(QPen(QColor("#FFFFFF"), 2))
+        self.setPen(QPen(QColor("#2AB835"), 2))
         self.setZValue(-1)
         self.update_position()
 
