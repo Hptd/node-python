@@ -10,6 +10,7 @@ from .simple_node_item import SimpleNodeItem
 from .port_item import PortItem
 from .connection_item import ConnectionItem
 from ..nodes.node_library import LOCAL_NODE_LIBRARY
+from utils.theme_manager import theme_manager
 
 
 class SelectionRectItem:
@@ -17,10 +18,22 @@ class SelectionRectItem:
     def __init__(self):
         from PySide6.QtWidgets import QGraphicsRectItem
         from PySide6.QtGui import QPen, QBrush, QColor
-        
+
         self.item = QGraphicsRectItem()
-        self.item.setPen(QPen(QColor("#00BFFF"), 1, Qt.DashLine))
-        self.item.setBrush(QBrush(QColor(0, 191, 255, 40)))
+        # 使用主题颜色
+        selection_color = QColor(theme_manager.get_color("selection"))
+        self.item.setPen(QPen(selection_color, 1, Qt.DashLine))
+        # 解析 RGBA 颜色
+        fill_color = theme_manager.get_color("selection_fill")
+        if fill_color.startswith("rgba"):
+            # 解析 rgba(r, g, b, a) 格式
+            import re
+            match = re.match(r'rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)', fill_color)
+            if match:
+                r, g, b, a = map(int, match.groups())
+                self.item.setBrush(QBrush(QColor(r, g, b, a)))
+        else:
+            self.item.setBrush(QBrush(QColor(fill_color)))
         self.item.setZValue(1000)
 
 
@@ -49,11 +62,21 @@ class NodeGraphicsView(QGraphicsView):
 
         self.fit_btn = QPushButton("自适应", self)
         self.fit_btn.setFixedSize(70, 28)
-        self.fit_btn.setStyleSheet(
-            "QPushButton { background: #4CAF50; color: white; border: none; border-radius: 4px; font-weight: bold; }"
-            "QPushButton:hover { background: #388E3C; }"
-        )
+        self._update_fit_button_style()
         self.fit_btn.clicked.connect(self.fit_all_nodes)
+
+    def _update_fit_button_style(self):
+        """更新自适应按钮样式"""
+        btn_bg = theme_manager.get_color("button_primary")
+        btn_hover = theme_manager.get_color("button_primary_hover")
+        self.fit_btn.setStyleSheet(
+            f"QPushButton {{ background: {btn_bg}; color: white; border: none; border-radius: 4px; font-weight: bold; }}"
+            f"QPushButton:hover {{ background: {btn_hover}; }}"
+        )
+
+    def update_theme(self):
+        """更新视图主题"""
+        self._update_fit_button_style()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -230,12 +253,15 @@ class NodeGraphicsView(QGraphicsView):
     def _show_node_create_menu(self, global_pos, scene_pos):
         from PySide6.QtWidgets import QMenu, QWidget, QVBoxLayout, QLineEdit
         from ..nodes.node_library import NODE_LIBRARY_CATEGORIZED
-        
+
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu { background: #2b2b2b; color: white; padding: 5px; }
-            QMenu::item { padding: 5px 20px; }
-            QMenu::item:selected { background: #4CAF50; }
+        menu_bg = theme_manager.get_color("menu_bg")
+        text_color = theme_manager.get_color("text_primary")
+        menu_hover = theme_manager.get_color("menu_hover")
+        menu.setStyleSheet(f"""
+            QMenu {{ background: {menu_bg}; color: {text_color}; padding: 5px; }}
+            QMenu::item {{ padding: 5px 20px; }}
+            QMenu::item:selected {{ background: {menu_hover}; }}
         """)
 
         search_widget = QWidget()
@@ -243,7 +269,10 @@ class NodeGraphicsView(QGraphicsView):
         search_layout.setContentsMargins(5, 5, 5, 5)
         search_edit = QLineEdit()
         search_edit.setPlaceholderText("搜索节点...")
-        search_edit.setStyleSheet("background: #3c3c3c; color: white; border: 1px solid #555; padding: 4px; border-radius: 3px;")
+        input_bg = theme_manager.get_color("input_bg")
+        input_text = theme_manager.get_color("input_text")
+        border_color = theme_manager.get_color("border")
+        search_edit.setStyleSheet(f"background: {input_bg}; color: {input_text}; border: 1px solid {border_color}; padding: 4px; border-radius: 3px;")
         # 启用输入法支持中文输入
         search_edit.setAttribute(Qt.WA_InputMethodEnabled, True)
         search_edit.setFocusPolicy(Qt.StrongFocus)
@@ -262,10 +291,10 @@ class NodeGraphicsView(QGraphicsView):
         for category, nodes in NODE_LIBRARY_CATEGORIZED.items():
             # 为每个分类创建子菜单
             cat_menu = QMenu(category, menu)
-            cat_menu.setStyleSheet("""
-                QMenu { background: #2b2b2b; color: white; padding: 5px; }
-                QMenu::item { padding: 5px 20px; }
-                QMenu::item:selected { background: #4CAF50; }
+            cat_menu.setStyleSheet(f"""
+                QMenu {{ background: {menu_bg}; color: {text_color}; padding: 5px; }}
+                QMenu::item {{ padding: 5px 20px; }}
+                QMenu::item:selected {{ background: {menu_hover}; }}
             """)
             menu.addMenu(cat_menu)
             category_menus[category] = cat_menu

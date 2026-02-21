@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QMainWindow, QGraphicsScene, QDockWidget, QWidget
                                QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox,
                                QMenu, QDialog)
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QTextCursor
+from PySide6.QtGui import QAction, QTextCursor, QColor
 
 from core.graphics.node_graphics_view import NodeGraphicsView
 from core.graphics.simple_node_item import SimpleNodeItem
@@ -27,6 +27,7 @@ from ui.dialogs.ai_node_generator_dialog import AINodeGeneratorDialog
 from ui.dialogs.path_selector_dialog import PathSelectorDialog
 from ui.dialogs.package_manager_dialog import PackageManagerDialog
 from utils.console_stream import EmittingStream
+from utils.theme_manager import theme_manager
 from config.settings import settings
 
 
@@ -47,6 +48,12 @@ class SimplePyFlowWindow(QMainWindow):
         self.setup_toolbar()
         self.setup_left_dock()
         self.setup_right_dock()
+
+        # 初始化主题（在 UI 创建之后）
+        self._init_theme()
+
+        # 连接主题切换信号
+        theme_manager.theme_changed.connect(self._on_theme_changed)
 
     def setup_toolbar(self):
         toolbar = QToolBar("主工具栏")
@@ -91,6 +98,14 @@ class SimplePyFlowWindow(QMainWindow):
         setup_action.triggered.connect(self._setup_embedded_python)
         toolbar.addAction(setup_action)
 
+        toolbar.addSeparator()
+
+        # 主题切换按钮
+        self.theme_action = QAction(self._get_theme_icon() + " 切换主题", self)
+        self.theme_action.triggered.connect(self._toggle_theme)
+        self.theme_action.setToolTip(f"当前主题: {theme_manager.get_theme_info()['name']}，点击切换")
+        toolbar.addAction(self.theme_action)
+
     def setup_left_dock(self):
         dock = QDockWidget("📦 本地节点库", self)
         container = QWidget()
@@ -100,18 +115,18 @@ class SimplePyFlowWindow(QMainWindow):
         # 管理分类按钮
         cat_btn_layout = QHBoxLayout()
         add_cat_btn = QPushButton("+ 新建分类")
-        add_cat_btn.setStyleSheet("background: #2196F3; color: white; border: none; padding: 4px 8px; border-radius: 3px;")
+        add_cat_btn.setObjectName("btn_secondary")
         add_cat_btn.clicked.connect(self._add_custom_category)
 
         cat_btn_layout.addWidget(add_cat_btn)
 
         custom_node_btn = QPushButton("+ 自定义节点")
-        custom_node_btn.setStyleSheet("background: #FF9800; color: white; border: none; padding: 4px 8px; border-radius: 3px;")
+        custom_node_btn.setObjectName("btn_warning")
         custom_node_btn.clicked.connect(self._open_custom_node_editor)
         cat_btn_layout.addWidget(custom_node_btn)
-        
+
         ai_gen_btn = QPushButton("🤖 AI模板")
-        ai_gen_btn.setStyleSheet("background: #9C27B0; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-weight: bold;")
+        ai_gen_btn.setObjectName("btn_ai")
         ai_gen_btn.clicked.connect(self._open_ai_node_generator)
         cat_btn_layout.addWidget(ai_gen_btn)
 
@@ -352,7 +367,7 @@ class SimplePyFlowWindow(QMainWindow):
         layout.addWidget(QLabel("💻 节点源代码:"))
         self.source_text = QTextEdit()
         self.source_text.setReadOnly(True)
-        self.source_text.setStyleSheet("background-color: #2b2b2b; color: #a9b7c6; font-family: Consolas;")
+        self.source_text.setObjectName("code_editor")
         layout.addWidget(self.source_text)
 
         layout.addStretch()  # 添加弹性空间
@@ -381,17 +396,17 @@ class SimplePyFlowWindow(QMainWindow):
         toolbar_layout.addStretch()
 
         set_log_path_btn = QPushButton("📁 设置日志路径")
-        set_log_path_btn.setStyleSheet("background: #4CAF50; color: white; border: none; padding: 3px 8px; border-radius: 3px; font-size: 11px;")
+        set_log_path_btn.setObjectName("btn_primary_small")
         set_log_path_btn.clicked.connect(self._set_log_path)
         toolbar_layout.addWidget(set_log_path_btn)
 
         open_folder_btn = QPushButton("📂 打开文件夹")
-        open_folder_btn.setStyleSheet("background: #2196F3; color: white; border: none; padding: 3px 8px; border-radius: 3px; font-size: 11px;")
+        open_folder_btn.setObjectName("btn_secondary_small")
         open_folder_btn.clicked.connect(self._open_log_folder)
         toolbar_layout.addWidget(open_folder_btn)
 
         clear_log_btn = QPushButton("🗑️ 清空控制台")
-        clear_log_btn.setStyleSheet("background: #f44336; color: white; border: none; padding: 3px 8px; border-radius: 3px; font-size: 11px;")
+        clear_log_btn.setObjectName("btn_danger_small")
         clear_log_btn.clicked.connect(self._clear_console)
         toolbar_layout.addWidget(clear_log_btn)
 
@@ -400,7 +415,7 @@ class SimplePyFlowWindow(QMainWindow):
         # 控制台文本区域
         self.console = QTextEdit()
         self.console.setReadOnly(True)
-        self.console.setStyleSheet("background-color: #1e1e1e; color: #00FF00; font-family: Consolas;")
+        self.console.setObjectName("console")
         layout.addWidget(self.console)
 
         dock.setWidget(container)
@@ -936,3 +951,54 @@ class SimplePyFlowWindow(QMainWindow):
         
         # 清理线程引用
         self.setup_thread = None
+
+    def _init_theme(self):
+        """初始化主题设置"""
+        # 从设置加载主题
+        saved_theme = settings.get("ui.theme", "dark")
+        if saved_theme in theme_manager.get_theme_names():
+            theme_manager.set_theme(saved_theme)
+        # 应用主题样式
+        self._apply_theme()
+
+    def _apply_theme(self):
+        """应用当前主题到整个应用"""
+        # 应用 QSS 样式表
+        self.setStyleSheet(theme_manager.get_stylesheet())
+        # 更新画布背景
+        self._update_canvas_background()
+
+    def _update_canvas_background(self):
+        """更新画布背景颜色"""
+        bg_color = theme_manager.get_color("canvas_bg")
+        self.scene.setBackgroundBrush(QColor(bg_color))
+
+    def _get_theme_icon(self) -> str:
+        """获取当前主题的图标"""
+        return theme_manager.get_theme_info()["icon"]
+
+    def _toggle_theme(self):
+        """切换主题"""
+        new_theme = theme_manager.toggle_theme()
+        # 保存到设置
+        settings.set("ui.theme", new_theme)
+        settings.save()
+        # 更新按钮图标和提示
+        self.theme_action.setText(self._get_theme_icon() + " 切换主题")
+        self.theme_action.setToolTip(f"当前主题: {theme_manager.get_theme_info()['name']}，点击切换")
+        print(f"主题已切换为: {theme_manager.get_theme_info()['name']}")
+
+    def _on_theme_changed(self, theme_name: str):
+        """主题改变时的回调"""
+        self._apply_theme()
+        # 通知所有图形项更新主题
+        self._update_graphics_theme()
+
+    def _update_graphics_theme(self):
+        """更新所有图形项的主题颜色"""
+        # 更新所有节点的颜色
+        for item in self.scene.items():
+            if hasattr(item, 'update_theme'):
+                item.update_theme()
+        # 刷新视图
+        self.scene.update()

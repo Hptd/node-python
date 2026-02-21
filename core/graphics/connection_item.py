@@ -3,15 +3,22 @@
 from PySide6.QtWidgets import QGraphicsLineItem
 from PySide6.QtGui import QPen, QColor
 
+from utils.theme_manager import theme_manager
+
 
 class ConnectionItem(QGraphicsLineItem):
     def __init__(self, start_port, end_port=None):
         super().__init__()
         self.start_port = start_port
         self.end_port = end_port
-        self.setPen(QPen(QColor("#2AB835"), 2))
         self.setZValue(-1)
+        # 应用主题颜色
+        self.update_theme()
         self.update_position()
+
+    def update_theme(self):
+        """更新主题颜色"""
+        self.setPen(QPen(QColor(theme_manager.get_color("connection")), 2))
 
     def update_position(self):
         start_pos = self.start_port.get_center_scene_pos()

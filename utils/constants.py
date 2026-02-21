@@ -33,3 +33,7 @@ CODE_EDITOR_TEXT = "#a9b7c6"
 STORAGE_DIR = ".node-python"
 CUSTOM_NODES_FILE = "custom_nodes.json"
 SETTINGS_FILE = "settings.json"
+
+# 主题设置
+DEFAULT_THEME = "dark"  # 默认主题: dark 或 light
+THEME_SETTING_KEY = "ui.theme"  # 设置文件中主题配置的键名

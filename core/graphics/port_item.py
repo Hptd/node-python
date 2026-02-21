@@ -4,6 +4,8 @@ from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPen
 
+from utils.theme_manager import theme_manager
+
 
 class PortItem(QGraphicsEllipseItem):
     def __init__(self, parent_node, port_type, port_name, index, total):
@@ -14,12 +16,9 @@ class PortItem(QGraphicsEllipseItem):
         self.index = index
         self.connections = []
 
-        if port_type == 'input':
-            self.setBrush(QBrush(QColor("#2196F3")))
-        else:
-            self.setBrush(QBrush(QColor("#FF9800")))
+        # 应用主题颜色
+        self.update_theme()
 
-        self.setPen(QPen(Qt.white, 1))
         self.setParentItem(parent_node)
         self.setFlag(QGraphicsItem.ItemIsSelectable, False)
 
@@ -31,6 +30,14 @@ class PortItem(QGraphicsEllipseItem):
             self.setPos(0, y_pos)
         else:
             self.setPos(node_rect.width(), y_pos)
+
+    def update_theme(self):
+        """更新主题颜色"""
+        if self.port_type == 'input':
+            self.setBrush(QBrush(QColor(theme_manager.get_color("input_port"))))
+        else:
+            self.setBrush(QBrush(QColor(theme_manager.get_color("output_port"))))
+        self.setPen(QPen(QColor(theme_manager.get_color("port_border")), 1))
 
     def get_center_scene_pos(self):
         return self.scenePos()
