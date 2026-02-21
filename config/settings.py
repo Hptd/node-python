@@ -161,7 +161,7 @@ class Settings:
         self.set("recent_files", recent_files)
         self.save()
     
-    def get_recent_files(self) -> List[str]:
+    def get_recent_files(self) -> list[str]:
         """获取最近使用的文件列表"""
         return self.get("recent_files", [])
     
