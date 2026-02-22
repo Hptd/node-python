@@ -15,8 +15,9 @@ node-python/
 ├── README.md                   # 项目说明文档
 ├── AGENTS.md                   # AI 助手上下文文档
 ├── project_structure.md        # 本文件，项目结构设计
-├── logo/                       # 图标和截图
-│   └── node-python-logo.ico   # 应用图标
+├── logo-img/                   # 图标和截图
+│   ├── node-python-logo.ico   # 应用图标
+│   └── 界面显示.png           # 界面截图
 ├── config/                     # 配置文件
 │   ├── __init__.py
 │   └── settings.py            # 应用配置管理（窗口状态、用户偏好、主题等）
@@ -24,14 +25,15 @@ node-python/
 │   ├── __init__.py
 │   ├── nodes/                 # 节点相关
 │   │   ├── __init__.py
-│   │   ├── base_nodes.py      # 内置节点函数（加法、打印、常量等）
+│   │   ├── base_nodes.py      # 内置节点函数（打印、常量、数据提取等）
 │   │   └── node_library.py    # 节点库管理，分类存储
 │   ├── graphics/              # 图形组件
 │   │   ├── __init__.py
 │   │   ├── port_item.py       # 输入/输出端口
 │   │   ├── connection_item.py # 节点间连接线
 │   │   ├── simple_node_item.py# 图形节点类（含参数值存储、主题支持）
-│   │   └── node_graphics_view.py# 画布视图（缩放、平移、主题支持）
+│   │   ├── node_graphics_view.py# 画布视图（缩放、平移、主题支持）
+│   │   └── node_group.py      # 节点组功能（组合、解组、嵌套）
 │   └── engine/                # 执行引擎
 │       ├── __init__.py
 │       ├── graph_executor.py  # 拓扑排序和执行逻辑
@@ -48,18 +50,22 @@ node-python/
 │   │   └── package_manager_dialog.py # 依赖包管理器
 │   └── widgets/               # 自定义控件
 │       ├── __init__.py
-│       └── draggable_node_tree.py # 可拖拽节点列表
+│       ├── draggable_node_tree.py # 可拖拽节点列表
+│       └── node_search_menu.py    # 节点搜索菜单（瀑布流展示）
 ├── storage/                    # 存储模块
 │   ├── __init__.py
 │   ├── custom_node_storage.py # 自定义节点持久化存储
 │   └── graph_storage.py       # 图表 JSON 保存/加载
-└── utils/                      # 工具函数
-    ├── __init__.py
-    ├── constants.py           # 颜色、尺寸、文件路径常量
-    ├── console_stream.py      # 控制台输出重定向
-    ├── theme_manager.py       # 主题管理器（黑白模式切换）
-    ├── sandbox.py             # 沙箱执行环境
-    └── setup_embedded_python.py # 嵌入式 Python 环境初始化
+├── utils/                      # 工具函数
+│   ├── __init__.py
+│   ├── constants.py           # 颜色、尺寸、文件路径常量
+│   ├── console_stream.py      # 控制台输出重定向
+│   ├── theme_manager.py       # 主题管理器（黑白模式切换）
+│   ├── sandbox.py             # 沙箱执行环境
+│   ├── setup_embedded_python.py # 嵌入式 Python 环境初始化
+│   └── node_search.py         # 节点搜索匹配（拼音、模糊匹配）
+└── workflow_json/             # 工作流文件存储
+    └── *.json                 # 用户保存的图表文件
 ```
 
 ## 核心模块说明
@@ -115,6 +121,13 @@ node-python/
 - 处理缩放（滚轮）、平移（中键）、框选、节点拖拽
 - 支持主题切换：`update_theme()` 方法
 - 右键菜单支持搜索和分类浏览
+
+**node_group.py**
+- `NodeGroup`：节点组类
+- 支持多节点组合、解组操作
+- 组内编辑模式：双击进入/退出
+- 支持组嵌套
+- 主题支持：组颜色随主题变化
 
 #### 2.3 执行引擎 (engine/)
 
@@ -172,6 +185,12 @@ node-python/
 - 支持分类展开/折叠
 - 右键菜单支持编辑和删除
 
+**widgets/node_search_menu.py**
+- `NodeSearchMenu`：节点搜索菜单
+- 瀑布流展示分类和节点
+- 支持分类展开/收缩
+- 与搜索功能集成，实时过滤
+
 ### 4. 存储模块 (storage/)
 
 **custom_node_storage.py**
@@ -219,6 +238,14 @@ node-python/
 - 下载、解压、配置嵌入式 Python
 - 安装 pip 支持
 
+**node_search.py**
+- 节点搜索匹配工具模块
+- `match_node()`：综合匹配节点名称（拼音、英文模糊匹配）
+- `search_nodes()`：搜索节点并按匹配度排序
+- 支持拼音首字母匹配（如"fds"匹配"浮点数"）
+- 支持英文子序列匹配（如"fot"匹配"float"）
+- 依赖：`pypinyin`（可选，用于中文拼音转换）
+
 ## 数据流
 
 ```
@@ -233,6 +260,36 @@ node-python/
                                   v
                            控制台输出 / 结果传递
 ```
+
+## 节点组系统
+
+### 节点组架构
+
+```
+core/graphics/node_group.py (NodeGroup 类)
+         |
+         | 组合/解组操作
+         v
+core/graphics/node_graphics_view.py (画布管理)
+         |
+         | 渲染
+         v
+PySide6 QGraphicsItem (图形显示)
+```
+
+### 节点组功能
+
+1. **创建组**：选中多个节点后右键选择"创建组"
+2. **进入组**：双击组进入编辑模式
+3. **退出组**：在组内空白处右键选择"退出组"或双击组外区域
+4. **解组**：右键点击组选择"解组"
+5. **嵌套组**：支持组内创建子组
+
+### 组数据结构
+
+- `NodeGroup` 继承自 `QGraphicsRectItem`
+- 包含组内节点列表和子组列表
+- 支持序列化为 JSON（保存组信息和层级关系）
 
 ## 主题系统
 
@@ -275,6 +332,38 @@ core/graphics/*.py -> 更新图形项颜色
 - 控制台和代码编辑器颜色
 - UI 控件颜色（按钮、输入框、菜单等）
 
+## 搜索系统
+
+### 搜索架构
+
+```
+utils/node_search.py (匹配算法)
+         |
+         | 搜索请求
+         v
+ui/widgets/node_search_menu.py (搜索菜单 UI)
+         |
+         | 显示结果
+         v
+用户选择节点
+```
+
+### 匹配算法
+
+1. **完全匹配**（优先级 0）：搜索文本与节点名完全一致
+2. **前缀匹配**（优先级 1）：节点名以搜索文本开头
+3. **包含匹配**（优先级 2）：节点名包含搜索文本
+4. **拼音首字母前缀匹配**（优先级 3）：如"fd"匹配"浮点数"
+5. **拼音包含匹配**（优先级 4）：如"fds"匹配"浮点数"
+6. **英文子序列匹配**（优先级 5）：如"fot"匹配"float"
+
+### 拼音支持
+
+- 依赖 `pypinyin` 库进行中文转拼音
+- 支持首字母提取（如"浮点数"→"fds"）
+- 支持完整拼音提取（如"浮点数"→"fudianshu"）
+- 如果未安装 `pypinyin`，回退到简化版本
+
 ## 持久化存储
 
 ### 存储位置
@@ -313,6 +402,17 @@ core/graphics/*.py -> 更新图形项颜色
 1. 在 `utils/theme_manager.py` 的 `THEMES` 字典中添加新主题定义
 2. 添加主题切换逻辑（如需要）
 
+### 扩展节点组功能
+
+1. 在 `core/graphics/node_group.py` 中修改 `NodeGroup` 类
+2. 可以添加新的组操作（如复制组、保存为模板等）
+
+### 扩展搜索功能
+
+1. 在 `utils/node_search.py` 中修改匹配算法
+2. 可以添加新的匹配方式或调整优先级
+3. 在 `ui/widgets/node_search_menu.py` 中修改 UI 展示
+
 ## 依赖关系
 
 ```
@@ -329,6 +429,17 @@ main.py
 ```
 
 ## 最近更新
+
+### 节点组功能
+- 新增 `core/graphics/node_group.py` 节点组模块
+- 支持多节点组合、解组、嵌套
+- 支持组内编辑模式
+
+### 智能搜索功能
+- 新增 `utils/node_search.py` 搜索匹配模块
+- 新增 `ui/widgets/node_search_menu.py` 搜索菜单
+- 支持拼音首字母搜索（如"fds"匹配"浮点数"）
+- 支持英文模糊匹配（如"fot"匹配"float"）
 
 ### 主题切换功能
 - 新增 `utils/theme_manager.py` 主题管理器
