@@ -241,12 +241,26 @@ def execute_graph(
                 # 执行出错，设置节点错误状态
                 error_msg = str(e)
                 node.set_status(SimpleNodeItem.STATUS_ERROR, error_msg)
-                colored_print(f"\n节点 '{node.name}' 执行出错: {error_msg}", "error")
-                has_error = True
                 
-                # 继续执行其他节点（或可以选择中断）
-                import traceback
-                colored_print(traceback.format_exc(), "error")
+                # 输出详细的错误信息
+                colored_print(f"\n{'='*50}", "error")
+                colored_print(f"❌ 节点 '{node.name}' 执行出错", "error")
+                colored_print(f"{'='*50}", "error")
+                
+                # 解析并显示错误详情
+                error_lines = error_msg.split('\n')
+                for line in error_lines:
+                    if line.strip():
+                        # 检测是否是 traceback 行
+                        if 'File "' in line or 'Traceback' in line or line.strip().startswith('  '):
+                            colored_print(f"  {line}", "error")
+                        elif 'Error:' in line or 'Exception:' in line:
+                            colored_print(f"  ⚠ {line}", "error")
+                        else:
+                            colored_print(f"  {line}", "error")
+                
+                colored_print(f"{'='*50}", "error")
+                has_error = True
                 continue
 
         colored_print("\n" + "=" * 40, "system")

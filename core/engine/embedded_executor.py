@@ -146,8 +146,10 @@ class EmbeddedPythonExecutor:
             
             if result.returncode != 0:
                 # 执行失败，解析错误信息
-                error_msg = self._parse_error(result.stderr)
-                raise RuntimeError(f"节点执行失败: {error_msg}")
+                # 合并 stdout 和 stderr 来查找错误信息
+                combined_output = result.stdout + "\n" + result.stderr
+                error_msg = self._parse_error(combined_output)
+                raise RuntimeError(error_msg)
             
             # 解析执行结果
             return self._parse_result(result.stdout)
@@ -188,11 +190,15 @@ class EmbeddedPythonExecutor:
         args_json = json.dumps(args, ensure_ascii=False, default=str)
 
         # 构建脚本
+        # 使用 json.dumps 来安全地转义代码字符串
+        func_code_escaped = json.dumps(func_code, ensure_ascii=False)
+        
         script = f'''# -*- coding: utf-8 -*-
 import sys
 import json
 import traceback
 import site
+import ast
 
 # 确保 site-packages 在路径中
 for p in site.getsitepackages():
@@ -208,6 +214,21 @@ for p in site.getsitepackages():
 # 执行函数并输出结果
 if __name__ == "__main__":
     try:
+        # 先检查语法错误
+        func_code_str = {func_code_escaped}
+        try:
+            ast.parse(func_code_str)
+        except SyntaxError as se:
+            error_output = {{
+                "success": False,
+                "error": "语法错误: " + str(se.msg) + " (行 " + str(se.lineno) + ")",
+                "traceback": "SyntaxError: " + str(se.msg) + "\\n  文件: <节点代码>, 行 " + str(se.lineno)
+            }}
+            print("__ERROR_START__", file=sys.stderr)
+            print(json.dumps(error_output, ensure_ascii=False), file=sys.stderr)
+            print("__ERROR_END__", file=sys.stderr)
+            sys.exit(1)
+        
         args = json.loads('{args_json}')
         result = {func_name}(**args)
         
@@ -227,9 +248,10 @@ if __name__ == "__main__":
             "error": str(e),
             "traceback": traceback.format_exc()
         }}
-        print("__ERROR_START__")
-        print(json.dumps(error_output, ensure_ascii=False))
-        print("__ERROR_END__")
+        # 输出到 stderr 以便正确捕获
+        print("__ERROR_START__", file=sys.stderr)
+        print(json.dumps(error_output, ensure_ascii=False), file=sys.stderr)
+        print("__ERROR_END__", file=sys.stderr)
         sys.exit(1)
 '''
         return script
@@ -305,25 +327,60 @@ if __name__ == "__main__":
         except json.JSONDecodeError as e:
             raise RuntimeError(f"无法解析执行结果: {e}")
     
-    def _parse_error(self, stderr: str) -> str:
-        """解析错误信息"""
+    def _parse_error(self, output: str) -> str:
+        """解析错误信息，返回详细信息包括 traceback"""
         # 查找错误标记
         start_marker = "__ERROR_START__"
         end_marker = "__ERROR_END__"
         
-        start_idx = stderr.find(start_marker)
-        end_idx = stderr.find(end_marker)
+        start_idx = output.find(start_marker)
+        end_idx = output.find(end_marker)
         
         if start_idx != -1 and end_idx != -1:
-            json_str = stderr[start_idx + len(start_marker):end_idx].strip()
+            json_str = output[start_idx + len(start_marker):end_idx].strip()
             try:
                 data = json.loads(json_str)
-                return data.get("error", "未知错误")
+                error_msg = data.get("error", "未知错误")
+                traceback_info = data.get("traceback", "")
+                
+                # 返回详细错误信息，包含 traceback
+                if traceback_info:
+                    return f"{traceback_info}"
+                return error_msg
             except:
                 pass
         
-        # 返回原始错误信息
-        return stderr.strip() or "执行失败（无错误信息）"
+        # 尝试从输出中直接提取 Python 错误信息
+        # 查找 Traceback 开头
+        lines = output.strip().split('\n')
+        traceback_lines = []
+        in_traceback = False
+        error_line = ""
+        
+        for line in lines:
+            if 'Traceback (most recent call last)' in line:
+                in_traceback = True
+                traceback_lines.append(line)
+            elif in_traceback:
+                traceback_lines.append(line)
+                # 检测错误行（如 NameError, SyntaxError 等）
+                if 'Error:' in line or 'Exception:' in line:
+                    error_line = line
+            # 也检测单独的错误行
+            elif 'Error:' in line or 'Exception:' in line:
+                if not error_line:
+                    error_line = line
+        
+        # 如果找到了 traceback，返回完整信息
+        if traceback_lines:
+            return '\n'.join(traceback_lines)
+        
+        # 如果只找到错误行
+        if error_line:
+            return error_line
+        
+        # 返回原始输出
+        return output.strip() or "执行失败（无错误信息）"
     
     # ==================== 包管理功能 ====================
     

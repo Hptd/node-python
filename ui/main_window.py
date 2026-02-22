@@ -379,6 +379,19 @@ class SimplePyFlowWindow(QMainWindow):
         self.params_layout.setSpacing(5)
         layout.addWidget(self.params_container)
 
+        # 错误信息区域（初始隐藏）
+        self.error_label = QLabel("❌ 执行错误:")
+        self.error_label.setStyleSheet("color: #FF5555; font-weight: bold;")
+        self.error_label.setVisible(False)
+        layout.addWidget(self.error_label)
+        
+        self.error_text = QTextEdit()
+        self.error_text.setReadOnly(True)
+        self.error_text.setMaximumHeight(100)
+        self.error_text.setStyleSheet("background-color: #2a1a1a; color: #FF5555; border: 1px solid #FF5555;")
+        self.error_text.setVisible(False)
+        layout.addWidget(self.error_text)
+
         layout.addWidget(QLabel("📄 节点文档注释:"))
         self.doc_text = QTextEdit()
         self.doc_text.setReadOnly(True)
@@ -552,6 +565,9 @@ class SimplePyFlowWindow(QMainWindow):
             self.doc_text.clear()
             self.source_text.clear()
             self._clear_param_inputs()
+            # 隐藏错误信息
+            self.error_label.setVisible(False)
+            self.error_text.setVisible(False)
             return
 
         item = selected_items[0]
@@ -570,10 +586,21 @@ class SimplePyFlowWindow(QMainWindow):
             self.doc_text.setText(doc)
             self.source_text.setText(source)
             
+            # 显示错误信息（如果节点有错误）
+            if hasattr(item, 'get_error_message') and item.get_error_message():
+                self.error_label.setVisible(True)
+                self.error_text.setVisible(True)
+                self.error_text.setText(item.get_error_message())
+            else:
+                self.error_label.setVisible(False)
+                self.error_text.setVisible(False)
+            
             # 显示参数输入控件
             self._setup_param_inputs(item)
         else:
             self._clear_param_inputs()
+            self.error_label.setVisible(False)
+            self.error_text.setVisible(False)
 
     def _clear_param_inputs(self):
         """清除参数输入控件"""
