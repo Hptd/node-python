@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QMainWindow, QGraphicsScene, QDockWidget, QWidget
                                QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox,
                                QMenu, QDialog)
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QTextCursor, QColor
+from PySide6.QtGui import QAction, QTextCursor, QColor, QTextCharFormat
 
 from core.graphics.node_graphics_view import NodeGraphicsView
 from core.graphics.simple_node_item import SimpleNodeItem
@@ -26,7 +26,7 @@ from ui.dialogs.custom_node_dialog import CustomNodeCodeDialog
 from ui.dialogs.ai_node_generator_dialog import AINodeGeneratorDialog
 from ui.dialogs.path_selector_dialog import PathSelectorDialog
 from ui.dialogs.package_manager_dialog import PackageManagerDialog
-from utils.console_stream import EmittingStream
+from utils.console_stream import EmittingStream, get_message_format, detect_message_type
 from utils.theme_manager import theme_manager
 from config.settings import settings
 
@@ -295,7 +295,16 @@ class SimplePyFlowWindow(QMainWindow):
                 # 更新节点名称
                 item.name = new_name
                 # 更新节点函数
-                item.func = LOCAL_NODE_LIBRARY.get(new_name)
+                new_func = LOCAL_NODE_LIBRARY.get(new_name)
+                item.func = new_func
+                
+                # 更新源代码和自定义节点标记（关键：确保执行时使用最新代码）
+                if new_func and hasattr(new_func, '_custom_source'):
+                    item.source_code = new_func._custom_source
+                    item.is_custom_node = True
+                else:
+                    item.source_code = None
+                    item.is_custom_node = False
                 
                 # 清除端口列表
                 item.input_ports = []
@@ -434,7 +443,7 @@ class SimplePyFlowWindow(QMainWindow):
 
         # 初始化日志流
         self._stream = EmittingStream()
-        self._stream.textWritten.connect(self.normal_output)
+        self._stream.textWritten.connect(self.colored_output)
         sys.stdout = self._stream
 
         # 从设置加载日志配置
@@ -513,8 +522,28 @@ class SimplePyFlowWindow(QMainWindow):
         print("控制台已清空")
 
     def normal_output(self, text):
-        self.console.moveCursor(QTextCursor.End)
-        self.console.insertPlainText(text)
+        """普通输出（兼容旧代码）"""
+        self.colored_output(text, "normal")
+
+    def colored_output(self, text, msg_type: str = "normal"):
+        """彩色输出到控制台
+        
+        Args:
+            text: 要输出的文本
+            msg_type: 消息类型 (normal, error, warning, info, success, debug, system)
+        """
+        # 如果没有指定类型，尝试自动检测
+        if msg_type == "normal":
+            msg_type = detect_message_type(text)
+        
+        # 获取对应消息类型的格式
+        fmt = get_message_format(msg_type)
+        
+        # 移动到末尾并插入带格式的文本
+        cursor = self.console.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertText(text, fmt)
+        self.console.setTextCursor(cursor)
         self.console.ensureCursorVisible()
 
     def on_selection_changed(self):

@@ -2,8 +2,8 @@
 
 import inspect
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsItem
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QBrush, QPen, QFont, QPainter
+from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QVariantAnimation
+from PySide6.QtGui import QColor, QBrush, QPen, QFont, QPainter, QLinearGradient
 
 from ..nodes.node_library import LOCAL_NODE_LIBRARY
 from .port_item import PortItem
@@ -11,6 +11,12 @@ from utils.theme_manager import theme_manager
 
 
 class SimpleNodeItem(QGraphicsRectItem):
+    # 节点状态常量
+    STATUS_IDLE = "idle"  # 空闲状态
+    STATUS_RUNNING = "running"  # 运行中
+    STATUS_SUCCESS = "success"  # 执行成功
+    STATUS_ERROR = "error"  # 执行错误
+    
     def __init__(self, name, func, x=0, y=0):
         super().__init__(0, 0, 120, 50)
         self.setPos(x, y)
@@ -42,6 +48,14 @@ class SimpleNodeItem(QGraphicsRectItem):
         # 检测是否为自定义节点
         self.is_custom_node = hasattr(func, '_custom_source')
         self.source_code = getattr(func, '_custom_source', None)
+
+        # 节点状态管理
+        self._status = self.STATUS_IDLE
+        self._error_message = ""
+        
+        # 运行动画相关
+        self._animation_timer = None
+        self._animation_phase = 0
 
         # 应用主题颜色
         self.update_theme()
@@ -79,29 +93,125 @@ class SimpleNodeItem(QGraphicsRectItem):
 
     def update_theme(self):
         """更新主题颜色"""
+        bg_color = theme_manager.get_color("node_bg")
+        border_color = theme_manager.get_color("node_border")
+        
+        # 根据状态覆盖颜色
+        if self._status == self.STATUS_RUNNING:
+            bg_color = theme_manager.get_color("node_running")
+            border_color = theme_manager.get_color("node_running_border")
+        elif self._status == self.STATUS_ERROR:
+            bg_color = theme_manager.get_color("node_error")
+            border_color = theme_manager.get_color("node_error_border")
+        
         if self.isSelected():
             bg_color = theme_manager.get_color("node_bg_selected")
-        else:
-            bg_color = theme_manager.get_color("node_bg")
+        
         self.setBrush(QColor(bg_color))
-        self.setPen(QPen(QColor(theme_manager.get_color("node_border")), 2))
+        self.setPen(QPen(QColor(border_color), 2))
+
+    def set_status(self, status: str, error_message: str = ""):
+        """设置节点状态
+        
+        Args:
+            status: 节点状态 (STATUS_IDLE, STATUS_RUNNING, STATUS_SUCCESS, STATUS_ERROR)
+            error_message: 错误信息（仅在 STATUS_ERROR 时使用）
+        """
+        self._status = status
+        self._error_message = error_message
+        
+        if status == self.STATUS_RUNNING:
+            self._start_running_animation()
+        else:
+            self._stop_running_animation()
+        
+        self.update_theme()
+        self.update()  # 触发重绘
+
+    def get_status(self) -> str:
+        """获取当前节点状态"""
+        return self._status
+
+    def get_error_message(self) -> str:
+        """获取错误信息"""
+        return self._error_message
+
+    def _start_running_animation(self):
+        """启动运行动画效果"""
+        if self._animation_timer is None:
+            self._animation_timer = QTimer()
+            self._animation_timer.timeout.connect(self._animate_running)
+        self._animation_phase = 0
+        self._animation_timer.start(100)  # 每100ms更新一次
+
+    def _stop_running_animation(self):
+        """停止运行动画效果"""
+        if self._animation_timer:
+            self._animation_timer.stop()
+            self._animation_timer.deleteLater()
+            self._animation_timer = None
+        self._animation_phase = 0
+
+    def _animate_running(self):
+        """运行动画帧更新"""
+        self._animation_phase = (self._animation_phase + 1) % 10
+        self.update()  # 触发重绘
+
+    def reset_status(self):
+        """重置节点状态为空闲"""
+        self.set_status(self.STATUS_IDLE)
 
     def paint(self, painter, option, widget):
-        # 根据选中状态更新颜色
+        # 根据状态和选中状态决定颜色
+        bg_color = theme_manager.get_color("node_bg")
+        border_color = theme_manager.get_color("node_border")
+        text_color = QColor(theme_manager.get_color("node_text"))
+        
+        # 状态颜色覆盖
+        if self._status == self.STATUS_RUNNING:
+            bg_color = theme_manager.get_color("node_running")
+            border_color = theme_manager.get_color("node_running_border")
+        elif self._status == self.STATUS_ERROR:
+            bg_color = theme_manager.get_color("node_error")
+            border_color = theme_manager.get_color("node_error_border")
+            text_color = QColor(theme_manager.get_color("node_error_text"))
+        
+        # 选中状态优先
         if self.isSelected():
             bg_color = theme_manager.get_color("node_bg_selected")
-            self.setBrush(QColor(bg_color))
-        else:
-            bg_color = theme_manager.get_color("node_bg")
-            self.setBrush(QColor(bg_color))
+
+        # 应用画刷和画笔
+        self.setBrush(QColor(bg_color))
+        self.setPen(QPen(QColor(border_color), 2))
 
         super().paint(painter, option, widget)
 
-        # 使用主题文本颜色
-        text_color = QColor(theme_manager.get_color("node_text"))
+        # 绘制节点名称
         painter.setPen(text_color)
         painter.setFont(QFont("Arial", 10, QFont.Bold))
         painter.drawText(self.rect(), Qt.AlignCenter, self.name)
+        
+        # 运行状态动画效果：边框闪烁
+        if self._status == self.STATUS_RUNNING and self._animation_timer:
+            # 计算闪烁透明度
+            alpha = int(128 + 127 * (0.5 + 0.5 * ((-1) ** self._animation_phase)))
+            glow_color = QColor(theme_manager.get_color("node_running_border"))
+            glow_color.setAlpha(alpha)
+            painter.setPen(QPen(glow_color, 4))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(self.rect().adjusted(-2, -2, 2, 2))
+        
+        # 错误状态：显示错误标记
+        if self._status == self.STATUS_ERROR:
+            painter.setPen(QPen(QColor(theme_manager.get_color("node_error_border")), 3))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(self.rect().adjusted(-1, -1, 1, 1))
+            
+            # 在节点右上角显示错误图标
+            painter.setPen(QColor("#FF0000"))
+            painter.setFont(QFont("Arial", 8, QFont.Bold))
+            error_rect = self.rect()
+            painter.drawText(error_rect.right() - 12, error_rect.top() + 12, "⚠")
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSelectedHasChanged:

@@ -66,6 +66,19 @@ class ThemeManager(QObject):
             "group_border": "#888888",
             "group_header_bg": "rgba(80, 80, 80, 180)",
             "group_header_text": "#FFFFFF",
+            # 调试状态颜色
+            "node_running": "#FFD700",  # 正在运行 - 金黄色
+            "node_running_border": "#FFA500",  # 运行边框 - 橙色
+            "node_error": "#FFCDD2",  # 错误节点背景 - 浅红色
+            "node_error_border": "#F44336",  # 错误节点边框 - 红色
+            "node_error_text": "#B71C1C",  # 错误节点文本 - 深红色
+            # 控制台输出类型颜色
+            "console_error": "#FF5555",  # 错误信息 - 红色
+            "console_warning": "#FFAA00",  # 警告信息 - 橙色
+            "console_info": "#55AAFF",  # 提示信息 - 蓝色
+            "console_success": "#55FF55",  # 成功信息 - 绿色
+            "console_debug": "#AA88FF",  # 调试信息 - 紫色
+            "console_system": "#AAAAAA",  # 系统信息 - 灰色
         },
         "light": {
             "name": "明亮模式",
@@ -122,6 +135,19 @@ class ThemeManager(QObject):
             "group_border": "#9E9E9E",
             "group_header_bg": "rgba(180, 180, 180, 200)",
             "group_header_text": "#424242",
+            # 调试状态颜色
+            "node_running": "#FFF59D",  # 正在运行 - 浅黄色
+            "node_running_border": "#FFA726",  # 运行边框 - 橙色
+            "node_error": "#FFCDD2",  # 错误节点背景 - 浅红色
+            "node_error_border": "#E53935",  # 错误节点边框 - 红色
+            "node_error_text": "#B71C1C",  # 错误节点文本 - 深红色
+            # 控制台输出类型颜色
+            "console_error": "#D32F2F",  # 错误信息 - 红色
+            "console_warning": "#F57C00",  # 警告信息 - 橙色
+            "console_info": "#1976D2",  # 提示信息 - 蓝色
+            "console_success": "#388E3C",  # 成功信息 - 绿色
+            "console_debug": "#7B1FA2",  # 调试信息 - 紫色
+            "console_system": "#757575",  # 系统信息 - 灰色
         }
     }
 
