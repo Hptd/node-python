@@ -502,9 +502,10 @@ class NodeGraphicsView(QGraphicsView):
 
         # 搜索过滤
         def filter_nodes(text):
-            text = text.lower()
+            from utils.node_search import match_node
             for act, name in node_actions.items():
-                act.setVisible(text == "" or text in name.lower())
+                is_match, _ = match_node(text, name)
+                act.setVisible(is_match)
 
         search_edit.textChanged.connect(filter_nodes)
 

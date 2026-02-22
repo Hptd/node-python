@@ -447,23 +447,24 @@ class NodeGraphicsView(QGraphicsView):
                 node_actions[a] = name
 
         def filter_nodes(text):
-            text = text.lower()
+            from utils.node_search import match_node
+            
             # 如果搜索框为空，显示所有分类和节点
-            if text == "":
+            if not text.strip():
                 for cat_menu in category_menus.values():
                     cat_menu.menuAction().setVisible(True)
                     for act in cat_menu.actions():
                         act.setVisible(True)
                 return
             
-            # 否则根据搜索文本过滤
+            # 使用新的模糊搜索匹配逻辑
             for category, cat_menu in category_menus.items():
                 has_visible = False
                 for act in cat_menu.actions():
                     name = node_actions.get(act, "")
-                    visible = text in name.lower()
-                    act.setVisible(visible)
-                    if visible:
+                    is_match, _ = match_node(text, name)
+                    act.setVisible(is_match)
+                    if is_match:
                         has_visible = True
                 # 如果分类下没有可见的节点，隐藏该分类
                 cat_menu.menuAction().setVisible(has_visible)
