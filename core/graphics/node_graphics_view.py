@@ -50,6 +50,7 @@ class NodeGraphicsView(QGraphicsView):
         self._selecting = False
         self._select_start = QPointF()
         self._selection_rect_item = None
+        self._ctrl_selecting = False  # 记录是否为 Ctrl+框选增选模式
 
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
         self.setResizeAnchor(QGraphicsView.NoAnchor)
@@ -151,12 +152,33 @@ class NodeGraphicsView(QGraphicsView):
             item = self.scene().itemAt(scene_pos, self.transform())
             if isinstance(item, PortItem):
                 item = item.parent_node
+            
+            # Ctrl + 左键单击：增选/取消选中节点
+            if event.modifiers() == Qt.ControlModifier:
+                if isinstance(item, SimpleNodeItem):
+                    # 切换该节点的选中状态
+                    item.setSelected(not item.isSelected())
+                    event.accept()
+                    return
+                else:
+                    # Ctrl + 点击空白区域，不做任何操作（保持当前选择）
+                    event.accept()
+                    return
+            
+            # 普通左键点击（不含 Ctrl）或 Shift+左键点击
             if not isinstance(item, SimpleNodeItem):
+                # 点击空白区域：开始框选
                 self._selecting = True
                 self._select_start = scene_pos
                 self._selection_rect_item = SelectionRectItem().item
                 self.scene().addItem(self._selection_rect_item)
-                self.scene().clearSelection()
+                
+                # 检查是否按住 Ctrl 或 Shift 键进行增选
+                self._ctrl_selecting = bool(event.modifiers() & (Qt.ControlModifier | Qt.ShiftModifier))
+                
+                # 如果不是增选模式，先清空选择
+                if not self._ctrl_selecting:
+                    self.scene().clearSelection()
                 event.accept()
                 return
 
@@ -177,9 +199,22 @@ class NodeGraphicsView(QGraphicsView):
             rect.setBottomRight(current_pos)
             rect = rect.normalized()
             self._selection_rect_item.setRect(rect)
+            
+            # 实时更新检测 Ctrl/Shift 键状态（允许用户在框选过程中按下/释放修饰键）
+            modifiers = QApplication.keyboardModifiers()
+            is_additive = bool(modifiers & (Qt.ControlModifier | Qt.ShiftModifier))
+            
             for item in self.scene().items():
                 if isinstance(item, SimpleNodeItem):
-                    item.setSelected(rect.intersects(item.sceneBoundingRect()))
+                    in_rect = rect.intersects(item.sceneBoundingRect())
+                    if is_additive:
+                        # 增选模式：框选范围内的节点选中，范围外的保持原有状态
+                        if in_rect:
+                            item.setSelected(True)
+                        # 不在范围内的节点保持原状态，不做修改
+                    else:
+                        # 普通模式：框选范围内的选中，范围外的取消选中
+                        item.setSelected(in_rect)
             event.accept()
             return
 
