@@ -57,6 +57,10 @@ class ThemeManager(QObject):
             # 菜单颜色
             "menu_bg": "#2b2b2b",
             "menu_hover": "#4CAF50",
+            # 悬停背景
+            "hover_bg": "#3c3c3c",
+            # 主色调
+            "primary": "#4CAF50",
             # 输入框颜色
             "input_bg": "#3c3c3c",
             "input_text": "#FFFFFF",
@@ -126,6 +130,10 @@ class ThemeManager(QObject):
             # 菜单颜色
             "menu_bg": "#FFFFFF",
             "menu_hover": "#E3F2FD",
+            # 悬停背景
+            "hover_bg": "#EEEEEE",
+            # 主色调
+            "primary": "#2196F3",
             # 输入框颜色
             "input_bg": "#FFFFFF",
             "input_text": "#212121",

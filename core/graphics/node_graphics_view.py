@@ -12,6 +12,7 @@ from .connection_item import ConnectionItem
 from .node_group import NodeGroup
 from ..nodes.node_library import LOCAL_NODE_LIBRARY
 from utils.theme_manager import theme_manager
+from ui.widgets.node_search_menu import NodeSearchMenu
 
 
 class SelectionRectItem:
@@ -393,97 +394,26 @@ class NodeGraphicsView(QGraphicsView):
             self._show_node_create_menu(event.globalPos(), scene_pos)
 
     def _show_node_create_menu(self, global_pos, scene_pos):
-        from PySide6.QtWidgets import QMenu, QWidget, QVBoxLayout, QLineEdit
+        """显示节点创建菜单 - 使用瀑布流展示"""
         from ..nodes.node_library import NODE_LIBRARY_CATEGORIZED
 
-        menu = QMenu(self)
-        menu_bg = theme_manager.get_color("menu_bg")
-        text_color = theme_manager.get_color("text_primary")
-        menu_hover = theme_manager.get_color("menu_hover")
-        menu.setStyleSheet(f"""
-            QMenu {{ background: {menu_bg}; color: {text_color}; padding: 5px; }}
-            QMenu::item {{ padding: 5px 20px; }}
-            QMenu::item:selected {{ background: {menu_hover}; }}
-        """)
-
-        search_widget = QWidget()
-        search_layout = QVBoxLayout(search_widget)
-        search_layout.setContentsMargins(5, 5, 5, 5)
-        search_edit = QLineEdit()
-        search_edit.setPlaceholderText("搜索节点...")
-        input_bg = theme_manager.get_color("input_bg")
-        input_text = theme_manager.get_color("input_text")
-        border_color = theme_manager.get_color("border")
-        search_edit.setStyleSheet(f"background: {input_bg}; color: {input_text}; border: 1px solid {border_color}; padding: 4px; border-radius: 3px;")
-        # 启用输入法支持中文输入
-        search_edit.setAttribute(Qt.WA_InputMethodEnabled, True)
-        search_edit.setFocusPolicy(Qt.StrongFocus)
-        # 设置输入法提示
-        from PySide6.QtGui import QInputMethodEvent
-        search_layout.addWidget(search_edit)
-        search_action = QWidgetAction(menu)
-        search_action.setDefaultWidget(search_widget)
-        menu.addAction(search_action)
-        menu.addSeparator()
-
-        # 按分类组织节点菜单
-        node_actions = {}
-        category_menus = {}
+        # 创建自定义菜单
+        menu = NodeSearchMenu(self)
+        menu.load_categories(NODE_LIBRARY_CATEGORIZED)
         
-        for category, nodes in NODE_LIBRARY_CATEGORIZED.items():
-            # 为每个分类创建子菜单
-            cat_menu = QMenu(category, menu)
-            cat_menu.setStyleSheet(f"""
-                QMenu {{ background: {menu_bg}; color: {text_color}; padding: 5px; }}
-                QMenu::item {{ padding: 5px 20px; }}
-                QMenu::item:selected {{ background: {menu_hover}; }}
-            """)
-            menu.addMenu(cat_menu)
-            category_menus[category] = cat_menu
-            
-            # 添加该分类下的所有节点
-            for name in nodes:
-                a = cat_menu.addAction(name)
-                node_actions[a] = name
-
-        def filter_nodes(text):
-            from utils.node_search import match_node
-            
-            # 如果搜索框为空，显示所有分类和节点
-            if not text.strip():
-                for cat_menu in category_menus.values():
-                    cat_menu.menuAction().setVisible(True)
-                    for act in cat_menu.actions():
-                        act.setVisible(True)
-                return
-            
-            # 使用新的模糊搜索匹配逻辑
-            for category, cat_menu in category_menus.items():
-                has_visible = False
-                for act in cat_menu.actions():
-                    name = node_actions.get(act, "")
-                    is_match, _ = match_node(text, name)
-                    act.setVisible(is_match)
-                    if is_match:
-                        has_visible = True
-                # 如果分类下没有可见的节点，隐藏该分类
-                cat_menu.menuAction().setVisible(has_visible)
-
-        search_edit.textChanged.connect(filter_nodes)
-        
-        # 使用定时器延迟设置焦点，确保输入法正常工作
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(10, lambda: search_edit.setFocus(Qt.PopupFocusReason))
-
-        action = menu.exec(global_pos)
-        if action in node_actions:
-            name = node_actions[action]
+        # 连接节点选择信号
+        def on_node_selected(name):
             func = LOCAL_NODE_LIBRARY[name]
             node = SimpleNodeItem(name, func, scene_pos.x(), scene_pos.y())
             self.scene().addItem(node)
             node.setup_ports()
             self.node_added.emit(name)
             print(f"已添加节点: {name}")
+            
+        menu.node_selected.connect(on_node_selected)
+        
+        # 显示菜单
+        menu.show_at(global_pos)
 
     def delete_selected_nodes(self):
         selected = [item for item in self.scene().selectedItems() if isinstance(item, SimpleNodeItem)]
