@@ -743,10 +743,17 @@ class SimplePyFlowWindow(QMainWindow):
             filepath += '.json'
 
         # 收集图表数据
-        graph_data = {"nodes": [], "connections": []}
+        graph_data = {"nodes": [], "connections": [], "groups": []}
 
+        # 导入 NodeGroup
+        from core.graphics.node_group import NodeGroup
+        
+        # 用于记录节点ID
+        node_ids = set()
+        
         for item in self.scene.items():
             if isinstance(item, SimpleNodeItem):
+                node_ids.add(item.node_id)
                 node_data = {
                     "id": item.node_id,
                     "type": item.name,
@@ -764,6 +771,13 @@ class SimplePyFlowWindow(QMainWindow):
                     "to_node": item.end_port.parent_node.node_id,
                     "to_port": item.end_port.port_name
                 })
+            elif isinstance(item, NodeGroup):
+                # 保存组信息
+                group_data = {
+                    "name": item.group_name,
+                    "node_ids": [node.node_id for node in item.nodes]
+                }
+                graph_data["groups"].append(group_data)
 
         # 保存到文件
         try:
@@ -786,6 +800,9 @@ class SimplePyFlowWindow(QMainWindow):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 graph_data = json.load(f)
+
+            # 检测是否是组JSON文件（有 group_name 但没有 groups 字段）
+            is_group_file = "group_name" in graph_data and "groups" not in graph_data
 
             # 清空当前场景
             self.scene.clear()
@@ -842,8 +859,37 @@ class SimplePyFlowWindow(QMainWindow):
                         self.scene.addItem(conn)
                         conn.finalize_connection(to_port)
 
+            # 创建节点组
+            from core.graphics.node_group import NodeGroup
+            groups_count = 0
+            
+            # 如果是组JSON文件，创建一个包含所有节点的组
+            if is_group_file:
+                group_name = graph_data.get("group_name", "组")
+                all_nodes = list(node_map.values())
+                if all_nodes:
+                    group = NodeGroup(nodes=all_nodes, name=group_name)
+                    self.scene.addItem(group)
+                    groups_count = 1
+            else:
+                # 普通图表文件，按 groups 字段创建组
+                for group_data in graph_data.get("groups", []):
+                    group_name = group_data.get("name", "组")
+                    node_ids = group_data.get("node_ids", [])
+                    
+                    # 获取组内的节点
+                    group_nodes = [node_map[nid] for nid in node_ids if nid in node_map]
+                    
+                    if group_nodes:
+                        group = NodeGroup(nodes=group_nodes, name=group_name)
+                        self.scene.addItem(group)
+                        groups_count += 1
+
             print(f"已从 {filepath} 加载图表")
-            QMessageBox.information(self, "加载成功", f"已成功加载图表，共 {len(node_map)} 个节点")
+            msg = f"已成功加载图表，共 {len(node_map)} 个节点"
+            if groups_count > 0:
+                msg += f"，{groups_count} 个组"
+            QMessageBox.information(self, "加载成功", msg)
 
         except Exception as e:
             QMessageBox.critical(self, "加载失败", f"加载 JSON 文件失败:\n{e}")

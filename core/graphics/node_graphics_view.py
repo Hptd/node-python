@@ -357,6 +357,7 @@ class NodeGraphicsView(QGraphicsView):
             menu = QMenu(self)
             disband_action = menu.addAction("解散组")
             rename_action = menu.addAction("重命名")
+            save_group_action = menu.addAction("组保存为JSON")
             action = menu.exec(event.globalPos())
             if action == disband_action:
                 item.disband()
@@ -364,6 +365,9 @@ class NodeGraphicsView(QGraphicsView):
                 # 让名称编辑框获得焦点并全选
                 item._name_edit.setFocus()
                 item._name_edit.selectAll()
+            elif action == save_group_action:
+                # 将组内节点保存为JSON
+                item.save_group_to_json()
         else:
             self._show_node_create_menu(event.globalPos(), scene_pos)
 

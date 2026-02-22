@@ -344,6 +344,64 @@ class NodeGroup(QGraphicsRectItem):
             ]
         }
 
+    def save_group_to_json(self):
+        """将组内所有节点保存为JSON文件"""
+        from PySide6.QtWidgets import QFileDialog
+        import json
+        from .connection_item import ConnectionItem
+        
+        filepath, _ = QFileDialog.getSaveFileName(
+            None,
+            "组保存为JSON",
+            f"{self._group_name}.json",
+            "JSON 文件 (*.json)"
+        )
+        
+        if filepath:
+            # 构建组内节点的数据
+            data = {
+                "group_name": self._group_name,
+                "nodes": [],
+                "connections": []
+            }
+            
+            # 收集组内所有节点
+            node_ids = set()
+            for node in self._nodes:
+                node_ids.add(node.node_id)
+                node_data = {
+                    "id": node.node_id,
+                    "type": node.name,
+                    "x": node.x(),  # 使用绝对位置
+                    "y": node.y()
+                }
+                # 保存参数值
+                if hasattr(node, 'param_values') and node.param_values:
+                    node_data["param_values"] = node.param_values.copy()
+                data["nodes"].append(node_data)
+            
+            # 收集组内节点之间的连接
+            scene = self.scene()
+            if scene:
+                for item in scene.items():
+                    if isinstance(item, ConnectionItem):
+                        if (hasattr(item, 'start_port') and hasattr(item, 'end_port') and 
+                            item.end_port and item.start_port):
+                            from_node = item.start_port.parent_node
+                            to_node = item.end_port.parent_node
+                            # 只保存组内节点之间的连接
+                            if from_node.node_id in node_ids and to_node.node_id in node_ids:
+                                data["connections"].append({
+                                    "from_node": from_node.node_id,
+                                    "from_port": item.start_port.port_name,
+                                    "to_node": to_node.node_id,
+                                    "to_port": item.end_port.port_name
+                                })
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            print(f"组 '{self._group_name}' 已保存到: {filepath}")
+
     def get_context_menu_actions(self):
         """获取组的右键菜单动作列表"""
         return [
