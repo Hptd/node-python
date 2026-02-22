@@ -369,11 +369,18 @@ class NodeGraphicsView(QGraphicsView):
         elif isinstance(item, NodeGroup):
             # 点击节点组时的菜单
             menu = QMenu(self)
+            select_all_action = menu.addAction("选中全部节点")
+            menu.addSeparator()
             disband_action = menu.addAction("解散组")
             rename_action = menu.addAction("重命名")
             save_group_action = menu.addAction("组保存为JSON")
             action = menu.exec(event.globalPos())
-            if action == disband_action:
+            if action == select_all_action:
+                # 选中组内所有节点
+                for node in item.nodes:
+                    node.setSelected(True)
+                print(f"已选中组内 {len(item.nodes)} 个节点")
+            elif action == disband_action:
                 item.disband()
             elif action == rename_action:
                 # 让名称编辑框获得焦点并全选
