@@ -274,19 +274,28 @@ class NodeGraphicsView(QGraphicsView):
         self.fitInView(rect, Qt.KeepAspectRatio)
 
     def clear_all_nodes(self):
-        """清空画布中的所有节点和连接"""
+        """清空画布中的所有节点、连接和组"""
         from PySide6.QtWidgets import QMessageBox
 
-        # 获取所有节点
+        # 获取所有节点和组
         nodes = [item for item in self.scene().items() if isinstance(item, SimpleNodeItem)]
-        if not nodes:
+        groups = [item for item in self.scene().items() if isinstance(item, NodeGroup)]
+        
+        if not nodes and not groups:
             return
 
         # 确认对话框
+        msg_parts = []
+        if nodes:
+            msg_parts.append(f"{len(nodes)} 个节点")
+        if groups:
+            msg_parts.append(f"{len(groups)} 个组")
+        msg = "、".join(msg_parts)
+        
         reply = QMessageBox.question(
             self,
             "确认清空",
-            f"确定要清空画布中的所有内容吗？\n共有 {len(nodes)} 个节点将被删除。",
+            f"确定要清空画布中的所有内容吗？\n共有 {msg} 将被删除。",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -295,7 +304,12 @@ class NodeGraphicsView(QGraphicsView):
             # 删除所有节点（包括连接）
             for node in nodes:
                 self.delete_node(node)
-            print(f"已清空画布，删除了 {len(nodes)} 个节点")
+            
+            # 删除所有组
+            for group in groups:
+                group.disband()
+            
+            print(f"已清空画布，删除了 {len(nodes)} 个节点，{len(groups)} 个组")
 
     def keyPressEvent(self, event):
         # Ctrl+G 打组快捷键
