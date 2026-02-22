@@ -73,8 +73,19 @@ class SimplePyFlowWindow(QMainWindow):
         save_action.triggered.connect(self.save_to_json)
         toolbar.addAction(save_action)
 
+        # 加载JSON改为带菜单的按钮
+        load_menu = QMenu(self)
+        load_overwrite_action = load_menu.addAction("覆盖加载")
+        load_overwrite_action.setToolTip("清空当前画布后加载JSON内容")
+        load_overwrite_action.triggered.connect(lambda: self.load_from_json(mode="overwrite"))
+        
+        load_increment_action = load_menu.addAction("增量加载")
+        load_increment_action.setToolTip("保留当前画布内容，在空白位置添加JSON内容")
+        load_increment_action.triggered.connect(lambda: self.load_from_json(mode="increment"))
+        
         load_action = QAction("📂 加载 JSON", self)
-        load_action.triggered.connect(self.load_from_json)
+        load_action.setMenu(load_menu)
+        load_action.triggered.connect(lambda: self.load_from_json(mode="overwrite"))
         toolbar.addAction(load_action)
 
         toolbar.addSeparator()
@@ -789,8 +800,14 @@ class SimplePyFlowWindow(QMainWindow):
             QMessageBox.critical(self, "保存失败", f"保存文件时出错:\n{e}")
             print(f"保存图表失败: {e}")
 
-    def load_from_json(self):
-        """从 JSON 文件加载图表"""
+    def load_from_json(self, mode="overwrite"):
+        """从 JSON 文件加载图表
+        
+        Args:
+            mode: 加载模式
+                - "overwrite": 覆盖加载，清空当前画布后加载
+                - "increment": 增量加载，保留当前内容，在空白位置添加
+        """
         filepath, _ = QFileDialog.getOpenFileName(
             self, "加载 JSON 文件", "", "JSON Files (*.json);;All Files (*)"
         )
@@ -804,17 +821,42 @@ class SimplePyFlowWindow(QMainWindow):
             # 检测是否是组JSON文件（有 group_name 但没有 groups 字段）
             is_group_file = "group_name" in graph_data and "groups" not in graph_data
 
-            # 清空当前场景
-            self.scene.clear()
+            # 覆盖模式：清空当前场景
+            if mode == "overwrite":
+                self.scene.clear()
+
+            # 计算偏移量（增量模式下使用）
+            offset_x, offset_y = 0, 0
+            if mode == "increment":
+                # 获取当前画布中所有节点的边界
+                current_nodes = [item for item in self.scene.items() if isinstance(item, SimpleNodeItem)]
+                current_groups = [item for item in self.scene.items() if isinstance(item, NodeGroup)] if 'NodeGroup' in dir() else []
+                
+                # 获取当前画布内容的最右边和最下边位置
+                max_right = 0
+                max_bottom = 0
+                for node in current_nodes:
+                    rect = node.sceneBoundingRect()
+                    max_right = max(max_right, rect.right())
+                    max_bottom = max(max_bottom, rect.bottom())
+                for group in current_groups:
+                    rect = group.sceneBoundingRect()
+                    max_right = max(max_right, rect.right())
+                    max_bottom = max(max_bottom, rect.bottom())
+                
+                # 计算新内容应该放置的偏移量（右边+50间距）
+                offset_x = max_right + 100 if max_right > 0 else 0
+                offset_y = 0
 
             # 创建节点
             node_map = {}  # id -> node对象
+            new_nodes = []  # 新创建的节点列表（用于增量加载时定位）
 
             for node_data in graph_data.get("nodes", []):
                 node_id = node_data.get("id")
                 node_type = node_data.get("type")
-                x = node_data.get("x", 0)
-                y = node_data.get("y", 0)
+                x = node_data.get("x", 0) + offset_x
+                y = node_data.get("y", 0) + offset_y
 
                 if node_type in LOCAL_NODE_LIBRARY:
                     func = LOCAL_NODE_LIBRARY[node_type]
@@ -828,6 +870,7 @@ class SimplePyFlowWindow(QMainWindow):
                         node.param_values.update(param_values)
                     
                     node_map[node_id] = node
+                    new_nodes.append(node)
 
             # 创建连接
             for conn_data in graph_data.get("connections", []):
@@ -862,6 +905,7 @@ class SimplePyFlowWindow(QMainWindow):
             # 创建节点组
             from core.graphics.node_group import NodeGroup
             groups_count = 0
+            new_groups = []  # 新创建的组列表
             
             # 如果是组JSON文件，创建一个包含所有节点的组
             if is_group_file:
@@ -871,6 +915,7 @@ class SimplePyFlowWindow(QMainWindow):
                     group = NodeGroup(nodes=all_nodes, name=group_name)
                     self.scene.addItem(group)
                     groups_count = 1
+                    new_groups.append(group)
             else:
                 # 普通图表文件，按 groups 字段创建组
                 for group_data in graph_data.get("groups", []):
@@ -884,8 +929,32 @@ class SimplePyFlowWindow(QMainWindow):
                         group = NodeGroup(nodes=group_nodes, name=group_name)
                         self.scene.addItem(group)
                         groups_count += 1
+                        new_groups.append(group)
 
-            print(f"已从 {filepath} 加载图表")
+            # 增量加载时，将视图焦点定位到新加载的内容
+            if mode == "increment" and new_nodes:
+                # 计算新内容的边界
+                first_node = new_nodes[0]
+                view_rect = first_node.sceneBoundingRect()
+                for node in new_nodes[1:]:
+                    view_rect = view_rect.united(node.sceneBoundingRect())
+                for group in new_groups:
+                    view_rect = view_rect.united(group.sceneBoundingRect())
+                
+                # 添加边距
+                view_rect.adjust(-50, -50, 50, 50)
+                
+                # 将视图中心移动到新内容
+                self.view.centerOn(view_rect.center())
+                # 适当缩放以确保新内容可见
+                self.view.fitInView(view_rect, Qt.KeepAspectRatio)
+                # 如果缩放太小，恢复到合适的缩放级别
+                if self.view.transform().m11() < 0.5:
+                    self.view.resetTransform()
+                    self.view.scale(1.0, 1.0)
+                    self.view.centerOn(view_rect.center())
+
+            print(f"已从 {filepath} 加载图表（{'覆盖' if mode == 'overwrite' else '增量'}模式）")
             msg = f"已成功加载图表，共 {len(node_map)} 个节点"
             if groups_count > 0:
                 msg += f"，{groups_count} 个组"
