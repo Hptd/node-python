@@ -65,6 +65,21 @@ class NodeGraphicsView(QGraphicsView):
         self._update_fit_button_style()
         self.fit_btn.clicked.connect(self.fit_all_nodes)
 
+        # 清空画布按钮
+        self.clear_btn = QPushButton("清空画布", self)
+        self.clear_btn.setFixedSize(80, 28)
+        self._update_clear_button_style()
+        self.clear_btn.clicked.connect(self.clear_all_nodes)
+
+    def _update_clear_button_style(self):
+        """更新清空画布按钮样式"""
+        btn_bg = theme_manager.get_color("button_danger")
+        btn_hover = theme_manager.get_color("button_danger_hover")
+        self.clear_btn.setStyleSheet(
+            f"QPushButton {{ background: {btn_bg}; color: white; border: none; border-radius: 4px; font-weight: bold; }}"
+            f"QPushButton:hover {{ background: {btn_hover}; }}"
+        )
+
     def _update_fit_button_style(self):
         """更新自适应按钮样式"""
         btn_bg = theme_manager.get_color("button_primary")
@@ -77,10 +92,14 @@ class NodeGraphicsView(QGraphicsView):
     def update_theme(self):
         """更新视图主题"""
         self._update_fit_button_style()
+        self._update_clear_button_style()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        # 自适应按钮在右上角
         self.fit_btn.move(self.width() - self.fit_btn.width() - 10, 10)
+        # 清空画布按钮在自适应按钮左侧
+        self.clear_btn.move(self.width() - self.fit_btn.width() - self.clear_btn.width() - 20, 10)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasText() and event.mimeData().text() in LOCAL_NODE_LIBRARY:
@@ -217,6 +236,30 @@ class NodeGraphicsView(QGraphicsView):
         margin = 50
         rect.adjust(-margin, -margin, margin, margin)
         self.fitInView(rect, Qt.KeepAspectRatio)
+
+    def clear_all_nodes(self):
+        """清空画布中的所有节点和连接"""
+        from PySide6.QtWidgets import QMessageBox
+
+        # 获取所有节点
+        nodes = [item for item in self.scene().items() if isinstance(item, SimpleNodeItem)]
+        if not nodes:
+            return
+
+        # 确认对话框
+        reply = QMessageBox.question(
+            self,
+            "确认清空",
+            f"确定要清空画布中的所有内容吗？\n共有 {len(nodes)} 个节点将被删除。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            # 删除所有节点（包括连接）
+            for node in nodes:
+                self.delete_node(node)
+            print(f"已清空画布，删除了 {len(nodes)} 个节点")
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
