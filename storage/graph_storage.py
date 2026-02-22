@@ -29,30 +29,43 @@ def load_graph_from_file(filepath: str) -> Dict[str, Any]:
         return graph_data
     except Exception as e:
         print(f"加载图表失败: {e}")
-        return {"nodes": [], "connections": []}
+        return {"nodes": [], "connections": [], "groups": []}
 
 
 def export_graph_to_json(scene_items: List) -> Dict[str, Any]:
     """导出图表为JSON格式"""
-    graph_data = {"nodes": [], "connections": []}
+    graph_data = {"nodes": [], "connections": [], "groups": []}
+    
+    # 导入 NodeGroup 类
+    from ..core.graphics.node_group import NodeGroup
+    from ..core.graphics.connection_item import ConnectionItem
+    
+    # 用于记录节点ID到节点对象的映射
+    node_id_to_node = {}
     
     for item in scene_items:
         if isinstance(item, SimpleNodeItem):
+            node_id_to_node[item.node_id] = item
             graph_data["nodes"].append({
                 "id": item.node_id,
                 "type": item.name,
                 "x": item.x(),
                 "y": item.y()
             })
-        elif hasattr(item, 'start_port') and hasattr(item, 'end_port') and item.end_port:
-            from ..core.graphics.connection_item import ConnectionItem
-            if isinstance(item, ConnectionItem):
+        elif isinstance(item, ConnectionItem):
+            if item.end_port:
                 graph_data["connections"].append({
                     "from_node": item.start_port.parent_node.node_id,
                     "from_port": item.start_port.port_name,
                     "to_node": item.end_port.parent_node.node_id,
                     "to_port": item.end_port.port_name
                 })
+        elif isinstance(item, NodeGroup):
+            group_data = {
+                "name": item.group_name,
+                "node_ids": [node.node_id for node in item.nodes]
+            }
+            graph_data["groups"].append(group_data)
     
     return graph_data
 
@@ -106,5 +119,18 @@ def import_graph_from_json(graph_data: Dict[str, Any], scene, create_node_func) 
                 conn = ConnectionItem(from_port, to_port)
                 scene.addItem(conn)
                 conn.finalize_connection(to_port)
+    
+    # 创建节点组
+    from ..core.graphics.node_group import NodeGroup
+    for group_data in graph_data.get("groups", []):
+        group_name = group_data.get("name", "组")
+        node_ids = group_data.get("node_ids", [])
+        
+        # 获取组内的节点
+        group_nodes = [node_map[nid] for nid in node_ids if nid in node_map]
+        
+        if group_nodes:
+            group = NodeGroup(nodes=group_nodes, name=group_name)
+            scene.addItem(group)
     
     return created_nodes

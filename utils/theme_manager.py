@@ -61,6 +61,11 @@ class ThemeManager(QObject):
             "input_bg": "#3c3c3c",
             "input_text": "#FFFFFF",
             "input_placeholder": "#888888",
+            # 节点组颜色
+            "group_bg": "rgba(120, 120, 120, 60)",
+            "group_border": "#888888",
+            "group_header_bg": "rgba(80, 80, 80, 180)",
+            "group_header_text": "#FFFFFF",
         },
         "light": {
             "name": "明亮模式",
@@ -112,6 +117,11 @@ class ThemeManager(QObject):
             "input_bg": "#FFFFFF",
             "input_text": "#212121",
             "input_placeholder": "#9E9E9E",
+            # 节点组颜色
+            "group_bg": "rgba(200, 200, 200, 80)",
+            "group_border": "#9E9E9E",
+            "group_header_bg": "rgba(180, 180, 180, 200)",
+            "group_header_text": "#424242",
         }
     }
 

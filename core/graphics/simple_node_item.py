@@ -30,6 +30,14 @@ class SimpleNodeItem(QGraphicsRectItem):
 
         # 存储参数默认值 {参数名: 值}
         self.param_values = {}
+        
+        # 所属的组（如果有的话）
+        self._parent_group = None
+        
+        # 拖拽相关
+        self._dragging = False
+        self._last_mouse_pos = None
+        self._selected_items_initial_pos = {}
 
         # 检测是否为自定义节点
         self.is_custom_node = hasattr(func, '_custom_source')
@@ -103,4 +111,73 @@ class SimpleNodeItem(QGraphicsRectItem):
             for port in self.input_ports + self.output_ports:
                 for conn in port.connections:
                     conn.update_position()
+            # 通知所属的组更新边界（仅当不是在拖拽多选项目时）
+            if hasattr(self, '_parent_group') and self._parent_group and not self._dragging:
+                self._parent_group.on_node_moved(self)
         return super().itemChange(change, value)
+
+    def mousePressEvent(self, event):
+        """鼠标按下事件"""
+        if event.button() == Qt.LeftButton:
+            # 检查是否有选中的组和节点
+            scene = self.scene()
+            if scene:
+                selected_items = scene.selectedItems()
+                from .node_group import NodeGroup
+                selected_groups = [item for item in selected_items if isinstance(item, NodeGroup)]
+                
+                # 如果有选中的组，且当前节点在某个选中的组内
+                if selected_groups and self._parent_group in selected_groups:
+                    self._dragging = True
+                    self._last_mouse_pos = event.scenePos()
+                    # 记录所有选中项目（组和节点）的初始位置
+                    self._selected_items_initial_pos = {}
+                    for item in selected_items:
+                        self._selected_items_initial_pos[id(item)] = item.pos()
+                    event.accept()
+                    return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """鼠标移动事件"""
+        if self._dragging and event.buttons() & Qt.LeftButton:
+            # 计算鼠标移动的偏移量
+            delta = event.scenePos() - self._last_mouse_pos
+            
+            if not delta.isNull():
+                scene = self.scene()
+                if scene:
+                    from .node_group import NodeGroup
+                    selected_items = scene.selectedItems()
+                    
+                    # 移动所有选中的项目
+                    for item in selected_items:
+                        if id(item) in self._selected_items_initial_pos:
+                            initial_pos = self._selected_items_initial_pos[id(item)]
+                            new_pos = initial_pos + delta
+                            item.setPos(new_pos)
+                            
+                            # 更新连接线
+                            if isinstance(item, SimpleNodeItem):
+                                for port in item.input_ports + item.output_ports:
+                                    for conn in port.connections:
+                                        conn.update_position()
+                    
+                    # 更新组的边界
+                    if self._parent_group:
+                        self._parent_group.on_node_moved(self)
+            
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """鼠标释放事件"""
+        if event.button() == Qt.LeftButton:
+            if self._dragging:
+                self._dragging = False
+                self._last_mouse_pos = None
+                self._selected_items_initial_pos = {}
+                event.accept()
+                return
+        super().mouseReleaseEvent(event)

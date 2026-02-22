@@ -9,6 +9,7 @@ from PySide6.QtCore import QMimeData
 from .simple_node_item import SimpleNodeItem
 from .port_item import PortItem
 from .connection_item import ConnectionItem
+from .node_group import NodeGroup
 from ..nodes.node_library import LOCAL_NODE_LIBRARY
 from utils.theme_manager import theme_manager
 
@@ -297,7 +298,23 @@ class NodeGraphicsView(QGraphicsView):
             print(f"已清空画布，删除了 {len(nodes)} 个节点")
 
     def keyPressEvent(self, event):
+        # Ctrl+G 打组快捷键
+        if event.key() == Qt.Key_G and event.modifiers() == Qt.ControlModifier:
+            self.group_selected_nodes()
+            return
+        # Delete 和 Backspace 键用于删除节点，但如果焦点在输入控件上则不拦截
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            # 检查是否有焦点在输入控件上
+            focus_item = self.scene().focusItem()
+            if focus_item:
+                from PySide6.QtWidgets import QGraphicsProxyWidget
+                if isinstance(focus_item, QGraphicsProxyWidget):
+                    widget = focus_item.widget()
+                    from PySide6.QtWidgets import QLineEdit, QTextEdit
+                    if isinstance(widget, (QLineEdit, QTextEdit)):
+                        # 焦点在输入控件上，不拦截按键
+                        super().keyPressEvent(event)
+                        return
             self.delete_selected_nodes()
         else:
             super().keyPressEvent(event)
@@ -315,16 +332,38 @@ class NodeGraphicsView(QGraphicsView):
         if isinstance(item, SimpleNodeItem):
             menu = QMenu(self)
             if len(selected_nodes) > 1 and item.isSelected():
+                # 多选节点时的菜单
+                group_action = menu.addAction(f"打组 ({len(selected_nodes)}个节点)")
                 delete_action = menu.addAction(f"删除 ({len(selected_nodes)}个节点)")
                 action = menu.exec(event.globalPos())
-                if action == delete_action:
+                if action == group_action:
+                    self.group_selected_nodes()
+                elif action == delete_action:
                     for node in selected_nodes:
                         self.delete_node(node)
             else:
+                # 单选节点时的菜单
+                group_action = None
+                if len(selected_nodes) >= 1:
+                    group_action = menu.addAction(f"打组 ({len(selected_nodes)}个节点)")
                 delete_action = menu.addAction("删除")
                 action = menu.exec(event.globalPos())
-                if action == delete_action:
+                if action == group_action:
+                    self.group_selected_nodes()
+                elif action == delete_action:
                     self.delete_node(item)
+        elif isinstance(item, NodeGroup):
+            # 点击节点组时的菜单
+            menu = QMenu(self)
+            disband_action = menu.addAction("解散组")
+            rename_action = menu.addAction("重命名")
+            action = menu.exec(event.globalPos())
+            if action == disband_action:
+                item.disband()
+            elif action == rename_action:
+                # 让名称编辑框获得焦点并全选
+                item._name_edit.setFocus()
+                item._name_edit.selectAll()
         else:
             self._show_node_create_menu(event.globalPos(), scene_pos)
 
@@ -429,3 +468,50 @@ class NodeGraphicsView(QGraphicsView):
         node.remove_all_connections()
         self.scene().removeItem(node)
         print(f"已删除节点: {node.name}")
+
+    def group_selected_nodes(self):
+        """将选中的节点打组"""
+        selected_nodes = [item for item in self.scene().selectedItems() if isinstance(item, SimpleNodeItem)]
+        
+        if len(selected_nodes) < 1:
+            print("请至少选择一个节点进行打组")
+            return
+        
+        # 检查是否有节点已经在组中
+        nodes_in_group = [node for node in selected_nodes if hasattr(node, '_parent_group') and node._parent_group]
+        if nodes_in_group:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                self,
+                "节点已分组",
+                f"有 {len(nodes_in_group)} 个节点已经在组中。\n是否将这些节点移动到新组？",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                return
+            # 从原有组中移除
+            for node in nodes_in_group:
+                if node._parent_group:
+                    node._parent_group.remove_node(node)
+        
+        # 创建新的节点组
+        group = NodeGroup(nodes=selected_nodes, name=f"组 {len(self._get_all_groups()) + 1}")
+        self.scene().addItem(group)
+        
+        # 清除节点选中状态，选中组
+        for node in selected_nodes:
+            node.setSelected(False)
+        group.setSelected(True)
+        
+        print(f"已创建节点组，包含 {len(selected_nodes)} 个节点")
+
+    def _get_all_groups(self):
+        """获取场景中所有的节点组"""
+        return [item for item in self.scene().items() if isinstance(item, NodeGroup)]
+
+    def ungroup_selected_group(self):
+        """解散选中的组"""
+        selected_groups = [item for item in self.scene().selectedItems() if isinstance(item, NodeGroup)]
+        for group in selected_groups:
+            group.disband()
