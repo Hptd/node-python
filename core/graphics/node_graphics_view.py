@@ -317,6 +317,10 @@ class NodeGraphicsView(QGraphicsView):
         if event.key() == Qt.Key_G and event.modifiers() == Qt.ControlModifier:
             self.group_selected_nodes()
             return
+        # 空格键调出节点列表（在鼠标位置或视图中心）
+        if event.key() == Qt.Key_Space and event.modifiers() == Qt.NoModifier:
+            self._show_node_menu_at_cursor()
+            return
         # Delete 和 Backspace 键用于删除节点，但如果焦点在输入控件上则不拦截
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             # 检查是否有焦点在输入控件上
@@ -392,6 +396,27 @@ class NodeGraphicsView(QGraphicsView):
                 item.save_group_to_json()
         else:
             self._show_node_create_menu(event.globalPos(), scene_pos)
+
+    def _show_node_menu_at_cursor(self):
+        """在鼠标位置或视图中心显示节点创建菜单"""
+        from PySide6.QtGui import QCursor
+        
+        # 获取鼠标在视图中的位置
+        cursor_pos = self.mapFromGlobal(QCursor.pos())
+        
+        # 检查鼠标是否在视图范围内
+        view_rect = self.rect()
+        if view_rect.contains(cursor_pos):
+            # 鼠标在视图内，使用鼠标位置
+            scene_pos = self.mapToScene(cursor_pos)
+            global_pos = QCursor.pos()
+        else:
+            # 鼠标在视图外，使用视图中心
+            center_pos = self.viewport().rect().center()
+            scene_pos = self.mapToScene(center_pos)
+            global_pos = self.mapToGlobal(center_pos)
+        
+        self._show_node_create_menu(global_pos, scene_pos)
 
     def _show_node_create_menu(self, global_pos, scene_pos):
         """显示节点创建菜单 - 使用瀑布流展示"""
