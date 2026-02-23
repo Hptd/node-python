@@ -350,13 +350,24 @@ class NodeGraphicsView(QGraphicsView):
 
         if isinstance(item, SimpleNodeItem):
             menu = QMenu(self)
+            
+            # 获取场景中所有节点
+            all_nodes = [i for i in self.scene().items() if isinstance(i, SimpleNodeItem)]
+            
+            # 判断是否可以反选：选中了节点，且不是全部节点
+            can_invert = len(selected_nodes) > 0 and len(selected_nodes) < len(all_nodes)
+            
             if len(selected_nodes) > 1 and item.isSelected():
                 # 多选节点时的菜单
                 group_action = menu.addAction(f"打组 ({len(selected_nodes)}个节点)")
+                if can_invert:
+                    invert_action = menu.addAction(f"反选节点 ({len(all_nodes) - len(selected_nodes)}个)")
                 delete_action = menu.addAction(f"删除 ({len(selected_nodes)}个节点)")
                 action = menu.exec(event.globalPos())
                 if action == group_action:
                     self.group_selected_nodes()
+                elif can_invert and action == invert_action:
+                    self.invert_selection()
                 elif action == delete_action:
                     for node in selected_nodes:
                         self.delete_node(node)
@@ -365,10 +376,14 @@ class NodeGraphicsView(QGraphicsView):
                 group_action = None
                 if len(selected_nodes) >= 1:
                     group_action = menu.addAction(f"打组 ({len(selected_nodes)}个节点)")
+                if can_invert:
+                    invert_action = menu.addAction(f"反选节点 ({len(all_nodes) - len(selected_nodes)}个)")
                 delete_action = menu.addAction("删除")
                 action = menu.exec(event.globalPos())
                 if action == group_action:
                     self.group_selected_nodes()
+                elif can_invert and action == invert_action:
+                    self.invert_selection()
                 elif action == delete_action:
                     self.delete_node(item)
         elif isinstance(item, NodeGroup):
@@ -439,6 +454,14 @@ class NodeGraphicsView(QGraphicsView):
         
         # 显示菜单
         menu.show_at(global_pos)
+
+    def invert_selection(self):
+        """反选节点：选中未选中的节点，取消已选中节点的选中状态"""
+        all_nodes = [item for item in self.scene().items() if isinstance(item, SimpleNodeItem)]
+        for node in all_nodes:
+            node.setSelected(not node.isSelected())
+        selected_count = len([n for n in all_nodes if n.isSelected()])
+        print(f"反选完成，当前选中 {selected_count} 个节点")
 
     def delete_selected_nodes(self):
         selected = [item for item in self.scene().selectedItems() if isinstance(item, SimpleNodeItem)]
