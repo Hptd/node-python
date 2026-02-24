@@ -18,7 +18,14 @@ class SimpleNodeItem(QGraphicsRectItem):
     STATUS_ERROR = "error"  # 执行错误
     
     def __init__(self, name, func, x=0, y=0):
-        super().__init__(0, 0, 120, 50)
+        # 计算节点宽度：最小120，根据名称长度动态调整
+        from PySide6.QtGui import QFontMetrics
+        font = QFont("Arial", 10, QFont.Bold)
+        font_metrics = QFontMetrics(font)
+        text_width = font_metrics.horizontalAdvance(name) + 20  # 添加20像素边距
+        node_width = max(120, text_width)  # 最小宽度为120像素
+        node_height = 50  # 初始高度，后续会根据输入端口数量调整
+        super().__init__(0, 0, node_width, node_height)
         self.setPos(x, y)
         self.setFlags(
             QGraphicsRectItem.ItemIsMovable |
@@ -67,8 +74,20 @@ class SimpleNodeItem(QGraphicsRectItem):
         # 存储参数类型信息 {参数名: 类型}
         self.param_types = {}
 
+        # 计算端口数量，确定节点高度
+        num_inputs = len(params)
+        num_outputs = 0
+        if sig.return_annotation != inspect.Parameter.empty:
+            num_outputs = 1
+
+        # 根据输入端口数量调整节点高度，每个端口预留一定空间，最小高度为50
+        port_height = 25  # 每个端口占用的高度
+        min_node_height = 50  # 最小高度
+        node_height = max(min_node_height, 40 + num_inputs * port_height)  # 40为标题区高度加上一些边距
+        self.setRect(0, 0, self.rect().width(), node_height)
+
         for i, (param_name, param) in enumerate(params):
-            port = PortItem(self, 'input', param_name, i, len(params))
+            port = PortItem(self, 'input', param_name, i, num_inputs)
             self.input_ports.append(port)
             
             # 解析参数类型
@@ -83,7 +102,7 @@ class SimpleNodeItem(QGraphicsRectItem):
 
         return_annotation = sig.return_annotation
         if return_annotation != inspect.Parameter.empty:
-            port = PortItem(self, 'output', 'output', 0, 1)
+            port = PortItem(self, 'output', 'output', 0, num_outputs)
             self.output_ports.append(port)
 
     def remove_all_connections(self):
@@ -189,7 +208,10 @@ class SimpleNodeItem(QGraphicsRectItem):
         # 绘制节点名称
         painter.setPen(text_color)
         painter.setFont(QFont("Arial", 10, QFont.Bold))
-        painter.drawText(self.rect(), Qt.AlignCenter, self.name)
+        # 使用左对齐，为节点名称留出适当的边距
+        margin = 10
+        text_rect = self.rect().adjusted(margin, margin, -margin, -margin)
+        painter.drawText(text_rect, Qt.AlignCenter, self.name)
         
         # 运行状态动画效果：边框闪烁
         if self._status == self.STATUS_RUNNING and self._animation_timer:
@@ -224,6 +246,11 @@ class SimpleNodeItem(QGraphicsRectItem):
             # 通知所属的组更新边界（仅当不是在拖拽多选项目时）
             if hasattr(self, '_parent_group') and self._parent_group and not self._dragging:
                 self._parent_group.on_node_moved(self)
+        elif change == QGraphicsItem.ItemSceneChange:
+            # 当节点被添加到场景时，确保端口位置正确
+            for port in self.input_ports + self.output_ports:
+                if hasattr(port, 'update_position'):
+                    port.update_position()
         return super().itemChange(change, value)
 
     def mousePressEvent(self, event):

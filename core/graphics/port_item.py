@@ -14,6 +14,7 @@ class PortItem(QGraphicsEllipseItem):
         self.port_type = port_type
         self.port_name = port_name
         self.index = index
+        self.total = total  # 新增：保存总端口数
         self.connections = []
 
         # 应用主题颜色
@@ -22,11 +23,19 @@ class PortItem(QGraphicsEllipseItem):
         self.setParentItem(parent_node)
         self.setFlag(QGraphicsItem.ItemIsSelectable, False)
 
-        node_rect = parent_node.rect()
-        spacing = node_rect.height() / (total + 1)
-        y_pos = spacing * (index + 1)
+        # 初始设置位置
+        self.update_position()
 
-        if port_type == 'input':
+    def update_position(self):
+        """更新端口位置，当节点大小改变时调用此方法"""
+        node_rect = self.parent_node.rect()
+        if self.total > 0:
+            spacing = node_rect.height() / (self.total + 1)
+            y_pos = spacing * (self.index + 1)
+        else:
+            y_pos = node_rect.height() / 2  # 如果没有端口，将端口放在中间（理论上不会发生）
+
+        if self.port_type == 'input':
             self.setPos(0, y_pos)
         else:
             self.setPos(node_rect.width(), y_pos)
