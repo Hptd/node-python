@@ -442,6 +442,11 @@ class BatchGraphExecutor:
     ) -> subprocess.CompletedProcess:
         """运行脚本（隐藏窗口）"""
         import sys
+        import os
+        
+        # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
         
         # Windows 平台隐藏窗口
         if sys.platform == 'win32':
@@ -456,7 +461,8 @@ class BatchGraphExecutor:
                 timeout=timeout,
                 encoding='utf-8',
                 errors='replace',
-                startupinfo=startupinfo
+                startupinfo=startupinfo,
+                env=env
             )
         else:
             return subprocess.run(
@@ -465,7 +471,8 @@ class BatchGraphExecutor:
                 text=True,
                 timeout=timeout,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
     
     def _parse_results(
