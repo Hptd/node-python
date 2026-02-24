@@ -26,6 +26,7 @@ from ui.dialogs.custom_node_dialog import CustomNodeCodeDialog
 from ui.dialogs.ai_node_generator_dialog import AINodeGeneratorDialog
 from ui.dialogs.path_selector_dialog import PathSelectorDialog
 from ui.dialogs.package_manager_dialog import PackageManagerDialog
+from ui.dialogs.node_plugin_dialog import NodePluginExportDialog, NodePluginImportDialog
 from utils.console_stream import EmittingStream, get_message_format, detect_message_type
 from utils.theme_manager import theme_manager
 from config.settings import settings
@@ -89,15 +90,18 @@ class SimplePyFlowWindow(QMainWindow):
         toolbar.addAction(load_action)
 
         toolbar.addSeparator()
+        
+        # 节点插件导出
+        export_plugin_action = QAction("📤 导出节点插件", self)
+        export_plugin_action.setToolTip("将自定义节点导出为JSON格式插件包")
+        export_plugin_action.triggered.connect(self._open_export_plugin_dialog)
+        toolbar.addAction(export_plugin_action)
 
-        toolbar.addSeparator()
-        
-        # AI生成节点
-        ai_gen_action = QAction("🤖 Ai节点模板", self)
-        ai_gen_action.triggered.connect(self._open_ai_node_generator)
-        toolbar.addAction(ai_gen_action)
-        
-        toolbar.addSeparator()
+        # 节点插件导入
+        import_plugin_action = QAction("📥 导入节点插件", self)
+        import_plugin_action.setToolTip("导入JSON格式的节点插件包")
+        import_plugin_action.triggered.connect(self._open_import_plugin_dialog)
+        toolbar.addAction(import_plugin_action)
         
         # 依赖包管理
         pkg_action = QAction("📦 依赖管理", self)
@@ -1043,6 +1047,35 @@ class SimplePyFlowWindow(QMainWindow):
                 self._setup_embedded_python()
         except Exception as e:
             QMessageBox.critical(self, "错误", f"打开包管理器失败:\n{e}")
+
+    def _open_export_plugin_dialog(self):
+        """打开节点插件导出对话框"""
+        # 检查是否有自定义节点
+        if not CUSTOM_CATEGORIES:
+            QMessageBox.information(
+                self, "提示",
+                "当前没有自定义节点可以导出。\n\n请先创建自定义节点。"
+            )
+            return
+        
+        dialog = NodePluginExportDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            print("节点插件导出完成。")
+
+    def _open_import_plugin_dialog(self):
+        """打开节点插件导入对话框"""
+        # 尝试获取嵌入式 Python 执行器（用于安装依赖）
+        executor = None
+        try:
+            from core.engine.embedded_executor import get_executor
+            executor = get_executor()
+        except RuntimeError:
+            pass  # 环境未初始化时，对话框会在安装依赖时提示用户
+        
+        dialog = NodePluginImportDialog(self, executor=executor)
+        # 连接导入完成信号，刷新节点树
+        dialog.import_completed.connect(self._refresh_node_tree)
+        dialog.exec()
 
     def _setup_embedded_python(self):
         """初始化嵌入式 Python 环境"""
