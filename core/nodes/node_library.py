@@ -111,12 +111,16 @@ def get_node_source_code(name: str) -> str:
     func = LOCAL_NODE_LIBRARY.get(name)
     if not func:
         return ""
-    
-    # 优先使用保存的自定义源代码
+
+    # 优先使用内置节点保存的源代码（解决 PyInstaller 打包后无法获取源码的问题）
+    if hasattr(func, '_source'):
+        return func._source
+
+    # 其次使用保存的自定义源代码
     if hasattr(func, '_custom_source'):
         return func._custom_source
-    
-    # 否则尝试使用 inspect 获取
+
+    # 最后尝试使用 inspect 获取（开发环境）
     try:
         import inspect
         return inspect.getsource(func)

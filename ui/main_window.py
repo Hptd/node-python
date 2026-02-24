@@ -574,8 +574,11 @@ class SimplePyFlowWindow(QMainWindow):
         if hasattr(item, 'func'):  # SimpleNodeItem
             func = item.func
             doc = inspect.getdoc(func) or "该节点无注释。"
-            # 自定义节点用保存的源代码
-            if hasattr(func, '_custom_source'):
+            # 优先使用内置节点保存的源代码（解决 PyInstaller 打包后无法获取源码的问题）
+            if hasattr(func, '_source'):
+                source = func._source
+            # 其次使用自定义节点保存的源代码
+            elif hasattr(func, '_custom_source'):
                 source = func._custom_source
             else:
                 try:
