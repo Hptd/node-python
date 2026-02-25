@@ -488,11 +488,11 @@ class SimplePyFlowWindow(QMainWindow):
         # 关闭搜索按钮
         close_search_btn = QPushButton("✕")
         close_search_btn.setFixedWidth(30)
-        close_search_btn.setToolTip("关闭搜索")
+        close_search_btn.setToolTip("隐藏搜索框")
         close_search_btn.clicked.connect(self._close_search)
         search_layout.addWidget(close_search_btn)
 
-        self.search_widget.setVisible(False)
+        # 搜索框常显
         layout.addWidget(self.search_widget)
 
         # 控制台文本区域
@@ -600,7 +600,13 @@ class SimplePyFlowWindow(QMainWindow):
         """事件过滤器，捕获 Ctrl+F 快捷键"""
         if obj == self.console and event.type() == event.Type.KeyPress:
             if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_F:
-                self._open_search()
+                # Ctrl+F 切换搜索框显示/隐藏
+                if self.search_widget.isVisible():
+                    # 已显示则隐藏
+                    self._close_search()
+                else:
+                    # 未显示则打开
+                    self._open_search()
                 return True
             elif event.key() == Qt.Key_Escape and self.search_widget.isVisible():
                 self._close_search()
@@ -625,18 +631,21 @@ class SimplePyFlowWindow(QMainWindow):
         self.console.setFocus()
 
     def _clear_search_highlights(self):
-        """清除所有搜索高亮"""
+        """清除所有搜索高亮并恢复原始颜色"""
         # 获取文档的所有文本
         cursor = self.console.textCursor()
         cursor.select(QTextCursor.Document)
-        
-        # 获取原始格式并清除高亮
+
+        # 清除搜索高亮（背景和前景）
         fmt = QTextCharFormat()
         fmt.setBackground(QColor("transparent"))
+        # 不设置前景色，让它恢复为默认颜色
         cursor.mergeCharFormat(fmt)
-        
+
+        # 重置搜索状态
         self._search_results = []
         self._current_search_index = -1
+        self._search_text = ""
         self._update_search_count_label()
 
     def _on_search_text_changed(self, text):
