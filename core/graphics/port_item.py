@@ -1,6 +1,6 @@
 """端口（链接点）"""
 
-from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
+from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QToolTip
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPen
 
@@ -22,6 +22,9 @@ class PortItem(QGraphicsEllipseItem):
 
         self.setParentItem(parent_node)
         self.setFlag(QGraphicsItem.ItemIsSelectable, False)
+        
+        # 启用鼠标跟踪以支持悬浮提示
+        self.setAcceptHoverEvents(True)
 
         # 初始设置位置
         self.update_position()
@@ -61,3 +64,26 @@ class PortItem(QGraphicsEllipseItem):
 
     def mouseReleaseEvent(self, event):
         event.accept()
+
+    def hoverEnterEvent(self, event):
+        """鼠标进入端口时显示提示"""
+        if self.port_type == 'input':
+            # 获取参数类型
+            param_type = self.parent_node.param_types.get(self.port_name, str)
+            type_name = getattr(param_type, '__name__', str(param_type))
+            
+            # 构建提示文本
+            tooltip_text = f"输入: {self.port_name}\n类型: {type_name}"
+            
+            # 显示提示
+            QToolTip.showText(
+                event.screenPos(),
+                tooltip_text,
+                None
+            )
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        """鼠标离开端口时隐藏提示"""
+        QToolTip.hideText()
+        super().hoverLeaveEvent(event)
