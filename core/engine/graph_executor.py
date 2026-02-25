@@ -96,16 +96,16 @@ def execute_graph(
                         node.result = result_data.get('result')
                         node.set_status(SimpleNodeItem.STATUS_SUCCESS)
                         if node.result is not None:
-                            colored_print(f"  节点 '{node.name}' 结果: {node.result}", "success")
+                            colored_print(f"\n  节点 '{node.name}' 结果: {node.result}", "success")
                         else:
-                            colored_print(f"  节点 '{node.name}' 执行完成", "success")
+                            colored_print(f"\n  节点 '{node.name}' 执行完成", "success")
                     else:
                         error_msg = result_data.get('error', '未知错误')
                         node.set_status(SimpleNodeItem.STATUS_ERROR, error_msg)
-                        colored_print(f"  ❌ 节点 '{node.name}' 执行出错: {error_msg}", "error")
+                        colored_print(f"\n  ❌ 节点 '{node.name}' 执行出错: {error_msg}", "error")
                         has_error = True
                 else:
-                    colored_print(f"  ⚠ 节点 '{node.name}' 没有返回结果", "warning")
+                    colored_print(f"\n  ⚠ 节点 '{node.name}' 没有返回结果", "warning")
             
             # 输出日志
             if logs:

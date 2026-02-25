@@ -34,7 +34,7 @@ class ThemeManager(QObject):
             "panel_bg": "#2b2b2b",
             # 控制台颜色
             "console_bg": "#1e1e1e",
-            "console_text": "#00FF00",
+            "console_text": "#5669c2",
             # 代码编辑器颜色
             "code_editor_bg": "#1e1e1e",
             "code_editor_text": "#a9b7c6",
@@ -80,7 +80,7 @@ class ThemeManager(QObject):
             "console_error": "#FF5555",  # 错误信息 - 红色
             "console_warning": "#FFAA00",  # 警告信息 - 橙色
             "console_info": "#55AAFF",  # 提示信息 - 蓝色
-            "console_success": "#55FF55",  # 成功信息 - 绿色
+            "console_success": "#437a2e",  # 成功信息 - 绿色
             "console_debug": "#AA88FF",  # 调试信息 - 紫色
             "console_system": "#AAAAAA",  # 系统信息 - 灰色
         },
@@ -107,7 +107,7 @@ class ThemeManager(QObject):
             "panel_bg": "#FFFFFF",
             # 控制台颜色
             "console_bg": "#FAFAFA",
-            "console_text": "#2E7D32",
+            "console_text": "#5669c2",
             # 代码编辑器颜色
             "code_editor_bg": "#FAFAFA",
             "code_editor_text": "#333333",
@@ -153,8 +153,8 @@ class ThemeManager(QObject):
             "console_error": "#D32F2F",  # 错误信息 - 红色
             "console_warning": "#F57C00",  # 警告信息 - 橙色
             "console_info": "#1976D2",  # 提示信息 - 蓝色
-            "console_success": "#388E3C",  # 成功信息 - 绿色
-            "console_debug": "#7B1FA2",  # 调试信息 - 紫色
+            "console_success": "#437a2e",  # 成功信息 - 绿色
+            "console_debug": "#764b88",  # 调试信息 - 紫色
             "console_system": "#757575",  # 系统信息 - 灰色
         }
     }

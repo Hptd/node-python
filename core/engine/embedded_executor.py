@@ -291,7 +291,7 @@ if __name__ == "__main__":
             printed_output = stdout[:start_idx].strip()
             if printed_output:
                 # 将嵌入式环境的打印输出显示到主控制台
-                print(f"  [节点输出] {printed_output}")
+                print(f"\n  [节点输出] {printed_output}")
         
         if start_idx == -1 or end_idx == -1:
             # 没有找到标记，可能是旧格式或错误
