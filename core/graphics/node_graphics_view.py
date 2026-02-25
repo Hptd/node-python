@@ -611,7 +611,6 @@ class NodeGraphicsView(QGraphicsView):
 
     def _enter_loop_edit(self, loop_node):
         """进入循环编辑模式"""
-        # TODO: 实现进入循环编辑的逻辑
         print(f"进入循环编辑：{loop_node.loop_name}")
 
     def _delete_loop(self, loop_node):
