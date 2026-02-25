@@ -69,6 +69,15 @@ def execute_graph(
     sorted_nodes = topological_sort(nodes)
     colored_print(f"执行顺序: {[n.name for n in sorted_nodes]}", "debug")
 
+    # 将所有待执行节点标记为运行中状态（提供视觉反馈）
+    for node in sorted_nodes:
+        node.set_status(SimpleNodeItem.STATUS_RUNNING)
+
+    # 强制刷新UI以确保状态更新立即显示
+    from PySide6.QtWidgets import QApplication
+    if QApplication.instance():
+        QApplication.instance().processEvents()
+
     try:
         # 使用批量执行引擎
         batch_executor = get_batch_executor()
