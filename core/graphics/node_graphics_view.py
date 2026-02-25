@@ -354,6 +354,10 @@ class NodeGraphicsView(QGraphicsView):
         if event.key() == Qt.Key_G and event.modifiers() == Qt.ControlModifier:
             self.group_selected_nodes()
             return
+        # Ctrl+D 复制选中节点快捷键
+        if event.key() == Qt.Key_D and event.modifiers() == Qt.ControlModifier:
+            self.duplicate_selected_nodes()
+            return
         # 空格键调出节点列表（在鼠标位置或视图中心）
         if event.key() == Qt.Key_Space and event.modifiers() == Qt.NoModifier:
             self._show_node_menu_at_cursor()
@@ -395,8 +399,10 @@ class NodeGraphicsView(QGraphicsView):
             # 如果有多个选中节点，添加批量操作
             if len(selected_nodes) > 1:
                 delete_action = menu.addAction(f"删除 ({len(selected_nodes)}个节点)")
+                duplicate_action = menu.addAction(f"复制并粘贴 ({len(selected_nodes)}个节点)")
             else:
                 delete_action = menu.addAction("删除")
+                duplicate_action = menu.addAction("复制并粘贴")
 
             action = menu.exec(event.globalPos())
             if action == delete_action:
@@ -406,6 +412,8 @@ class NodeGraphicsView(QGraphicsView):
                         for inner_node in list(node.nodes):
                             node.remove_node(inner_node)
                     self.delete_node(node)
+            elif action == duplicate_action:
+                self.duplicate_selected_nodes()
             return
 
         if isinstance(item, SimpleNodeItem):
@@ -424,6 +432,8 @@ class NodeGraphicsView(QGraphicsView):
                 if can_invert:
                     invert_action = menu.addAction(f"反选节点 ({len(all_nodes) - len(selected_nodes)}个)")
                 delete_action = menu.addAction(f"删除 ({len(selected_nodes)}个节点)")
+                # 添加复制并粘贴选项
+                duplicate_action = menu.addAction(f"复制并粘贴 ({len(selected_nodes)}个节点)")
                 action = menu.exec(event.globalPos())
                 if action == group_action:
                     self.group_selected_nodes()
@@ -432,6 +442,8 @@ class NodeGraphicsView(QGraphicsView):
                 elif action == delete_action:
                     for node in selected_nodes:
                         self.delete_node(node)
+                elif action == duplicate_action:
+                    self.duplicate_selected_nodes()
             else:
                 # 单选节点时的菜单
                 group_action = None
@@ -440,6 +452,8 @@ class NodeGraphicsView(QGraphicsView):
                 if can_invert:
                     invert_action = menu.addAction(f"反选节点 ({len(all_nodes) - len(selected_nodes)}个)")
                 delete_action = menu.addAction("删除")
+                # 添加复制并粘贴选项
+                duplicate_action = menu.addAction("复制并粘贴")
                 action = menu.exec(event.globalPos())
                 if action == group_action:
                     self.group_selected_nodes()
@@ -447,6 +461,8 @@ class NodeGraphicsView(QGraphicsView):
                     self.invert_selection()
                 elif action == delete_action:
                     self.delete_node(item)
+                elif action == duplicate_action:
+                    self.duplicate_selected_nodes()
         elif isinstance(item, NodeGroup):
             # 点击节点组时的菜单
             menu = QMenu(self)
@@ -553,12 +569,179 @@ class NodeGraphicsView(QGraphicsView):
             # 删除循环内部的节点
             for inner_node in list(node.nodes):
                 node.remove_node(inner_node)
-        
+
         self.scene().removeItem(node)
-        
+
         # 获取节点名称用于日志
         node_name = getattr(node, 'name', None) or getattr(node, 'loop_name', '未知节点')
         print(f"已删除节点：{node_name}")
+
+    def duplicate_selected_nodes(self):
+        """复制并粘贴选中的节点（支持普通节点和循环节点）"""
+        selected_items = self.scene().selectedItems()
+        selected_nodes = [item for item in selected_items if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+
+        if not selected_nodes:
+            print("请先选择要复制的节点")
+            return
+
+        # 计算偏移量：按照增量加载的方式，放置在当前画布内容的右侧
+        offset_x, offset_y = self._calculate_duplicate_offset(selected_nodes)
+
+        # 复制节点（不复制连接）
+        node_pairs = []  # [(原节点，新节点), ...] 的映射
+        for node in selected_nodes:
+            if isinstance(node, SimpleNodeItem):
+                new_node = self._duplicate_simple_node(node, offset_x, offset_y)
+                node_pairs.append((node, new_node))
+            elif isinstance(node, LoopNodeItem):
+                new_node = self._duplicate_loop_node(node, offset_x, offset_y)
+                node_pairs.append((node, new_node))
+
+        # 复制选中节点之间的连接线
+        self._duplicate_connections_between_nodes(node_pairs)
+
+        # 清除原有节点的选中状态，选中新复制的节点
+        for old_node, new_node in node_pairs:
+            old_node.setSelected(False)
+            new_node.setSelected(True)
+
+        print(f"已复制并粘贴 {len(node_pairs)} 个节点")
+
+    def _calculate_duplicate_offset(self, selected_nodes):
+        """计算复制节点的偏移量（按照增量加载的位置处理方式）"""
+        # 获取当前画布中所有节点的边界
+        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+
+        if not all_nodes:
+            return 50, 50  # 默认偏移
+
+        # 计算当前画布内容的最右边和最下边位置
+        max_right = 0
+        max_bottom = 0
+        for node in all_nodes:
+            rect = node.sceneBoundingRect()
+            max_right = max(max_right, rect.right())
+            max_bottom = max(max_bottom, rect.bottom())
+
+        # 计算选中节点的边界
+        selected_rect = selected_nodes[0].sceneBoundingRect()
+        for node in selected_nodes[1:]:
+            selected_rect = selected_rect.united(node.sceneBoundingRect())
+
+        # 计算新内容应该放置的偏移量（右边 +100 间距）
+        offset_x = max_right - selected_rect.right() + 100
+        offset_y = 0  # 保持相同的 Y 坐标
+
+        # 确保最小偏移量为 50
+        offset_x = max(offset_x, 50)
+
+        return offset_x, offset_y
+
+    def _duplicate_simple_node(self, node, offset_x, offset_y):
+        """复制普通节点"""
+        from core.graphics.simple_node_item import SimpleNodeItem
+        from core.graphics.connection_item import ConnectionItem
+
+        # 创建新节点
+        new_node = SimpleNodeItem(node.name, node.func, x=node.x() + offset_x, y=node.y() + offset_y)
+        self.scene().addItem(new_node)
+        new_node.setup_ports()
+
+        # 复制参数值
+        if hasattr(node, 'param_values'):
+            new_node.param_values.update(node.param_values)
+
+        # 触发 node_added 信号
+        self.node_added.emit(node.name)
+
+        return new_node
+
+    def _duplicate_loop_node(self, node, offset_x, offset_y):
+        """复制循环节点"""
+        from core.graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopNodeItem
+
+        # 根据循环类型创建对应的节点
+        if node.loop_type == LoopNodeItem.LOOP_TYPE_RANGE:
+            new_node = RangeLoopNodeItem(name=node.loop_name, x=node.x() + offset_x, y=node.y() + offset_y)
+        elif node.loop_type == LoopNodeItem.LOOP_TYPE_LIST:
+            new_node = ListLoopNodeItem(name=node.loop_name, x=node.x() + offset_x, y=node.y() + offset_y)
+        else:
+            # 未知类型，默认为区间循环
+            new_node = RangeLoopNodeItem(name=node.loop_name, x=node.x() + offset_x, y=node.y() + offset_y)
+
+        self.scene().addItem(new_node)
+
+        # 复制循环配置
+        new_node._range_start = node.range_start
+        new_node._range_end = node.range_end
+        new_node._range_step = node.range_step
+        new_node._list_data = node.list_data
+
+        return new_node
+
+    def _duplicate_connections_between_nodes(self, node_pairs):
+        """复制选中节点之间的连接线
+
+        Args:
+            node_pairs: [(原节点，新节点), ...] 的列表
+        """
+        from core.graphics.connection_item import ConnectionItem
+
+        # 创建原节点到新节点的映射
+        node_map = {old_node: new_node for old_node, new_node in node_pairs}
+
+        # 遍历所有原节点，查找它们之间的连接
+        for old_source_node, new_source_node in node_pairs:
+            # 获取原节点的所有输出端口连接
+            output_ports = []
+            if isinstance(old_source_node, SimpleNodeItem):
+                output_ports = old_source_node.output_ports
+            elif isinstance(old_source_node, LoopNodeItem):
+                output_ports = old_source_node.output_ports
+
+            for out_port in output_ports:
+                for conn in out_port.connections:
+                    # 检查连接的目标节点是否也在选中的节点中
+                    target_node = conn.end_port.parent_node if conn.end_port else None
+                    if target_node in node_map:
+                        # 目标节点在选中节点中，需要复制这条连接线
+                        new_target_node = node_map[target_node]
+
+                        # 查找新节点中对应的端口
+                        new_out_port = None
+                        new_in_port = None
+
+                        # 查找源端口（在新源节点中）
+                        if isinstance(new_source_node, SimpleNodeItem):
+                            for port in new_source_node.output_ports:
+                                if port.port_name == out_port.port_name:
+                                    new_out_port = port
+                                    break
+                        elif isinstance(new_source_node, LoopNodeItem):
+                            for port in new_source_node.output_ports:
+                                if port.port_name == out_port.port_name:
+                                    new_out_port = port
+                                    break
+
+                        # 查找目标端口（在新目标节点中）
+                        old_in_port = conn.end_port
+                        if isinstance(new_target_node, SimpleNodeItem):
+                            for port in new_target_node.input_ports:
+                                if port.port_name == old_in_port.port_name:
+                                    new_in_port = port
+                                    break
+                        elif isinstance(new_target_node, LoopNodeItem):
+                            for port in new_target_node.input_ports:
+                                if port.port_name == old_in_port.port_name:
+                                    new_in_port = port
+                                    break
+
+                        # 创建新的连接线
+                        if new_out_port and new_in_port:
+                            new_conn = ConnectionItem(new_out_port, new_in_port)
+                            self.scene().addItem(new_conn)
+                            new_conn.finalize_connection(new_in_port)
 
     def group_selected_nodes(self):
         """将选中的节点打组（包括普通节点和循环节点）"""
