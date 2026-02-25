@@ -629,6 +629,42 @@ class SimplePyFlowWindow(QMainWindow):
             self.params_layout.addWidget(no_params_label)
             return
 
+        # 特殊处理：文件夹选择器节点（整体处理，不按参数遍历）
+        if node_item.name == "文件夹选择器":
+            # 参数行布局
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+
+            # 参数名标签
+            label = QLabel("文件夹路径:")
+            label.setFixedWidth(80)
+            row_layout.addWidget(label)
+
+            # 显示当前路径值
+            path_label = QLabel()
+            path_label.setObjectName("folder_path_label")
+            current_path = node_item.param_values.get("folder_path", "")
+            if current_path:
+                path_label.setText(current_path)
+                path_label.setToolTip(current_path)
+            else:
+                path_label.setText("<i style='color: #888;'>点击右侧按钮选择文件夹...</i>")
+            path_label.setWordWrap(True)
+            path_label.setStyleSheet("padding: 5px; background: rgba(128, 128, 128, 0.1); border-radius: 3px;")
+            row_layout.addWidget(path_label, 1)
+
+            # 添加文件夹选取按钮
+            picker_btn = QPushButton("📁 选取")
+            picker_btn.setFixedWidth(60)
+            picker_btn.setToolTip("打开文件夹选择对话框")
+            picker_btn.setObjectName("btn_primary_small")
+            picker_btn.clicked.connect(lambda: self._open_folder_picker_dialog(node_item))
+            row_layout.addWidget(picker_btn)
+
+            self.params_layout.addWidget(row)
+            return
+
         for param_name, param_type in node_item.param_types.items():
             # 参数行布局
             row = QWidget()
@@ -661,6 +697,24 @@ class SimplePyFlowWindow(QMainWindow):
                 selector_btn.setStyleSheet("background: #2196F3; color: white;")
                 selector_btn.clicked.connect(self._open_path_selector)
                 row_layout.addWidget(selector_btn)
+            # 特殊处理：文件选择器节点的 file_filter 参数
+            elif node_item.name == "文件选择器" and param_name == "file_filter":
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText("全部文件 (*)")
+                if current_value is not None:
+                    input_widget.setText(str(current_value))
+                input_widget.textChanged.connect(
+                    lambda text, name=param_name, node=node_item: self._on_param_value_changed(node, name, text)
+                )
+                row_layout.addWidget(input_widget)
+
+                # 添加文件选取按钮
+                picker_btn = QPushButton("📁 选取")
+                picker_btn.setFixedWidth(60)
+                picker_btn.setToolTip("打开文件选择对话框")
+                picker_btn.setObjectName("btn_primary_small")
+                picker_btn.clicked.connect(lambda: self._open_file_picker_dialog(node_item))
+                row_layout.addWidget(picker_btn)
             elif param_type == bool or param_type == 'bool':
                 input_widget = QCheckBox()
                 input_widget.setChecked(bool(current_value) if current_value is not None else False)
@@ -776,7 +830,7 @@ class SimplePyFlowWindow(QMainWindow):
         current_path = ""
         if hasattr(self, '_current_node_item') and self._current_node_item:
             current_path = self._current_node_item.param_values.get("path", "")
-        
+
         # 打开路径选择对话框
         dialog = PathSelectorDialog(self, current_path)
         if dialog.exec() == QDialog.Accepted:
@@ -787,6 +841,47 @@ class SimplePyFlowWindow(QMainWindow):
                 # 刷新参数面板
                 self._setup_param_inputs(self._current_node_item)
                 print(f"数据提取路径已设置为: {selected_path}")
+
+    def _open_file_picker_dialog(self, node_item):
+        """打开文件选择对话框，并将结果保存到节点参数"""
+        # 获取当前的文件过滤器
+        file_filter = node_item.param_values.get("file_filter", "全部文件 (*)")
+        if not file_filter:
+            file_filter = "全部文件 (*)"
+
+        # 打开文件选择对话框
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择文件",
+            "",
+            file_filter
+        )
+
+        if file_path:
+            # 将结果保存到节点的 param_values 中
+            node_item.param_values["selected_file_path"] = file_path
+            # 更新文件过滤器（如果用户修改了）
+            current_filter = node_item.param_values.get("file_filter", "")
+            # 刷新参数面板以显示结果
+            self._setup_param_inputs(node_item)
+            print(f"文件选择器已选择: {file_path}")
+
+    def _open_folder_picker_dialog(self, node_item):
+        """打开文件夹选择对话框，并将结果保存到节点参数"""
+        # 打开文件夹选择对话框
+        folder_path = QFileDialog.getExistingDirectory(
+            self,
+            "选择文件夹",
+            "",
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks
+        )
+
+        if folder_path:
+            # 将结果保存到节点的 param_values 中
+            node_item.param_values["folder_path"] = folder_path
+            # 刷新参数面板以显示结果
+            self._setup_param_inputs(node_item)
+            print(f"文件夹选择器已选择: {folder_path}")
 
     def get_all_nodes(self):
         from core.graphics.simple_node_item import SimpleNodeItem

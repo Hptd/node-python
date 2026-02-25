@@ -6,7 +6,8 @@ from typing import Dict, Any
 # 导入基础节点
 from .base_nodes import (node_print, NODE_CODE_EXAMPLE,
                          const_bool, const_int, const_float, const_string,
-                         const_list, const_dict, extract_data, type_test)
+                         const_list, const_dict, extract_data, type_test,
+                         file_picker, folder_picker)
 
 # ==========================================
 # 节点库：分类 -> {节点名: 函数}
@@ -25,6 +26,10 @@ NODE_LIBRARY_CATEGORIZED = {
     },
     "提取": {
         "数据提取": extract_data,
+    },
+    "选择器": {
+        "文件选择器": file_picker,
+        "文件夹选择器": folder_picker,
     },
     "Debug": {
         "数据类型检测": type_test,

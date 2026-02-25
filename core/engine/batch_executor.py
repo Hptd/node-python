@@ -344,7 +344,13 @@ class BatchGraphExecutor:
     """数据类型检测节点"""
     result = f"输入数据类型为：{type(data)}"
     print(result)
-    return result'''
+    return result''',
+            "文件选择器": '''def file_picker(file_filter: str = "全部文件 (*)", selected_file_path: str = "") -> str:
+    """文件选择器节点 - 返回已选择的文件路径"""
+    return selected_file_path''',
+            "文件夹选择器": '''def folder_picker(folder_path: str = "") -> str:
+    """文件夹选择器节点 - 返回已选择的文件夹路径"""
+    return folder_path'''
         }
         
         # 获取节点源代码
@@ -400,12 +406,14 @@ class BatchGraphExecutor:
     ) -> str:
         """构建节点调用代码"""
         # func_name 应该是 unique_func_name 格式（如 const_dict_0）
-        
+
         # 收集参数
         kwargs = {}
+        extra_vars = []  # 额外变量定义（用于特殊节点）
+
         for port in node.input_ports:
             param_name = port.port_name
-            
+
             if port.connections:
                 # 如果有连接，使用连接节点的结果
                 conn = port.connections[0]
@@ -419,12 +427,33 @@ class BatchGraphExecutor:
                     kwargs[param_name] = repr(value)
                 else:
                     kwargs[param_name] = "None"
-        
+
+        # 特殊处理：文件选择器节点
+        if node.name == "文件选择器":
+            # 添加 selected_file_path 变量
+            selected_path = node.param_values.get("selected_file_path", "")
+            extra_vars.append(f"selected_file_path = {repr(selected_path)}")
+            # 确保 file_filter 参数也被传递
+            if "file_filter" not in kwargs:
+                file_filter = node.param_values.get("file_filter", "全部文件 (*)")
+                kwargs["file_filter"] = repr(file_filter)
+
+        # 特殊处理：文件夹选择器节点
+        if node.name == "文件夹选择器":
+            # 添加 folder_path 变量
+            folder_path = node.param_values.get("folder_path", "")
+            extra_vars.append(f"folder_path = {repr(folder_path)}")
+
         # 构建参数字符串
         args_str = ', '.join([f"{k}={v}" for k, v in kwargs.items()])
-        
+
         # 构建调用代码
         lines = []
+
+        # 添加额外变量定义
+        for var_def in extra_vars:
+            lines.append(var_def)
+
         lines.append(f"result_{node_index} = {func_name}({args_str})")
         lines.append(f"results['node_{node_index}'] = {{")
         lines.append(f"    'success': True,")
@@ -432,7 +461,7 @@ class BatchGraphExecutor:
         lines.append(f"    'node_name': '{node.name}'")
         lines.append(f"}}")
         lines.append(f"logs.append(f'节点 {node.name} 执行完成: {{result_{node_index}}}')")
-        
+
         return '\n'.join(lines)
     
     def _run_script_hidden(
