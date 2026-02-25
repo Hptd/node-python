@@ -22,7 +22,9 @@ class PortItem(QGraphicsEllipseItem):
 
         self.setParentItem(parent_node)
         self.setFlag(QGraphicsItem.ItemIsSelectable, False)
-        
+        # 设置端口 Z 值，确保在父节点（特别是循环节点）背景之上，可被点击
+        self.setZValue(10)
+
         # 启用鼠标跟踪以支持悬浮提示
         self.setAcceptHoverEvents(True)
 
@@ -56,7 +58,8 @@ class PortItem(QGraphicsEllipseItem):
 
     def mousePressEvent(self, event):
         if self.port_type == 'output':
-            self.scene().views()[0].start_connection(self)
+            view = self.scene().views()[0]
+            view.start_connection(self)
         elif self.port_type == 'input' and self.connections:
             for conn in self.connections[:]:
                 conn.remove_connection()
@@ -68,13 +71,29 @@ class PortItem(QGraphicsEllipseItem):
     def hoverEnterEvent(self, event):
         """鼠标进入端口时显示提示"""
         if self.port_type == 'input':
-            # 获取参数类型
-            param_type = self.parent_node.param_types.get(self.port_name, str)
-            type_name = getattr(param_type, '__name__', str(param_type))
+            # 获取参数类型（安全访问）
+            param_type = str
+            type_name = "any"
             
+            # 检查是否是循环节点，提供准确的类型提示
+            from .loop_node_item import LoopNodeItem
+            
+            if isinstance(self.parent_node, LoopNodeItem):
+                # 循环节点端口类型映射
+                loop_type_map = {
+                    '最小值': 'int',
+                    '最大值': 'int',
+                    '步长': 'int',
+                    '列表数据': 'list',
+                }
+                type_name = loop_type_map.get(self.port_name, 'any')
+            elif hasattr(self.parent_node, 'param_types'):
+                param_type = self.parent_node.param_types.get(self.port_name, str)
+                type_name = getattr(param_type, '__name__', str(param_type))
+
             # 构建提示文本
-            tooltip_text = f"输入: {self.port_name}\n类型: {type_name}"
-            
+            tooltip_text = f"输入：{self.port_name}\n类型：{type_name}"
+
             # 显示提示
             QToolTip.showText(
                 event.screenPos(),

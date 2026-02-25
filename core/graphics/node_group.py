@@ -482,7 +482,8 @@ class NodeGroup(QGraphicsRectItem):
                             item.setPos(new_pos)
                             
                             from .simple_node_item import SimpleNodeItem
-                            if isinstance(item, SimpleNodeItem):
+                            from .loop_node_item import LoopNodeItem
+                            if isinstance(item, (SimpleNodeItem, LoopNodeItem)):
                                 # 更新节点的连接线
                                 for port in item.input_ports + item.output_ports:
                                     for conn in port.connections:

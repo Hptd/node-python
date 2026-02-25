@@ -1,7 +1,8 @@
-"""自定义视图"""
+﻿"""自定义视图"""
 
-from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QPushButton, QMenu, 
-                               QWidgetAction, QLineEdit, QWidget, QApplication)
+from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QPushButton, QMenu,
+                               QWidgetAction, QLineEdit, QWidget, QApplication, QDialog,
+                               QMessageBox)
 from PySide6.QtCore import Qt, Signal, QPointF
 from PySide6.QtGui import QPainter, QDrag
 from PySide6.QtCore import QMimeData
@@ -10,6 +11,7 @@ from .simple_node_item import SimpleNodeItem
 from .port_item import PortItem
 from .connection_item import ConnectionItem
 from .node_group import NodeGroup
+from .loop_node_item import LoopNodeItem
 from ..nodes.node_library import LOCAL_NODE_LIBRARY
 from utils.theme_manager import theme_manager
 from ui.widgets.node_search_menu import NodeSearchMenu
@@ -120,16 +122,29 @@ class NodeGraphicsView(QGraphicsView):
         name = event.mimeData().text()
         if name in LOCAL_NODE_LIBRARY:
             scene_pos = self.mapToScene(event.position().toPoint())
-            func = LOCAL_NODE_LIBRARY[name]
-            node = SimpleNodeItem(name, func, scene_pos.x(), scene_pos.y())
-            self.scene().addItem(node)
-            node.setup_ports()
-            self.node_added.emit(name)
-            print(f"已添加节点: {name}")
+            
+            # 检查是否是循环节点
+            if name == "区间循环":
+                from .loop_node_item import RangeLoopNodeItem
+                node = RangeLoopNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
+                self.scene().addItem(node)
+                print(f"已添加区间循环节点：{name}")
+            elif name == "List 循环":
+                from .loop_node_item import ListLoopNodeItem
+                node = ListLoopNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
+                self.scene().addItem(node)
+                print(f"已添加 List 循环节点：{name}")
+            else:
+                func = LOCAL_NODE_LIBRARY[name]
+                node = SimpleNodeItem(name, func, scene_pos.x(), scene_pos.y())
+                self.scene().addItem(node)
+                node.setup_ports()
+                self.node_added.emit(name)
+                print(f"已添加节点：{name}")
+            
             event.acceptProposedAction()
         else:
             event.ignore()
-
     def wheelEvent(self, event):
         zoom_factor = 1.15
         old_pos = self.mapToScene(event.position().toPoint())
@@ -152,9 +167,13 @@ class NodeGraphicsView(QGraphicsView):
         if event.button() == Qt.LeftButton:
             scene_pos = self.mapToScene(event.pos())
             item = self.scene().itemAt(scene_pos, self.transform())
+
+            # 点击到端口：让端口自己处理（拖拽连接线）
             if isinstance(item, PortItem):
-                item = item.parent_node
-            
+                # 调用父类的 mousePressEvent，让事件传播到 PortItem
+                super().mousePressEvent(event)
+                return
+
             # Ctrl + 左键单击：增选/取消选中节点
             if event.modifiers() == Qt.ControlModifier:
                 if isinstance(item, SimpleNodeItem):
@@ -168,7 +187,9 @@ class NodeGraphicsView(QGraphicsView):
                     return
             
             # 普通左键点击（不含 Ctrl）或 Shift+左键点击
-            if not isinstance(item, SimpleNodeItem):
+            # 检查是否是循环节点
+            from .loop_node_item import LoopNodeItem
+            if not isinstance(item, (SimpleNodeItem, LoopNodeItem)):
                 # 点击空白区域：开始框选
                 self._selecting = True
                 self._select_start = scene_pos
@@ -206,8 +227,9 @@ class NodeGraphicsView(QGraphicsView):
             modifiers = QApplication.keyboardModifiers()
             is_additive = bool(modifiers & (Qt.ControlModifier | Qt.ShiftModifier))
             
+            from .loop_node_item import LoopNodeItem
             for item in self.scene().items():
-                if isinstance(item, SimpleNodeItem):
+                if isinstance(item, (SimpleNodeItem, LoopNodeItem)):
                     in_rect = rect.intersects(item.sceneBoundingRect())
                     if is_additive:
                         # 增选模式：框选范围内的节点选中，范围外的保持原有状态
@@ -251,7 +273,7 @@ class NodeGraphicsView(QGraphicsView):
                         break
             if end_port and not end_port.connections:
                 self.temp_connection.finalize_connection(end_port)
-                print(f"已连接: {self.start_port.parent_node.name} -> {end_port.parent_node.name}")
+                print(f"已连接: {(getattr(self.start_port.parent_node, 'loop_name', None) or self.start_port.parent_node.name)} -> {(getattr(end_port.parent_node, 'loop_name', None) or end_port.parent_node.name)}")
             else:
                 self.scene().removeItem(self.temp_connection)
             self.temp_connection = None
@@ -264,12 +286,20 @@ class NodeGraphicsView(QGraphicsView):
         self.scene().addItem(self.temp_connection)
 
     def fit_all_nodes(self):
-        nodes = [item for item in self.scene().items() if isinstance(item, SimpleNodeItem)]
-        if not nodes:
+        """自适应所有节点（包括普通节点和循环节点）"""
+        from core.graphics.loop_node_item import LoopNodeItem
+        
+        # 获取所有节点（包括普通节点和循环节点）
+        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+        
+        if not all_nodes:
             return
-        rect = nodes[0].sceneBoundingRect()
-        for node in nodes[1:]:
+        
+        # 计算所有节点的边界
+        rect = all_nodes[0].sceneBoundingRect()
+        for node in all_nodes[1:]:
             rect = rect.united(node.sceneBoundingRect())
+        
         margin = 50
         rect.adjust(-margin, -margin, margin, margin)
         self.fitInView(rect, Qt.KeepAspectRatio)
@@ -278,21 +308,24 @@ class NodeGraphicsView(QGraphicsView):
         """清空画布中的所有节点、连接和组"""
         from PySide6.QtWidgets import QMessageBox
 
-        # 获取所有节点和组
+        # 获取所有节点和组（包括循环节点）
         nodes = [item for item in self.scene().items() if isinstance(item, SimpleNodeItem)]
+        loop_nodes = [item for item in self.scene().items() if isinstance(item, LoopNodeItem)]
         groups = [item for item in self.scene().items() if isinstance(item, NodeGroup)]
-        
-        if not nodes and not groups:
+
+        if not nodes and not loop_nodes and not groups:
             return
 
         # 确认对话框
         msg_parts = []
         if nodes:
             msg_parts.append(f"{len(nodes)} 个节点")
+        if loop_nodes:
+            msg_parts.append(f"{len(loop_nodes)} 个循环节点")
         if groups:
             msg_parts.append(f"{len(groups)} 个组")
         msg = "、".join(msg_parts)
-        
+
         reply = QMessageBox.question(
             self,
             "确认清空",
@@ -305,12 +338,16 @@ class NodeGraphicsView(QGraphicsView):
             # 删除所有节点（包括连接）
             for node in nodes:
                 self.delete_node(node)
-            
+
+            # 删除所有循环节点
+            for loop_node in loop_nodes:
+                self.delete_node(loop_node)
+
             # 删除所有组
             for group in groups:
                 group.disband()
-            
-            print(f"已清空画布，删除了 {len(nodes)} 个节点，{len(groups)} 个组")
+
+            print(f"已清空画布，删除了 {len(nodes)} 个节点，{len(loop_nodes)} 个循环节点，{len(groups)} 个组")
 
     def keyPressEvent(self, event):
         # Ctrl+G 打组快捷键
@@ -346,17 +383,41 @@ class NodeGraphicsView(QGraphicsView):
         if isinstance(item, PortItem):
             item = item.parent_node
 
-        selected_nodes = [i for i in self.scene().selectedItems() if isinstance(i, SimpleNodeItem)]
+        from .loop_node_item import LoopNodeItem
+        
+        selected_nodes = [i for i in self.scene().selectedItems() if isinstance(i, (SimpleNodeItem, LoopNodeItem))]
+        selected_loop_nodes = [i for i in selected_nodes if isinstance(i, LoopNodeItem)]
+
+        # 如果点击的是循环节点
+        if isinstance(item, LoopNodeItem):
+            menu = QMenu(self)
+
+            # 如果有多个选中节点，添加批量操作
+            if len(selected_nodes) > 1:
+                delete_action = menu.addAction(f"删除 ({len(selected_nodes)}个节点)")
+            else:
+                delete_action = menu.addAction("删除")
+
+            action = menu.exec(event.globalPos())
+            if action == delete_action:
+                for node in selected_nodes:
+                    if isinstance(node, LoopNodeItem):
+                        # 删除循环节点时，将内部节点移出
+                        for inner_node in list(node.nodes):
+                            node.remove_node(inner_node)
+                    self.delete_node(node)
+            return
 
         if isinstance(item, SimpleNodeItem):
             menu = QMenu(self)
-            
-            # 获取场景中所有节点
-            all_nodes = [i for i in self.scene().items() if isinstance(i, SimpleNodeItem)]
-            
+
+            # 获取场景中所有节点（包括普通节点和循环节点）
+            from core.graphics.loop_node_item import LoopNodeItem
+            all_nodes = [i for i in self.scene().items() if isinstance(i, (SimpleNodeItem, LoopNodeItem))]
+
             # 判断是否可以反选：选中了节点，且不是全部节点
             can_invert = len(selected_nodes) > 0 and len(selected_nodes) < len(all_nodes)
-            
+
             if len(selected_nodes) > 1 and item.isSelected():
                 # 多选节点时的菜单
                 group_action = menu.addAction(f"打组 ({len(selected_nodes)}个节点)")
@@ -456,31 +517,59 @@ class NodeGraphicsView(QGraphicsView):
         menu.show_at(global_pos)
 
     def invert_selection(self):
-        """反选节点：选中未选中的节点，取消已选中节点的选中状态"""
-        all_nodes = [item for item in self.scene().items() if isinstance(item, SimpleNodeItem)]
+        """反选节点：选中未选中的节点，取消已选中节点的选中状态（支持普通节点和循环节点）"""
+        from core.graphics.loop_node_item import LoopNodeItem
+        
+        # 获取所有节点（包括普通节点和循环节点）
+        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
         for node in all_nodes:
             node.setSelected(not node.isSelected())
         selected_count = len([n for n in all_nodes if n.isSelected()])
         print(f"反选完成，当前选中 {selected_count} 个节点")
 
     def delete_selected_nodes(self):
-        selected = [item for item in self.scene().selectedItems() if isinstance(item, SimpleNodeItem)]
+        """删除选中的节点（支持普通节点和循环节点）"""
+        selected_items = self.scene().selectedItems()
+        # 先删除普通节点
+        selected = [item for item in selected_items if isinstance(item, SimpleNodeItem)]
         for node in selected:
             self.delete_node(node)
+        # 删除循环节点
+        selected_loops = [item for item in selected_items if isinstance(item, LoopNodeItem)]
+        for loop_node in selected_loops:
+            self.delete_node(loop_node)
 
     def delete_node(self, node):
-        node.remove_all_connections()
+        """删除节点（支持普通节点和循环节点）"""
+        # 删除节点的所有连接
+        if hasattr(node, 'remove_all_connections'):
+            # 普通节点
+            node.remove_all_connections()
+        elif isinstance(node, LoopNodeItem):
+            # 循环节点：删除所有端口的连接
+            for port in node.input_ports + node.output_ports:
+                for conn in list(port.connections):
+                    conn.remove_connection()
+            # 删除循环内部的节点
+            for inner_node in list(node.nodes):
+                node.remove_node(inner_node)
+        
         self.scene().removeItem(node)
-        print(f"已删除节点: {node.name}")
+        
+        # 获取节点名称用于日志
+        node_name = getattr(node, 'name', None) or getattr(node, 'loop_name', '未知节点')
+        print(f"已删除节点：{node_name}")
 
     def group_selected_nodes(self):
-        """将选中的节点打组"""
-        selected_nodes = [item for item in self.scene().selectedItems() if isinstance(item, SimpleNodeItem)]
-        
+        """将选中的节点打组（包括普通节点和循环节点）"""
+        selected_items = self.scene().selectedItems()
+        # 同时支持普通节点和循环节点
+        selected_nodes = [item for item in selected_items if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+
         if len(selected_nodes) < 1:
             print("请至少选择一个节点进行打组")
             return
-        
+
         # 检查是否有节点已经在组中
         nodes_in_group = [node for node in selected_nodes if hasattr(node, '_parent_group') and node._parent_group]
         if nodes_in_group:
@@ -498,16 +587,16 @@ class NodeGraphicsView(QGraphicsView):
             for node in nodes_in_group:
                 if node._parent_group:
                     node._parent_group.remove_node(node)
-        
+
         # 创建新的节点组
         group = NodeGroup(nodes=selected_nodes, name=f"组 {len(self._get_all_groups()) + 1}")
         self.scene().addItem(group)
-        
+
         # 清除节点选中状态，选中组
         for node in selected_nodes:
             node.setSelected(False)
         group.setSelected(True)
-        
+
         print(f"已创建节点组，包含 {len(selected_nodes)} 个节点")
 
     def _get_all_groups(self):
@@ -519,3 +608,28 @@ class NodeGraphicsView(QGraphicsView):
         selected_groups = [item for item in self.scene().selectedItems() if isinstance(item, NodeGroup)]
         for group in selected_groups:
             group.disband()
+
+    def _enter_loop_edit(self, loop_node):
+        """进入循环编辑模式"""
+        # TODO: 实现进入循环编辑的逻辑
+        print(f"进入循环编辑：{loop_node.loop_name}")
+
+    def _delete_loop(self, loop_node):
+        """删除循环节点"""
+        reply = QMessageBox.question(
+            self,
+            "确认删除",
+            f"确定要删除循环节点 '{loop_node.loop_name}' 吗？\n\n循环内的节点将被移出并保留在画布上。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            # 移除循环内的节点
+            for node in list(loop_node.nodes):
+                loop_node.remove_node(node)
+            
+            # 删除循环节点
+            self.scene().removeItem(loop_node)
+            print(f"已删除循环节点 '{loop_node.loop_name}'")
+

@@ -16,6 +16,7 @@ from core.graphics.node_graphics_view import NodeGraphicsView
 from core.graphics.simple_node_item import SimpleNodeItem
 from core.graphics.connection_item import ConnectionItem
 from core.graphics.port_item import PortItem
+from core.graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopNodeItem
 from core.engine.graph_executor import execute_graph
 from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRARY,
                                       CUSTOM_CATEGORIES, add_node_to_library,
@@ -177,11 +178,23 @@ class SimplePyFlowWindow(QMainWindow):
         node_name = item.data(0, Qt.UserRole)
         if node_name and node_name in LOCAL_NODE_LIBRARY:
             func = LOCAL_NODE_LIBRARY[node_name]
-            node = SimpleNodeItem(node_name, func, x=0, y=0)
-            self.scene.addItem(node)
-            node.setup_ports()
-            print(f"已添加节点: {node_name}")
-
+            
+            # 检查是否是循环节点
+            if node_name == "区间循环":
+                from core.graphics.loop_node_item import RangeLoopNodeItem
+                node = RangeLoopNodeItem(node_name, x=0, y=0)
+                self.scene.addItem(node)
+                print(f"已添加区间循环节点：{node_name}")
+            elif node_name == "List 循环":
+                from core.graphics.loop_node_item import ListLoopNodeItem
+                node = ListLoopNodeItem(node_name, x=0, y=0)
+                self.scene.addItem(node)
+                print(f"已添加 List 循环节点：{node_name}")
+            else:
+                node = SimpleNodeItem(node_name, func, x=0, y=0)
+                self.scene.addItem(node)
+                node.setup_ports()
+                print(f"已添加节点：{node_name}")
     def _add_custom_category(self):
         name, ok = QInputDialog.getText(self, "新建分类", "请输入分类名称：")
         if ok and name.strip():
@@ -820,7 +833,12 @@ class SimplePyFlowWindow(QMainWindow):
             return
 
         item = selected_items[0]
-        if hasattr(item, 'func'):  # SimpleNodeItem
+        
+        # 处理循环节点
+        from core.graphics.loop_node_item import LoopNodeItem
+        if isinstance(item, LoopNodeItem):
+            self._setup_loop_node_properties(item)
+        elif hasattr(item, 'func'):  # SimpleNodeItem
             func = item.func
             doc = inspect.getdoc(func) or "该节点无注释。"
             # 优先使用内置节点保存的源代码（解决 PyInstaller 打包后无法获取源码的问题）
@@ -850,9 +868,210 @@ class SimplePyFlowWindow(QMainWindow):
             # 显示参数输入控件
             self._setup_param_inputs(item)
         else:
-            self._clear_param_inputs()
             self.error_label.setVisible(False)
             self.error_text.setVisible(False)
+
+
+    def _setup_loop_node_properties(self, loop_item):
+        """为循环节点设置属性面板 UI"""
+        from PySide6.QtWidgets import QGroupBox, QVBoxLayout, QLabel, QSpinBox, QTextEdit
+        
+        self._clear_param_inputs()
+        self._current_node_item = loop_item  # 保存当前循环节点引用
+
+        # 显示循环节点文档
+        if isinstance(loop_item, RangeLoopNodeItem):
+            doc = """区间循环节点（Range Loop）。
+按照指定的整数范围和步长进行循环迭代，每次迭代输出一个整数值。
+
+端口说明:
+    输入端口（左侧）:
+        • 最小值：循环起始值（包含），int 类型
+        • 最大值：循环结束值（不包含），int 类型
+        • 步长：每次迭代的增量，int 类型
+    
+    输出端口（右侧）:
+        • 迭代值：当前循环的整数值，每次迭代更新
+        • 汇总结果：循环完成后输出所有迭代结果的列表
+
+使用说明:
+    1. 配置左侧三个输入参数（最小值、最大值、步长）
+    2. 将"迭代值"端口连接到需要接收循环数据的节点
+    3. 将"汇总结果"端口连接到需要接收完整结果列表的节点
+    4. 运行后，节点会按照 range(最小值，最大值，步长) 生成迭代序列
+
+示例:
+    最小值=0, 最大值=5, 步长=1 → 迭代值依次为：0, 1, 2, 3, 4"""
+        else:
+            doc = """List 循环节点（List Loop）。
+遍历列表中的每个元素进行循环迭代，每次迭代输出一个列表元素。
+
+端口说明:
+    输入端口（左侧）:
+        • 列表数据：要迭代的列表数据，支持 JSON 格式字符串或 list 类型
+    
+    输出端口（右侧）:
+        • 迭代值：当前循环的列表元素，每次迭代更新
+        • 汇总结果：循环完成后输出所有迭代结果的列表
+
+使用说明:
+    1. 在左侧"列表数据"端口输入要迭代的列表（JSON 格式，如：["a","b","c"]）
+    2. 将"迭代值"端口连接到需要接收循环数据的节点
+    3. 将"汇总结果"端口连接到需要接收完整结果列表的节点
+    4. 运行后，节点会依次输出列表中的每个元素
+
+示例:
+    列表数据=["apple","banana","orange"] → 迭代值依次为：apple, banana, orange"""
+        
+        self.doc_text.setPlainText(doc)
+        self.source_text.setPlainText("循环节点是内置功能节点，不支持查看源代码。")
+        
+        # 隐藏错误信息
+        self.error_label.setVisible(False)
+        self.error_text.setVisible(False)
+        
+        # 创建循环节点专用属性 UI
+        from PySide6.QtWidgets import QGroupBox, QVBoxLayout, QLabel
+        
+        # 区间循环参数
+        if isinstance(loop_item, RangeLoopNodeItem):
+            # Range 参数组
+            range_group = QGroupBox("循环参数")
+            range_layout = QVBoxLayout()
+            
+            # 开始值
+            start_label = QLabel("最小值:")
+            range_layout.addWidget(start_label)
+            
+            self._loop_start_spin = QSpinBox()
+            self._loop_start_spin.setRange(-10000, 10000)
+            self._loop_start_spin.setValue(loop_item.range_start)
+            self._loop_start_spin.setToolTip("循环起始值（包含）")
+            self._loop_start_spin.valueChanged.connect(self._on_loop_range_start_changed)
+            range_layout.addWidget(self._loop_start_spin)
+            
+            # 结束值
+            end_label = QLabel("最大值:")
+            range_layout.addWidget(end_label)
+            
+            self._loop_end_spin = QSpinBox()
+            self._loop_end_spin.setRange(-10000, 10000)
+            self._loop_end_spin.setValue(loop_item.range_end)
+            self._loop_end_spin.setToolTip("循环结束值（不包含）")
+            self._loop_end_spin.valueChanged.connect(self._on_loop_range_end_changed)
+            range_layout.addWidget(self._loop_end_spin)
+            
+            # 步长
+            step_label = QLabel("步长:")
+            range_layout.addWidget(step_label)
+            
+            self._loop_step_spin = QSpinBox()
+            self._loop_step_spin.setRange(1, 1000)
+            self._loop_step_spin.setValue(loop_item.range_step)
+            self._loop_step_spin.setToolTip("每次迭代的增量")
+            self._loop_step_spin.valueChanged.connect(self._on_loop_range_step_changed)
+            range_layout.addWidget(self._loop_step_spin)
+            
+            # 预览标签
+            self._loop_preview_label = QLabel()
+            self._loop_preview_label.setStyleSheet("color: #4CAF50; font-size: 12px;")
+            self._update_loop_preview()
+            range_layout.addWidget(self._loop_preview_label)
+            
+            range_group.setLayout(range_layout)
+            self.params_layout.addWidget(range_group)
+        
+        # List 循环参数
+        elif isinstance(loop_item, ListLoopNodeItem):
+            # List 参数组
+            list_group = QGroupBox("列表数据")
+            list_layout = QVBoxLayout()
+
+            list_label = QLabel("JSON 列表数据:")
+            list_layout.addWidget(list_label)
+
+            self._loop_list_text = QTextEdit()
+            self._loop_list_text.setPlaceholderText('例如：["apple", "banana", "orange"]')
+            self._loop_list_text.setMaximumHeight(150)
+            self._loop_list_text.setText(loop_item.list_data)
+            self._loop_list_text.textChanged.connect(self._on_loop_list_data_changed)
+            list_layout.addWidget(self._loop_list_text)
+            
+            # 预览标签
+            self._loop_list_preview_label = QLabel()
+            self._loop_list_preview_label.setStyleSheet("color: #2196F3; font-size: 12px;")
+            self._loop_list_preview_label.setWordWrap(True)
+            self._update_list_loop_preview()
+            list_layout.addWidget(self._loop_list_preview_label)
+            
+            list_group.setLayout(list_layout)
+            self.params_layout.addWidget(list_group)
+
+        self.params_layout.addStretch()
+    
+    def _on_loop_range_start_changed(self, value):
+        """区间循环 - 开始值变化"""
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, RangeLoopNodeItem):
+            self._current_node_item.range_start = value  # 使用属性设置，自动验证
+            self._update_loop_preview()
+
+    def _on_loop_range_end_changed(self, value):
+        """区间循环 - 结束值变化"""
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, RangeLoopNodeItem):
+            self._current_node_item.range_end = value  # 使用属性设置，自动验证
+            self._update_loop_preview()
+
+    def _on_loop_range_step_changed(self, value):
+        """区间循环 - 步长变化"""
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, RangeLoopNodeItem):
+            self._current_node_item.range_step = value  # 使用属性设置，自动验证
+            self._update_loop_preview()
+
+    def _on_loop_list_data_changed(self):
+        """List 循环 - 列表数据变化"""
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, ListLoopNodeItem):
+            self._current_node_item.list_data = self._loop_list_text.toPlainText()  # 使用属性设置，自动验证
+            self._update_list_loop_preview()
+    
+    def _update_loop_preview(self):
+        """更新区间循环预览"""
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, RangeLoopNodeItem):
+            loop_item = self._current_node_item
+            try:
+                preview_list = list(range(loop_item.range_start, loop_item.range_end, loop_item.range_step))
+                if len(preview_list) > 10:
+                    preview_text = f"{preview_list[:5]} ... (共 {len(preview_list)} 项)"
+                else:
+                    preview_text = str(preview_list)
+                if hasattr(self, '_loop_preview_label'):
+                    self._loop_preview_label.setText(f"将生成：{preview_text}")
+            except Exception as e:
+                if hasattr(self, '_loop_preview_label'):
+                    self._loop_preview_label.setText(f"错误：{e}")
+    
+    def _update_list_loop_preview(self):
+        """更新 List 循环预览"""
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, ListLoopNodeItem):
+            loop_item = self._current_node_item
+            import json
+            try:
+                data = json.loads(loop_item.list_data)
+                if isinstance(data, list):
+                    if len(data) > 5:
+                        preview_text = f"{data[:3]} ... (共 {len(data)} 项)"
+                    else:
+                        preview_text = str(data)
+                    if hasattr(self, '_loop_list_preview_label'):
+                        self._loop_list_preview_label.setText(f"有效列表：{preview_text}")
+                else:
+                    if hasattr(self, '_loop_list_preview_label'):
+                        self._loop_list_preview_label.setText("⚠ 请输入列表格式的 JSON 数据")
+            except json.JSONDecodeError as e:
+                if hasattr(self, '_loop_list_preview_label'):
+                    self._loop_list_preview_label.setText(f"⚠ JSON 格式错误：{e}")
+            except Exception as e:
+                if hasattr(self, '_loop_list_preview_label'):
+                    self._loop_list_preview_label.setText(f"错误：{e}")
 
     def _clear_param_inputs(self):
         """清除参数输入控件"""
@@ -1133,9 +1352,25 @@ class SimplePyFlowWindow(QMainWindow):
         return [item for item in self.scene.items() if isinstance(item, SimpleNodeItem)]
 
     def run_graph(self):
-        nodes = self.get_all_nodes()
+        """执行图表"""
+        from core.graphics.simple_node_item import SimpleNodeItem
+        from core.graphics.loop_node_item import LoopNodeItem
         from core.engine.graph_executor import execute_graph_embedded
-        execute_graph_embedded(nodes)
+        from core.engine.loop_executor import execute_graph_with_loops
+
+        # 获取所有节点
+        all_items = self.scene.items()
+        nodes = [item for item in all_items if isinstance(item, SimpleNodeItem)]
+        loop_nodes = [item for item in all_items if isinstance(item, LoopNodeItem)]
+
+        # 检查是否有循环节点
+        if loop_nodes:
+            # 使用循环执行器
+            print(f"检测到 {len(loop_nodes)} 个循环节点，使用循环执行模式...")
+            execute_graph_with_loops(nodes, loop_nodes)
+        else:
+            # 使用普通执行器
+            execute_graph_embedded(nodes)
 
     def stop_graph(self):
         print("已发送停止信号。")
@@ -1157,10 +1392,11 @@ class SimplePyFlowWindow(QMainWindow):
             filepath += '.json'
 
         # 收集图表数据
-        graph_data = {"nodes": [], "connections": [], "groups": []}
+        graph_data = {"nodes": [], "connections": [], "groups": [], "loop_nodes": []}
 
         # 导入 NodeGroup
         from core.graphics.node_group import NodeGroup
+        from core.graphics.loop_node_item import LoopNodeItem
         
         # 用于记录节点ID
         node_ids = set()
@@ -1192,6 +1428,34 @@ class SimplePyFlowWindow(QMainWindow):
                     "node_ids": [node.node_id for node in item.nodes]
                 }
                 graph_data["groups"].append(group_data)
+            elif isinstance(item, LoopNodeItem):
+                # 保存循环节点
+                loop_data = {
+                    "id": item.node_id,
+                    "type": "loop",
+                    "loop_type": item.loop_type,
+                    "loop_name": item.loop_name,
+                    "x": item.x(),
+                    "y": item.y(),
+                    "range_start": item.range_start,
+                    "range_end": item.range_end,
+                    "range_step": item.range_step,
+                    "list_data": item.list_data,
+                    "inner_nodes": []
+                }
+                # 保存循环内部的节点
+                for inner_node in item.nodes:
+                    inner_node_data = {
+                        "id": inner_node.node_id,
+                        "type": inner_node.name,
+                        "x": inner_node.x(),
+                        "y": inner_node.y()
+                    }
+                    if hasattr(inner_node, 'param_values') and inner_node.param_values:
+                        inner_node_data["param_values"] = inner_node.param_values
+                    loop_data["inner_nodes"].append(inner_node_data)
+                    node_ids.add(inner_node.node_id)
+                graph_data["loop_nodes"].append(loop_data)
 
         # 保存到文件
         try:
@@ -1275,6 +1539,85 @@ class SimplePyFlowWindow(QMainWindow):
                     node_map[node_id] = node
                     new_nodes.append(node)
 
+            # 加载循环节点
+            from core.graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopNodeItem
+            for loop_data in graph_data.get("loop_nodes", []):
+                loop_id = loop_data.get("id")
+                loop_type = loop_data.get("loop_type")
+                loop_name = loop_data.get("loop_name")
+                x = loop_data.get("x", 0) + offset_x
+                y = loop_data.get("y", 0) + offset_y
+
+                # 根据循环类型创建对应的节点
+                try:
+                    if loop_type == LoopNodeItem.LOOP_TYPE_RANGE:
+                        loop_node = RangeLoopNodeItem(name=loop_name, x=x, y=y)
+                    elif loop_type == LoopNodeItem.LOOP_TYPE_LIST:
+                        loop_node = ListLoopNodeItem(name=loop_name, x=x, y=y)
+                    else:
+                        # 未知类型，默认为区间循环
+                        loop_node = RangeLoopNodeItem(name=loop_name, x=x, y=y)
+                except Exception as e:
+                    print(f"警告：创建循环节点失败 '{loop_name}': {e}")
+                    continue
+                
+                self.scene.addItem(loop_node)
+
+                # 恢复循环配置（带数据验证）
+                try:
+                    range_start = loop_data.get("range_start", 0)
+                    range_end = loop_data.get("range_end", 10)
+                    range_step = loop_data.get("range_step", 1)
+                    list_data = loop_data.get("list_data", '[]')
+                    
+                    # 验证并设置区间循环参数
+                    if isinstance(loop_node, RangeLoopNodeItem):
+                        loop_node._range_start = int(range_start) if range_start is not None else 0
+                        loop_node._range_end = int(range_end) if range_end is not None else 10
+                        loop_node._range_step = int(range_step) if range_step is not None and range_step != 0 else 1
+                    
+                    # 验证并设置 List 循环参数
+                    elif isinstance(loop_node, ListLoopNodeItem):
+                        if isinstance(list_data, list):
+                            # 如果已经是列表，直接转换为 JSON
+                            loop_node._list_data = json.dumps(list_data, ensure_ascii=False)
+                        elif isinstance(list_data, str):
+                            # 验证 JSON 格式
+                            try:
+                                json.loads(list_data)
+                                loop_node._list_data = list_data
+                            except json.JSONDecodeError:
+                                print(f"警告：循环节点 '{loop_name}' 的列表数据格式无效，使用默认值")
+                                loop_node._list_data = '[]'
+                        else:
+                            print(f"警告：循环节点 '{loop_name}' 的列表数据类型无效，使用默认值")
+                            loop_node._list_data = '[]'
+                except (ValueError, TypeError) as e:
+                    print(f"警告：恢复循环节点 '{loop_name}' 配置失败：{e}")
+                
+                node_map[loop_id] = loop_node
+                
+                # 加载循环内部的节点
+                for inner_data in loop_data.get("inner_nodes", []):
+                    inner_id = inner_data.get("id")
+                    inner_type = inner_data.get("type")
+                    inner_x = inner_data.get("x", 0)
+                    inner_y = inner_data.get("y", 0)
+                    
+                    if inner_type in LOCAL_NODE_LIBRARY:
+                        func = LOCAL_NODE_LIBRARY[inner_type]
+                        inner_node = SimpleNodeItem(inner_type, func, x=inner_x, y=inner_y)
+                        loop_node.add_node(inner_node)
+                        self.scene.addItem(inner_node)
+                        inner_node.setup_ports()
+                        
+                        # 加载参数值
+                        param_values = inner_data.get("param_values", {})
+                        if param_values:
+                            inner_node.param_values.update(param_values)
+                        
+                        node_map[inner_id] = inner_node
+            
             # 创建连接
             for conn_data in graph_data.get("connections", []):
                 from_node_id = conn_data.get("from_node")
