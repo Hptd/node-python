@@ -449,10 +449,57 @@ class SimplePyFlowWindow(QMainWindow):
 
         layout.addWidget(toolbar)
 
+        # 搜索框（初始隐藏）
+        self.search_widget = QWidget()
+        search_layout = QHBoxLayout(self.search_widget)
+        search_layout.setContentsMargins(5, 2, 5, 2)
+        search_layout.setSpacing(5)
+
+        # 搜索图标
+        search_icon = QLabel("🔍")
+        search_layout.addWidget(search_icon)
+
+        # 搜索输入框
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("搜索...")
+        self.search_input.textChanged.connect(self._on_search_text_changed)
+        self.search_input.returnPressed.connect(self._find_next)
+        search_layout.addWidget(self.search_input, 1)
+
+        # 匹配数量显示
+        self.search_count_label = QLabel("0/0")
+        self.search_count_label.setStyleSheet("color: #888; font-size: 12px; min-width: 40px;")
+        search_layout.addWidget(self.search_count_label)
+
+        # 上一个按钮（上箭头）
+        self.prev_btn = QPushButton("▲")
+        self.prev_btn.setFixedWidth(30)
+        self.prev_btn.setToolTip("上一个匹配项")
+        self.prev_btn.clicked.connect(self._find_previous)
+        search_layout.addWidget(self.prev_btn)
+
+        # 下一个按钮（下箭头）
+        self.next_btn = QPushButton("▼")
+        self.next_btn.setFixedWidth(30)
+        self.next_btn.setToolTip("下一个匹配项")
+        self.next_btn.clicked.connect(self._find_next)
+        search_layout.addWidget(self.next_btn)
+
+        # 关闭搜索按钮
+        close_search_btn = QPushButton("✕")
+        close_search_btn.setFixedWidth(30)
+        close_search_btn.setToolTip("关闭搜索")
+        close_search_btn.clicked.connect(self._close_search)
+        search_layout.addWidget(close_search_btn)
+
+        self.search_widget.setVisible(False)
+        layout.addWidget(self.search_widget)
+
         # 控制台文本区域
         self.console = QTextEdit()
         self.console.setReadOnly(True)
         self.console.setObjectName("console")
+        self.console.installEventFilter(self)  # 安装事件过滤器以捕获快捷键
         layout.addWidget(self.console)
 
         dock.setWidget(container)
@@ -465,6 +512,17 @@ class SimplePyFlowWindow(QMainWindow):
 
         # 从设置加载日志配置
         self._init_log_settings()
+
+        # 初始化搜索相关变量
+        self._search_results = []  # 存储所有匹配的位置
+        self._current_search_index = -1  # 当前选中的匹配项索引
+        self._search_text = ""  # 当前搜索文本
+        self._highlight_format = QTextCharFormat()
+        self._highlight_format.setBackground(QColor("#FFEB3B"))  # 黄色高亮
+        self._highlight_format.setForeground(QColor("#000000"))  # 黑色文字
+        self._current_highlight_format = QTextCharFormat()
+        self._current_highlight_format.setBackground(QColor("#FF9800"))  # 橙色高亮当前选中项
+        self._current_highlight_format.setForeground(QColor("#FFFFFF"))  # 白色文字
 
     def _init_log_settings(self):
         """初始化日志设置"""
@@ -537,6 +595,184 @@ class SimplePyFlowWindow(QMainWindow):
         """清空控制台显示内容"""
         self.console.clear()
         print("控制台已清空")
+
+    def eventFilter(self, obj, event):
+        """事件过滤器，捕获 Ctrl+F 快捷键"""
+        if obj == self.console and event.type() == event.Type.KeyPress:
+            if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_F:
+                self._open_search()
+                return True
+            elif event.key() == Qt.Key_Escape and self.search_widget.isVisible():
+                self._close_search()
+                return True
+        return super().eventFilter(obj, event)
+
+    def _open_search(self):
+        """打开搜索框"""
+        self.search_widget.setVisible(True)
+        self.search_input.setFocus()
+        self.search_input.selectAll()
+        # 如果控制台有选中文本，将其填入搜索框
+        cursor = self.console.textCursor()
+        if cursor.hasSelection():
+            self.search_input.setText(cursor.selectedText())
+            self._on_search_text_changed(cursor.selectedText())
+
+    def _close_search(self):
+        """关闭搜索框并清除高亮"""
+        self.search_widget.setVisible(False)
+        self._clear_search_highlights()
+        self.console.setFocus()
+
+    def _clear_search_highlights(self):
+        """清除所有搜索高亮"""
+        # 获取文档的所有文本
+        cursor = self.console.textCursor()
+        cursor.select(QTextCursor.Document)
+        
+        # 获取原始格式并清除高亮
+        fmt = QTextCharFormat()
+        fmt.setBackground(QColor("transparent"))
+        cursor.mergeCharFormat(fmt)
+        
+        self._search_results = []
+        self._current_search_index = -1
+        self._update_search_count_label()
+
+    def _on_search_text_changed(self, text):
+        """搜索文本变化时的处理"""
+        self._search_text = text
+        self._clear_search_highlights()
+        
+        if not text:
+            self._update_search_count_label()
+            return
+        
+        # 查找所有匹配项
+        self._find_all_matches(text)
+        
+        # 如果有匹配项，选中第一个
+        if self._search_results:
+            self._current_search_index = 0
+            self._highlight_current_match()
+        
+        self._update_search_count_label()
+
+    def _find_all_matches(self, text):
+        """查找所有匹配的文本位置"""
+        self._search_results = []
+        if not text:
+            return
+        
+        # 获取文档内容
+        document = self.console.document()
+        
+        # 从文档开头开始查找
+        cursor = self.console.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        
+        # 使用 QTextDocument::find 查找所有匹配
+        while True:
+            # 查找下一个匹配
+            found_cursor = document.find(text, cursor)
+            
+            if found_cursor.isNull():
+                break
+            
+            # 记录匹配位置
+            self._search_results.append({
+                'start': found_cursor.selectionStart(),
+                'end': found_cursor.selectionEnd()
+            })
+            
+            # 高亮显示（非当前选中的用黄色）
+            fmt = QTextCharFormat()
+            fmt.setBackground(QColor("#FFEB3B"))
+            fmt.setForeground(QColor("#000000"))
+            found_cursor.mergeCharFormat(fmt)
+            
+            # 移动到匹配位置之后继续查找
+            cursor = found_cursor
+            cursor.movePosition(QTextCursor.Right)
+
+    def _highlight_current_match(self):
+        """高亮显示当前选中的匹配项（橙色）"""
+        if not self._search_results or self._current_search_index < 0:
+            return
+        
+        # 获取当前匹配项的位置
+        match = self._search_results[self._current_search_index]
+        
+        # 创建光标并选中当前匹配项
+        cursor = self.console.textCursor()
+        cursor.setPosition(match['start'])
+        cursor.setPosition(match['end'], QTextCursor.KeepAnchor)
+        
+        # 应用橙色高亮
+        cursor.mergeCharFormat(self._current_highlight_format)
+        
+        # 滚动到当前匹配项
+        self.console.setTextCursor(cursor)
+        self.console.ensureCursorVisible()
+
+    def _restore_highlight(self, index):
+        """将指定索引的匹配项恢复为黄色高亮"""
+        if index < 0 or index >= len(self._search_results):
+            return
+        
+        match = self._search_results[index]
+        cursor = self.console.textCursor()
+        cursor.setPosition(match['start'])
+        cursor.setPosition(match['end'], QTextCursor.KeepAnchor)
+        cursor.mergeCharFormat(self._highlight_format)
+
+    def _find_next(self):
+        """查找下一个匹配项"""
+        if not self._search_results:
+            return
+        
+        # 恢复当前匹配项的颜色
+        if self._current_search_index >= 0:
+            self._restore_highlight(self._current_search_index)
+        
+        # 移动到下一个
+        self._current_search_index += 1
+        
+        # 如果超出范围，停在最后一个（不循环）
+        if self._current_search_index >= len(self._search_results):
+            self._current_search_index = len(self._search_results) - 1
+        
+        self._highlight_current_match()
+        self._update_search_count_label()
+
+    def _find_previous(self):
+        """查找上一个匹配项"""
+        if not self._search_results:
+            return
+        
+        # 恢复当前匹配项的颜色
+        if self._current_search_index >= 0:
+            self._restore_highlight(self._current_search_index)
+        
+        # 移动到上一个
+        self._current_search_index -= 1
+        
+        # 如果超出范围，停在第一个（不循环）
+        if self._current_search_index < 0:
+            self._current_search_index = 0
+        
+        self._highlight_current_match()
+        self._update_search_count_label()
+
+    def _update_search_count_label(self):
+        """更新匹配数量显示"""
+        total = len(self._search_results)
+        current = self._current_search_index + 1 if self._current_search_index >= 0 else 0
+        
+        if total == 0:
+            self.search_count_label.setText("0/0")
+        else:
+            self.search_count_label.setText(f"{current}/{total}")
 
     def normal_output(self, text):
         """普通输出（兼容旧代码）"""
