@@ -31,32 +31,35 @@ class BatchGraphExecutor:
         self._check_environment()
     
     def _find_python(self) -> str:
-        """查找 Python 解释器路径"""
+        """查找 Python 解释器路径
+        
+        查找顺序：
+        1. 环境变量 NODE_PYTHON_EMBEDDED（最高优先级）
+        2. 项目目录下的 python_embedded（开发环境和打包后通用）
+        3. 可执行文件同级目录的 python_embedded（打包后主要使用）
+        4. 当前运行的 Python 解释器（兜底方案）
+        """
         import sys
-        
-        # 检查是否是 PyInstaller 打包环境
-        is_bundled = hasattr(sys, '_MEIPASS') or getattr(sys, 'frozen', False)
-        
-        # 1. 可执行文件同级目录（打包后的主要使用场景）
-        if is_bundled:
+
+        # 1. 环境变量（最高优先级）
+        env_path = os.environ.get("NODE_PYTHON_EMBEDDED")
+        if env_path and Path(env_path).exists():
+            return str(Path(env_path).resolve())
+
+        # 2. 项目目录下的 python_embedded（开发环境和打包后通用）
+        project_dir = Path(__file__).parent.parent.parent
+        embedded_path = project_dir / "python_embedded" / "python.exe"
+        if embedded_path.exists():
+            return str(embedded_path.resolve())
+
+        # 3. 可执行文件同级目录（打包后的主要使用场景）
+        if hasattr(sys, '_MEIPASS') or getattr(sys, 'frozen', False):
             exe_dir = Path(sys.executable).parent
             embedded_path = exe_dir / "python_embedded" / "python.exe"
             if embedded_path.exists():
                 return str(embedded_path.resolve())
-        
-        # 2. 环境变量
-        env_path = os.environ.get("NODE_PYTHON_EMBEDDED")
-        if env_path and Path(env_path).exists():
-            return str(Path(env_path).resolve())
-        
-        # 3. 项目目录（仅打包环境使用，避免开发环境版本冲突）
-        if is_bundled:
-            project_dir = Path(__file__).parent.parent.parent
-            embedded_path = project_dir / "python_embedded" / "python.exe"
-            if embedded_path.exists():
-                return str(embedded_path.resolve())
-        
-        # 4. 使用当前运行的 Python 解释器（开发环境）
+
+        # 4. 使用当前运行的 Python 解释器（兜底方案）
         return sys.executable
     
     def _check_environment(self):

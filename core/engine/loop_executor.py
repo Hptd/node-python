@@ -10,15 +10,19 @@
 """
 
 import json
+import inspect
 from typing import List, Dict, Any, Optional, Set
 from ..graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopNodeItem
 from ..graphics.simple_node_item import SimpleNodeItem
 from .graph_executor import topological_sort
+from .embedded_executor import get_executor as get_embedded_executor
 
 
 def _execute_node(node: SimpleNodeItem, all_nodes: List[SimpleNodeItem],
                   iterator_value: Any = None, iterator_port_name: str = '迭代值') -> Any:
     """执行单个节点，准备输入参数
+
+    自定义节点使用嵌入式 Python 执行，内置节点直接调用。
 
     Args:
         node: 要执行的节点
@@ -38,7 +42,7 @@ def _execute_node(node: SimpleNodeItem, all_nodes: List[SimpleNodeItem],
         for conn in port.connections:
             if conn.start_port:
                 source_node = conn.start_port.parent_node
-                
+
                 # 获取源端口的端口名称（输出端口）
                 source_port_name = conn.start_port.port_name
 
@@ -67,12 +71,46 @@ def _execute_node(node: SimpleNodeItem, all_nodes: List[SimpleNodeItem],
         elif port.port_name in node.param_values:
             kwargs[port.port_name] = node.param_values[port.port_name]
 
-    # 执行节点
-    result = node.func(**kwargs)
-    node.result = result
-    node.set_status(SimpleNodeItem.STATUS_SUCCESS)
+    # 自定义节点使用嵌入式 Python 执行
+    if hasattr(node, 'is_custom_node') and node.is_custom_node:
+        try:
+            executor = get_embedded_executor()
+            source_code = getattr(node.func, '_custom_source', None)
+            if not source_code:
+                source_code = inspect.getsource(node.func)
+            
+            # 提取导入
+            imports = _extract_imports(source_code)
+            
+            result = executor.execute_node(source_code, kwargs, imports, timeout=30)
+            node.result = result
+            node.set_status(SimpleNodeItem.STATUS_SUCCESS)
+            return result
+        except Exception as e:
+            node.set_status(SimpleNodeItem.STATUS_ERROR, str(e))
+            raise
+    else:
+        # 内置节点直接调用
+        result = node.func(**kwargs)
+        node.result = result
+        node.set_status(SimpleNodeItem.STATUS_SUCCESS)
+        return result
 
-    return result
+
+def _extract_imports(code: str) -> List[str]:
+    """从代码中提取导入的模块"""
+    import re
+    imports = []
+    
+    # 匹配 import xxx
+    import_pattern = r'^import\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    imports.extend(re.findall(import_pattern, code, re.MULTILINE))
+    
+    # 匹配 from xxx import
+    from_pattern = r'^from\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    imports.extend(re.findall(from_pattern, code, re.MULTILINE))
+    
+    return list(set(imports))
 
 
 def _get_nodes_connected_to_loop(loop_node: LoopNodeItem, all_nodes: List[SimpleNodeItem]) -> tuple:
