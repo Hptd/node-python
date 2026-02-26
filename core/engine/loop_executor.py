@@ -7,11 +7,17 @@
 2. 连接模式：节点连接到循环节点的输出端口
    - 连接到"迭代值"端口的节点：在每次迭代中执行
    - 连接到"汇总结果"端口的节点：在循环完成后执行一次
+
+优化：使用批量执行模式，将所有迭代合并成一个脚本，只启动一次 Python 子进程。
 """
 
 import json
 import inspect
-from typing import List, Dict, Any, Optional, Set
+import tempfile
+import os
+import re
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Set, Tuple
 from ..graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopNodeItem
 from ..graphics.simple_node_item import SimpleNodeItem
 from .graph_executor import topological_sort
@@ -99,7 +105,6 @@ def _execute_node(node: SimpleNodeItem, all_nodes: List[SimpleNodeItem],
 
 def _extract_imports(code: str) -> List[str]:
     """从代码中提取导入的模块"""
-    import re
     imports = []
     
     # 匹配 import xxx
@@ -111,6 +116,350 @@ def _extract_imports(code: str) -> List[str]:
     imports.extend(re.findall(from_pattern, code, re.MULTILINE))
     
     return list(set(imports))
+
+
+def _execute_loop_batch(
+    loop_node: LoopNodeItem,
+    iteration_nodes: List[SimpleNodeItem],
+    inner_nodes: List,
+    iterator_values: List[Any],
+    all_nodes: List[SimpleNodeItem]
+) -> List[Any]:
+    """批量执行循环 - 将所有迭代合并成一个脚本，只启动一次 Python 子进程
+
+    Args:
+        loop_node: 循环节点
+        iteration_nodes: 连接到迭代值的节点列表
+        inner_nodes: 循环内部的节点（容器模式）
+        iterator_values: 所有迭代值列表
+        all_nodes: 所有节点列表
+
+    Returns:
+        结果列表
+    """
+    from utils.console_stream import colored_print
+    
+    # 合并容器模式和连接模式的节点
+    nodes_to_execute = list(set(inner_nodes + iteration_nodes))
+    
+    if not nodes_to_execute:
+        # 没有节点时，直接返回迭代值
+        colored_print(f"    循环内没有节点，直接返回迭代值", "debug")
+        return list(iterator_values)
+    
+    # 收集所有节点代码和导入
+    all_imports = set()
+    node_functions = []
+    
+    for idx, node in enumerate(nodes_to_execute):
+        if hasattr(node, 'is_custom_node') and node.is_custom_node:
+            source_code = getattr(node.func, '_custom_source', None)
+            if not source_code:
+                source_code = inspect.getsource(node.func)
+        else:
+            # 内置节点使用内置代码映射
+            source_code = _get_builtin_node_code(node.name)
+            if not source_code:
+                continue
+        
+        # 提取导入
+        imports = _extract_imports(source_code)
+        all_imports.update(imports)
+        
+        # 提取函数名
+        func_name = _extract_func_name(source_code)
+        node_functions.append({
+            'node': node,
+            'func_name': func_name,
+            'source_code': source_code,
+            'index': idx
+        })
+    
+    # 构建批量执行脚本
+    script = _build_loop_execution_script(
+        node_functions,
+        list(all_imports),
+        iterator_values,
+        nodes_to_execute,
+        all_nodes
+    )
+    
+    # 使用嵌入式执行器执行
+    try:
+        executor = get_embedded_executor()
+        result = _execute_script_in_embedded(executor, script, timeout=300)
+        
+        if isinstance(result, list):
+            colored_print(f"  批量循环执行完成，收集 {len(result)} 个结果", "info")
+            return result
+        else:
+            colored_print(f"  批量循环执行完成，结果：{result}", "debug")
+            return [result] * len(iterator_values)
+            
+    except Exception as e:
+        colored_print(f"  批量循环执行出错：{e}", "error")
+        raise
+
+
+def _get_builtin_node_code(node_name: str) -> Optional[str]:
+    """获取内置节点的源代码"""
+    BUILTIN_NODE_SOURCE = {
+        "打印节点": '''def node_print(data):
+    """打印输出节点"""
+    print(f"执行结果：{data}")
+    return data''',
+        "字符串": '''def const_string(value: str = "") -> str:
+    """字符串常量节点"""
+    return value''',
+        "整数": '''def const_int(value: int = 0) -> int:
+    """整数常量节点"""
+    return value''',
+        "浮点数": '''def const_float(value: float = 0.0) -> float:
+    """浮点数常量节点"""
+    return value''',
+        "布尔": '''def const_bool(value: bool = True) -> bool:
+    """布尔常量节点"""
+    return value''',
+        "列表": '''def const_list(value: list = None) -> list:
+    """列表常量节点"""
+    if value is None:
+        return []
+    return value''',
+        "字典": '''def const_dict(value: dict = None) -> dict:
+    """字典常量节点"""
+    if value is None:
+        return {}
+    return value''',
+        "数据提取": '''def extract_data(data: dict, path: str = "") -> any:
+    """数据提取节点"""
+    if not data or not path:
+        return None
+    if not isinstance(data, dict):
+        try:
+            import json
+            data = json.loads(data) if isinstance(data, str) else data
+        except Exception:
+            return None
+    import re
+    tokens = re.findall(r'([^\\.\\[\\]]+)|\\[(\\d+)\\]', path)
+    keys = []
+    for token in tokens:
+        if token[0]:
+            keys.append(token[0])
+        elif token[1]:
+            keys.append(int(token[1]))
+    if not keys:
+        keys = path.split('.')
+    current = data
+    try:
+        for key in keys:
+            if isinstance(current, dict):
+                current = current.get(key)
+            elif isinstance(current, list):
+                if isinstance(key, int) and 0 <= key < len(current):
+                    current = current[key]
+                else:
+                    return None
+            else:
+                return None
+            if current is None:
+                return None
+        return current
+    except Exception:
+        return None''',
+        "数据类型检测": '''def type_test(data) -> None:
+    """数据类型检测节点"""
+    result = f"输入数据类型为：{type(data)}"
+    print(result)
+    return result''',
+    }
+    return BUILTIN_NODE_SOURCE.get(node_name)
+
+
+def _extract_func_name(code: str) -> str:
+    """从代码中提取函数名"""
+    pattern = r'^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\('
+    matches = re.findall(pattern, code, re.MULTILINE)
+    if not matches:
+        raise ValueError("代码中未找到函数定义")
+    return matches[0]
+
+
+def _build_loop_execution_script(
+    node_functions: List[Dict],
+    imports: List[str],
+    iterator_values: List[Any],
+    nodes_to_execute: List[SimpleNodeItem],
+    all_nodes: List[SimpleNodeItem]
+) -> str:
+    """构建循环批量执行脚本"""
+    
+    # 序列化迭代值
+    iterator_values_json = json.dumps(iterator_values, ensure_ascii=False, default=str)
+    
+    # 构建节点参数字典
+    node_params = {}
+    for node in nodes_to_execute:
+        node_key = f"node_{nodes_to_execute.index(node)}"
+        params = {}
+        for port in node.input_ports:
+            # 检查是否有连接
+            has_connection = False
+            for conn in port.connections:
+                if conn.start_port:
+                    source_node = conn.start_port.parent_node
+                    if isinstance(source_node, LoopNodeItem):
+                        if conn.start_port.port_name == '迭代值':
+                            # 连接到迭代值，标记为特殊值
+                            params[port.port_name] = '__ITERATOR_VALUE__'
+                            has_connection = True
+                            break
+                    elif isinstance(source_node, SimpleNodeItem):
+                        source_idx = nodes_to_execute.index(source_node) if source_node in nodes_to_execute else -1
+                        if source_idx >= 0:
+                            params[port.port_name] = f'__RESULT_node_{source_idx}__'
+                            has_connection = True
+                            break
+            
+            if not has_connection:
+                # 使用预设参数值
+                param_value = node.param_values.get(port.port_name)
+                params[port.port_name] = param_value
+        
+        node_params[node_key] = {
+            'func_name': next((nf['func_name'] for nf in node_functions if nf['node'] == node), None),
+            'params': params
+        }
+    
+    # 构建脚本
+    script_parts = []
+    script_parts.append("# -*- coding: utf-8 -*-")
+    script_parts.append("# 循环批量执行脚本 - 由 NodePython 自动生成")
+    script_parts.append("")
+    
+    # 导入
+    script_parts.append("import sys")
+    script_parts.append("import json")
+    for imp in imports:
+        script_parts.append(f"import {imp}")
+    script_parts.append("")
+    
+    # 节点函数定义
+    script_parts.append("# ==================== 节点函数定义 ====================")
+    for nf in node_functions:
+        script_parts.append(f"# 节点：{nf['node'].name}")
+        script_parts.append(nf['source_code'])
+        script_parts.append("")
+    
+    # 执行主函数
+    script_parts.append("# ==================== 执行主函数 ====================")
+    script_parts.append(f"iterator_values = json.loads('{iterator_values_json}')")
+    script_parts.append("all_results = []")
+    script_parts.append("")
+    script_parts.append("for iter_idx, iterator_value in enumerate(iterator_values):")
+    script_parts.append("    results = {}")
+    script_parts.append("    logs = []")
+    
+    # 为每个节点生成调用代码
+    for node in nodes_to_execute:
+        node_key = f"node_{nodes_to_execute.index(node)}"
+        func_name = node_params[node_key]['func_name']
+        params = node_params[node_key]['params']
+        
+        # 构建参数字典，替换特殊标记
+        args_parts = []
+        for param_name, param_value in params.items():
+            if param_value == '__ITERATOR_VALUE__':
+                args_parts.append(f"{param_name}=iterator_value")
+            elif str(param_value).startswith('__RESULT_'):
+                source_key = param_value.replace('__RESULT_', '').replace('__', '')
+                args_parts.append(f"{param_name}=results.get('{source_key}')")
+            else:
+                args_parts.append(f"{param_name}={repr(param_value)}")
+        
+        args_str = ', '.join(args_parts)
+        
+        script_parts.append(f"    # 执行节点：{node.name}")
+        script_parts.append(f"    try:")
+        script_parts.append(f"        result_{node_key} = {func_name}({args_str})")
+        script_parts.append(f"        results['{node_key}'] = result_{node_key}")
+        script_parts.append(f"        logs.append(f'节点 {node.name} 执行完成：{{result_{node_key}}}')")
+        script_parts.append(f"    except Exception as e:")
+        script_parts.append(f"        logs.append(f'节点 {node.name} 执行出错：{{e}}')")
+        script_parts.append(f"        results['{node_key}'] = None")
+        script_parts.append("")
+    
+    # 收集结果（使用最后一个节点的输出）
+    if nodes_to_execute:
+        last_node_key = f"node_{len(nodes_to_execute) - 1}"
+        script_parts.append(f"    # 收集本次迭代结果")
+        script_parts.append(f"    all_results.append(results.get('{last_node_key}'))")
+        script_parts.append("")
+    
+    # 输出结果
+    script_parts.append("# 输出执行结果")
+    script_parts.append("output = {")
+    script_parts.append("    'success': True,")
+    script_parts.append("    'results': all_results,")
+    script_parts.append("    'logs': logs")
+    script_parts.append("}")
+    script_parts.append("print('__LOOP_RESULT_START__')")
+    script_parts.append("print(json.dumps(output, ensure_ascii=False, default=str))")
+    script_parts.append("print('__LOOP_RESULT_END__')")
+    
+    return '\n'.join(script_parts)
+
+
+def _execute_script_in_embedded(executor, script: str, timeout: int = 30) -> Any:
+    """在嵌入式环境中执行脚本并解析结果"""
+    # 写入临时文件
+    with tempfile.NamedTemporaryFile(
+        mode='w', suffix='.py', delete=False, encoding='utf-8'
+    ) as f:
+        f.write(script)
+        script_path = f.name
+    
+    try:
+        import subprocess
+        result = subprocess.run(
+            [executor.python_exe, script_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            encoding='utf-8',
+            errors='replace',
+            cwd=str(Path(executor.python_exe).parent)
+        )
+        
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr or result.stdout)
+        
+        # 解析结果
+        stdout = result.stdout
+        start_marker = "__LOOP_RESULT_START__"
+        end_marker = "__LOOP_RESULT_END__"
+        
+        start_idx = stdout.find(start_marker)
+        end_idx = stdout.find(end_marker)
+        
+        if start_idx == -1 or end_idx == -1:
+            # 尝试直接解析
+            print(f"输出：{stdout}")
+            return None
+        
+        json_str = stdout[start_idx + len(start_marker):end_idx].strip()
+        data = json.loads(json_str)
+        
+        if data.get('success'):
+            return data.get('results', [])
+        else:
+            raise RuntimeError(data.get('error', '未知错误'))
+            
+    finally:
+        try:
+            os.unlink(script_path)
+        except:
+            pass
 
 
 def _get_nodes_connected_to_loop(loop_node: LoopNodeItem, all_nodes: List[SimpleNodeItem]) -> tuple:
@@ -182,6 +531,8 @@ def execute_loop(
 ) -> List[Any]:
     """执行循环节点
 
+    使用批量执行模式，将所有迭代合并成一个脚本，只启动一次 Python 子进程。
+
     Args:
         loop_node: 循环节点实例
         all_nodes: 场景中所有节点列表
@@ -213,47 +564,72 @@ def execute_loop(
 
     # 获取连接到循环节点的节点
     iteration_nodes, result_nodes = _get_nodes_connected_to_loop(loop_node, all_nodes)
-    
+
     # 获取循环内部的节点（容器模式）
     inner_nodes = loop_node.nodes
-    
+
     colored_print(f"  循环内节点：{len(inner_nodes)} 个", "debug")
     colored_print(f"  连接到迭代值的节点：{[n.name for n in iteration_nodes]}", "debug")
     colored_print(f"  连接到汇总结果的节点：{[n.name for n in result_nodes]}", "debug")
 
+    # 使用批量执行模式
     all_results = []
-
-    # 遍历迭代器值
-    for index, current_value in enumerate(iterator_values):
-        colored_print(f"\n  [{index + 1}/{len(iterator_values)}] 迭代值：{current_value}", "debug")
-
-        try:
-            # 执行当前迭代
-            result = _execute_single_iteration(
-                loop_node,
-                index,
-                current_value,
-                inner_nodes,
-                iteration_nodes,
-                all_nodes,
-                external_input
-            )
-
-            # 记录结果
+    
+    try:
+        # 批量执行所有迭代
+        all_results = _execute_loop_batch(
+            loop_node,
+            iteration_nodes,
+            inner_nodes,
+            iterator_values,
+            all_nodes
+        )
+        
+        # 更新结果显示和节点状态
+        for index, result in enumerate(all_results):
             loop_node.add_result(result)
-            all_results.append(result)  # 添加结果到列表
-
-            # 更新显示
             loop_node.update_iterator_display(index)
-
-            if result is not None:
-                colored_print(f"    迭代结果：{result}", "debug")
-
-        except Exception as e:
-            colored_print(f"    [ERROR] 迭代 {index + 1} 出错：{e}", "error")
-            import traceback
-            colored_print(traceback.format_exc(), "error")
-            all_results.append(None)
+        
+        # 批量执行完成后，将所有迭代节点设置为成功状态
+        for node in iteration_nodes:
+            node.set_status(SimpleNodeItem.STATUS_SUCCESS)
+        
+        # 设置循环节点为成功状态（重置迭代索引）
+        loop_node._current_index = -1
+        loop_node.update()  # 触发重绘
+            
+    except Exception as e:
+        colored_print(f"  批量执行失败，回退到逐次执行：{e}", "warning")
+        # 回退到逐次执行模式
+        for index, current_value in enumerate(iterator_values):
+            colored_print(f"\n  [{index + 1}/{len(iterator_values)}] 迭代值：{current_value}", "debug")
+            try:
+                result = _execute_single_iteration(
+                    loop_node,
+                    index,
+                    current_value,
+                    inner_nodes,
+                    iteration_nodes,
+                    all_nodes,
+                    external_input
+                )
+                loop_node.add_result(result)
+                all_results.append(result)
+                loop_node.update_iterator_display(index)
+            except Exception as e2:
+                colored_print(f"    [ERROR] 迭代 {index + 1} 出错：{e2}", "error")
+                all_results.append(None)
+        
+        # 回退执行完成后，也设置节点状态
+        for node in iteration_nodes:
+            if node.result is not None:
+                node.set_status(SimpleNodeItem.STATUS_SUCCESS)
+            else:
+                node.set_status(SimpleNodeItem.STATUS_ERROR, "节点未执行")
+        
+        # 重置循环节点索引
+        loop_node._current_index = -1
+        loop_node.update()  # 触发重绘
 
     colored_print(f"\n循环 '{loop_node.loop_name}' 执行完成，收集 {len(all_results)} 个结果", "info")
     colored_print(f"循环 '{loop_node.loop_name}' 汇总结果：{all_results}", "success")
@@ -272,18 +648,21 @@ def execute_loop(
     return all_results
 
 
-def _execute_result_nodes(result_nodes: List[SimpleNodeItem], loop_node: LoopNodeItem, 
+def _execute_result_nodes(result_nodes: List[SimpleNodeItem], loop_node: LoopNodeItem,
                           all_nodes: List[SimpleNodeItem]):
     """执行连接到汇总结果的节点"""
     from utils.console_stream import colored_print
-    
+
     for node in result_nodes:
         try:
             colored_print(f"  执行节点：{node.name}", "debug")
             _execute_node(node, all_nodes)
             colored_print(f"    结果：{node.result}", "success")
+            # 设置节点为成功状态
+            node.set_status(SimpleNodeItem.STATUS_SUCCESS)
         except Exception as e:
             colored_print(f"    [ERROR] 节点 '{node.name}' 执行出错：{e}", "error")
+            node.set_status(SimpleNodeItem.STATUS_ERROR, str(e))
 
 
 def _execute_single_iteration(
