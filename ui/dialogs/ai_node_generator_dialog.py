@@ -545,7 +545,8 @@ class AINodeGeneratorDialog(QDialog):
     def _compile_function(self, tree, func_name, code):
         """编译函数，返回 (func, error_message)"""
         try:
-            namespace = {}
+            # 注意：必须提供 __builtins__，否则 import 语句在某些环境下会失败
+            namespace = {'__builtins__': __builtins__}
             exec(compile(tree, "<ai_generated_node>", "exec"), namespace)
             func = namespace[func_name]
         except Exception as e:

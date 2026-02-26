@@ -367,7 +367,8 @@ class CustomNodeCodeDialog(QDialog):
 
         # 4. 编译执行
         try:
-            namespace = {}
+            # 注意：必须提供 __builtins__，否则 import 语句在某些环境下会失败
+            namespace = {'__builtins__': __builtins__}
             exec(compile(tree, "<custom_node>", "exec"), namespace)
             func = namespace[func_name]
         except Exception as e:

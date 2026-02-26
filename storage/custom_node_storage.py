@@ -109,9 +109,10 @@ def load_custom_nodes() -> bool:
                     continue
                 
                 func_name = func_defs[0].name
-                
+
                 # 编译执行
-                namespace = {}
+                # 注意：必须提供 __builtins__，否则 import 语句在某些环境下会失败
+                namespace = {'__builtins__': __builtins__}
                 exec(compile(tree, f"<custom_node_{name}>", "exec"), namespace)
                 func = namespace[func_name]
                 
