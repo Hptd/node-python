@@ -396,6 +396,19 @@ class NodeGraphicsView(QGraphicsView):
         if isinstance(item, LoopNodeItem):
             menu = QMenu(self)
 
+            # 添加调试子菜单
+            debug_menu = menu.addMenu("🔍 调试")
+            
+            # 单节点调试选项
+            single_debug_action = debug_menu.addAction("⚡ 单节点调试")
+            single_debug_action.setToolTip("仅调试该循环节点，使用属性面板的循环配置")
+            
+            # 断点调试选项
+            breakpoint_debug_action = debug_menu.addAction("🐛 断点调试")
+            breakpoint_debug_action.setToolTip("调试该循环节点及其上游依赖节点")
+            
+            menu.addSeparator()
+
             # 如果有多个选中节点，添加批量操作
             if len(selected_nodes) > 1:
                 delete_action = menu.addAction(f"删除 ({len(selected_nodes)}个节点)")
@@ -414,6 +427,12 @@ class NodeGraphicsView(QGraphicsView):
                     self.delete_node(node)
             elif action == duplicate_action:
                 self.duplicate_selected_nodes()
+            elif action == single_debug_action:
+                # 单节点调试 - 对选中的第一个循环节点
+                self._debug_single_loop_node(selected_nodes[0] if len(selected_nodes) > 0 else item)
+            elif action == breakpoint_debug_action:
+                # 断点调试 - 对选中的第一个循环节点
+                self._debug_breakpoint_loop(selected_nodes[0] if len(selected_nodes) > 0 else item)
             return
 
         if isinstance(item, SimpleNodeItem):
@@ -425,6 +444,19 @@ class NodeGraphicsView(QGraphicsView):
 
             # 判断是否可以反选：选中了节点，且不是全部节点
             can_invert = len(selected_nodes) > 0 and len(selected_nodes) < len(all_nodes)
+
+            # 添加调试子菜单
+            debug_menu = menu.addMenu("🔍 调试")
+            
+            # 单节点调试选项
+            single_debug_action = debug_menu.addAction("⚡ 单节点调试")
+            single_debug_action.setToolTip("仅调试该节点，使用属性面板的输入值")
+            
+            # 断点调试选项
+            breakpoint_debug_action = debug_menu.addAction("🐛 断点调试")
+            breakpoint_debug_action.setToolTip("调试该节点及其上游依赖路径上的所有节点")
+            
+            menu.addSeparator()
 
             if len(selected_nodes) > 1 and item.isSelected():
                 # 多选节点时的菜单
@@ -444,6 +476,12 @@ class NodeGraphicsView(QGraphicsView):
                         self.delete_node(node)
                 elif action == duplicate_action:
                     self.duplicate_selected_nodes()
+                elif action == single_debug_action:
+                    # 单节点调试 - 对选中的第一个节点
+                    self._debug_single_node(selected_nodes[0])
+                elif action == breakpoint_debug_action:
+                    # 断点调试 - 对选中的第一个节点
+                    self._debug_breakpoint(selected_nodes[0])
             else:
                 # 单选节点时的菜单
                 group_action = None
@@ -463,6 +501,12 @@ class NodeGraphicsView(QGraphicsView):
                     self.delete_node(item)
                 elif action == duplicate_action:
                     self.duplicate_selected_nodes()
+                elif action == single_debug_action:
+                    # 单节点调试
+                    self._debug_single_node(item)
+                elif action == breakpoint_debug_action:
+                    # 断点调试
+                    self._debug_breakpoint(item)
         elif isinstance(item, NodeGroup):
             # 点击节点组时的菜单
             menu = QMenu(self)
@@ -810,8 +854,100 @@ class NodeGraphicsView(QGraphicsView):
             # 移除循环内的节点
             for node in list(loop_node.nodes):
                 loop_node.remove_node(node)
-            
+
             # 删除循环节点
             self.scene().removeItem(loop_node)
             print(f"已删除循环节点 '{loop_node.loop_name}'")
+
+    def _debug_single_node(self, node: SimpleNodeItem):
+        """单节点调试
+        
+        仅执行选中的单个节点，使用该节点属性面板的输入值。
+        
+        Args:
+            node: 要调试的节点
+        """
+        from core.engine.debug_executor import debug_single_node
+        
+        # 重置节点状态
+        node.result = None
+        node.reset_status()
+        
+        # 执行调试
+        debug_single_node(node)
+
+    def _debug_breakpoint(self, target_node: SimpleNodeItem):
+        """断点调试
+        
+        执行目标节点及其上游依赖路径上的所有节点。
+        基于 Python 代码的顺序执行原理。
+        
+        Args:
+            target_node: 目标调试节点
+        """
+        from core.engine.debug_executor import debug_breakpoint
+        from core.graphics.loop_node_item import LoopNodeItem
+        
+        # 获取所有节点（不包括循环节点）
+        all_nodes = [
+            item for item in self.scene().items() 
+            if isinstance(item, SimpleNodeItem)
+        ]
+        
+        # 重置相关节点状态
+        target_node.result = None
+        target_node.reset_status()
+        
+        # 执行调试
+        debug_breakpoint(target_node, all_nodes)
+
+    def _debug_single_loop_node(self, loop_node: LoopNodeItem):
+        """单节点调试 - 循环节点
+        
+        执行一次完整的循环迭代。
+        优先使用外部连接的输入值，如果没有连接则使用属性面板的配置值。
+        
+        Args:
+            loop_node: 要调试的循环节点
+        """
+        from core.engine.debug_executor import debug_single_loop_node
+        from core.graphics.loop_node_item import LoopNodeItem
+        
+        # 获取所有节点（包括普通节点和循环节点）
+        all_nodes = [
+            item for item in self.scene().items() 
+            if isinstance(item, (SimpleNodeItem, LoopNodeItem))
+        ]
+        
+        # 重置循环状态
+        loop_node.reset_execution_state()
+        
+        # 执行调试（传入所有节点以支持外部输入）
+        debug_single_loop_node(loop_node, all_nodes)
+
+    def _debug_breakpoint_loop(self, loop_node: LoopNodeItem):
+        """断点调试 - 循环节点
+        
+        执行循环节点及其上游依赖节点。
+        包括：
+        1. 执行所有上游依赖节点（为循环提供输入数据）
+        2. 执行完整的循环迭代
+        
+        Args:
+            loop_node: 目标调试的循环节点
+        """
+        from core.engine.debug_executor import debug_breakpoint_loop
+        from core.graphics.loop_node_item import LoopNodeItem
+        
+        # 获取所有节点（包括普通节点和循环节点）
+        all_nodes = [
+            item for item in self.scene().items() 
+            if isinstance(item, (SimpleNodeItem, LoopNodeItem))
+        ]
+        
+        # 重置循环状态
+        loop_node.reset_execution_state()
+        
+        # 执行调试
+        debug_breakpoint_loop(loop_node, all_nodes)
 
