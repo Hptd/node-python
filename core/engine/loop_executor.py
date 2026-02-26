@@ -9,6 +9,7 @@
    - 连接到"汇总结果"端口的节点：在循环完成后执行一次
 
 优化：使用批量执行模式，将所有迭代合并成一个脚本，只启动一次 Python 子进程。
+对于包含异步操作（API 请求等）的节点，自动切换到逐次执行模式以确保正确等待。
 """
 
 import json
@@ -22,6 +23,27 @@ from ..graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopN
 from ..graphics.simple_node_item import SimpleNodeItem
 from .graph_executor import topological_sort
 from .embedded_executor import get_executor as get_embedded_executor
+
+# 异步节点类型列表 - 这些节点需要逐次执行以等待异步操作完成
+ASYNC_NODE_TYPES = {
+    'bolatu 带文件对话',
+    '上传文件返回链接',
+    'API 请求',
+    'HTTP 请求',
+    '网络请求',
+}
+
+# 异步代码特征 - 自定义节点代码中包含这些特征视为异步节点
+ASYNC_CODE_PATTERNS = [
+    'requests.request',
+    'requests.post',
+    'requests.get',
+    'httpx.',
+    'aiohttp.',
+    'asyncio.',
+    'await ',
+    'time.sleep',
+]
 
 
 def _execute_node(node: SimpleNodeItem, all_nodes: List[SimpleNodeItem],
@@ -116,6 +138,101 @@ def _extract_imports(code: str) -> List[str]:
     imports.extend(re.findall(from_pattern, code, re.MULTILINE))
     
     return list(set(imports))
+
+
+def _has_async_nodes(nodes: List[SimpleNodeItem]) -> bool:
+    """检测节点列表中是否包含异步节点
+
+    异步节点包括：
+    1. 预定义的异步节点类型（API 请求、HTTP 请求等）
+    2. 自定义节点代码中包含异步操作特征（requests, httpx, aiohttp, asyncio, await, time.sleep）
+
+    Args:
+        nodes: 节点列表
+
+    Returns:
+        如果包含异步节点返回 True，否则返回 False
+    """
+    for node in nodes:
+        # 检查节点类型是否是预定义的异步节点
+        node_name = getattr(node, 'name', '')
+        if node_name in ASYNC_NODE_TYPES:
+            return True
+
+        # 检查自定义节点代码中是否包含异步特征
+        if hasattr(node, 'is_custom_node') and node.is_custom_node:
+            source_code = getattr(node.func, '_custom_source', None)
+            if not source_code:
+                try:
+                    source_code = inspect.getsource(node.func)
+                except Exception:
+                    continue
+
+            # 检查是否包含异步代码特征
+            for pattern in ASYNC_CODE_PATTERNS:
+                if pattern in source_code:
+                    return True
+
+    return False
+
+
+def _execute_loop_sequential(
+    loop_node: LoopNodeItem,
+    iteration_nodes: List[SimpleNodeItem],
+    inner_nodes: List,
+    iterator_values: List[Any],
+    all_nodes: List[SimpleNodeItem],
+    external_input: Any = None
+) -> List[Any]:
+    """逐次执行循环 - 每次迭代独立执行，等待完成后再继续
+
+    适用于包含异步操作（API 请求等）的场景，确保每次迭代都完全完成后再开始下一次。
+
+    Args:
+        loop_node: 循环节点
+        iteration_nodes: 连接到迭代值的节点列表
+        inner_nodes: 循环内部的节点（容器模式）
+        iterator_values: 所有迭代值列表
+        all_nodes: 所有节点列表
+        external_input: 外部输入数据
+
+    Returns:
+        结果列表
+    """
+    from utils.console_stream import colored_print
+
+    colored_print(f"  检测到异步节点，使用逐次执行模式", "info")
+
+    all_results = []
+
+    for index, current_value in enumerate(iterator_values):
+        colored_print(f"\n  [{index + 1}/{len(iterator_values)}] 迭代值：{current_value}", "debug")
+        try:
+            result = _execute_single_iteration(
+                loop_node,
+                index,
+                current_value,
+                inner_nodes,
+                iteration_nodes,
+                all_nodes,
+                external_input
+            )
+            loop_node.add_result(result)
+            all_results.append(result)
+            loop_node.update_iterator_display(index)
+            colored_print(f"    迭代 {index + 1} 完成，结果：{result}", "debug")
+        except Exception as e:
+            colored_print(f"    [ERROR] 迭代 {index + 1} 出错：{e}", "error")
+            all_results.append(None)
+
+    # 逐次执行完成后，设置节点状态
+    for node in iteration_nodes:
+        if node.result is not None:
+            node.set_status(SimpleNodeItem.STATUS_SUCCESS)
+        else:
+            node.set_status(SimpleNodeItem.STATUS_ERROR, "节点未执行")
+
+    return all_results
 
 
 def _execute_loop_batch(
@@ -531,7 +648,9 @@ def execute_loop(
 ) -> List[Any]:
     """执行循环节点
 
-    使用批量执行模式，将所有迭代合并成一个脚本，只启动一次 Python 子进程。
+    根据循环内节点类型自动选择执行模式：
+    - 包含异步节点（API 请求等）：使用逐次执行模式，每次迭代独立执行并等待完成
+    - 不包含异步节点：使用批量执行模式，将所有迭代合并成一个脚本高效执行
 
     Args:
         loop_node: 循环节点实例
@@ -572,64 +691,84 @@ def execute_loop(
     colored_print(f"  连接到迭代值的节点：{[n.name for n in iteration_nodes]}", "debug")
     colored_print(f"  连接到汇总结果的节点：{[n.name for n in result_nodes]}", "debug")
 
-    # 使用批量执行模式
+    # 合并所有需要执行的节点，检测是否包含异步节点
+    nodes_to_check = list(set(inner_nodes + iteration_nodes))
+    has_async = _has_async_nodes(nodes_to_check)
+
+    # 根据检测结果选择执行模式
     all_results = []
-    
-    try:
-        # 批量执行所有迭代
-        all_results = _execute_loop_batch(
-            loop_node,
-            iteration_nodes,
-            inner_nodes,
-            iterator_values,
-            all_nodes
-        )
-        
-        # 更新结果显示和节点状态
-        for index, result in enumerate(all_results):
-            loop_node.add_result(result)
-            loop_node.update_iterator_display(index)
-        
-        # 批量执行完成后，将所有迭代节点设置为成功状态
-        for node in iteration_nodes:
-            node.set_status(SimpleNodeItem.STATUS_SUCCESS)
-        
-        # 设置循环节点为成功状态（重置迭代索引）
-        loop_node._current_index = -1
-        loop_node.update()  # 触发重绘
-            
-    except Exception as e:
-        colored_print(f"  批量执行失败，回退到逐次执行：{e}", "warning")
-        # 回退到逐次执行模式
-        for index, current_value in enumerate(iterator_values):
-            colored_print(f"\n  [{index + 1}/{len(iterator_values)}] 迭代值：{current_value}", "debug")
-            try:
-                result = _execute_single_iteration(
-                    loop_node,
-                    index,
-                    current_value,
-                    inner_nodes,
-                    iteration_nodes,
-                    all_nodes,
-                    external_input
-                )
+
+    if has_async:
+        # 包含异步节点，使用逐次执行模式
+        try:
+            all_results = _execute_loop_sequential(
+                loop_node,
+                iteration_nodes,
+                inner_nodes,
+                iterator_values,
+                all_nodes,
+                external_input
+            )
+        except Exception as e:
+            colored_print(f"  逐次执行失败：{e}", "error")
+            raise
+    else:
+        # 不包含异步节点，使用批量执行模式
+        try:
+            # 批量执行所有迭代
+            all_results = _execute_loop_batch(
+                loop_node,
+                iteration_nodes,
+                inner_nodes,
+                iterator_values,
+                all_nodes
+            )
+
+            # 更新结果显示和节点状态
+            for index, result in enumerate(all_results):
                 loop_node.add_result(result)
-                all_results.append(result)
                 loop_node.update_iterator_display(index)
-            except Exception as e2:
-                colored_print(f"    [ERROR] 迭代 {index + 1} 出错：{e2}", "error")
-                all_results.append(None)
-        
-        # 回退执行完成后，也设置节点状态
-        for node in iteration_nodes:
-            if node.result is not None:
+
+            # 批量执行完成后，将所有迭代节点设置为成功状态
+            for node in iteration_nodes:
                 node.set_status(SimpleNodeItem.STATUS_SUCCESS)
-            else:
-                node.set_status(SimpleNodeItem.STATUS_ERROR, "节点未执行")
-        
-        # 重置循环节点索引
-        loop_node._current_index = -1
-        loop_node.update()  # 触发重绘
+
+            # 设置循环节点为成功状态（重置迭代索引）
+            loop_node._current_index = -1
+            loop_node.update()  # 触发重绘
+
+        except Exception as e:
+            colored_print(f"  批量执行失败，回退到逐次执行：{e}", "warning")
+            # 回退到逐次执行模式
+            for index, current_value in enumerate(iterator_values):
+                colored_print(f"\n  [{index + 1}/{len(iterator_values)}] 迭代值：{current_value}", "debug")
+                try:
+                    result = _execute_single_iteration(
+                        loop_node,
+                        index,
+                        current_value,
+                        inner_nodes,
+                        iteration_nodes,
+                        all_nodes,
+                        external_input
+                    )
+                    loop_node.add_result(result)
+                    all_results.append(result)
+                    loop_node.update_iterator_display(index)
+                except Exception as e2:
+                    colored_print(f"    [ERROR] 迭代 {index + 1} 出错：{e2}", "error")
+                    all_results.append(None)
+
+            # 回退执行完成后，也设置节点状态
+            for node in iteration_nodes:
+                if node.result is not None:
+                    node.set_status(SimpleNodeItem.STATUS_SUCCESS)
+                else:
+                    node.set_status(SimpleNodeItem.STATUS_ERROR, "节点未执行")
+
+            # 重置循环节点索引
+            loop_node._current_index = -1
+            loop_node.update()  # 触发重绘
 
     colored_print(f"\n循环 '{loop_node.loop_name}' 执行完成，收集 {len(all_results)} 个结果", "info")
     colored_print(f"循环 '{loop_node.loop_name}' 汇总结果：{all_results}", "success")
