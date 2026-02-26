@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from ..graphics.simple_node_item import SimpleNodeItem
+from ..graphics.loop_node_item import LoopNodeItem
 
 
 class BatchGraphExecutor:
@@ -83,13 +84,19 @@ class BatchGraphExecutor:
         """
         if not nodes:
             return True, {}, "没有节点可执行"
-        
+
         # 拓扑排序
         sorted_nodes = self._topological_sort(nodes)
-        
+
         # 构建完整执行脚本
         script = self._build_execution_script(sorted_nodes)
-        
+
+        # 调试：写入日志文件
+        from ..graphics.loop_node_item import LoopNodeItem
+        with open('F:/Python Project/node-python/batch_debug.log', 'w', encoding='utf-8') as debug_f:
+            debug_f.write(f"=== 拓扑排序后的节点 ===\n{[n.name for n in sorted_nodes]}\n\n")
+            debug_f.write(f"=== 生成的脚本 ===\n{script}\n\n")
+
         # 写入临时文件
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.py', delete=False, encoding='utf-8'
@@ -123,15 +130,26 @@ class BatchGraphExecutor:
     
     def _topological_sort(self, nodes: List[SimpleNodeItem]) -> List[SimpleNodeItem]:
         """拓扑排序"""
+        from ..graphics.loop_node_item import LoopNodeItem
+
+        # 计算入度：只计算来自 nodes 列表内部的连接
         in_degree = {node: 0 for node in nodes}
+        nodes_set = set(nodes)  # 用于快速查找
+        
         for node in nodes:
             for port in node.input_ports:
                 if port.connections:
-                    in_degree[node] += 1
-        
+                    for conn in port.connections:
+                        if conn.start_port:
+                            source_node = conn.start_port.parent_node
+                            # 只计算来自 nodes 列表内部的连接
+                            if source_node in nodes_set:
+                                in_degree[node] += 1
+                                break  # 一个端口只计一次
+
         queue = [node for node in nodes if in_degree[node] == 0]
         sorted_nodes = []
-        
+
         while queue:
             node = queue.pop(0)
             sorted_nodes.append(node)
@@ -139,10 +157,12 @@ class BatchGraphExecutor:
                 for conn in port.connections:
                     if conn.end_port:
                         target_node = conn.end_port.parent_node
-                        in_degree[target_node] -= 1
-                        if in_degree[target_node] == 0:
-                            queue.append(target_node)
-        
+                        # 只处理在 nodes 列表中的目标节点
+                        if target_node in nodes_set:
+                            in_degree[target_node] -= 1
+                            if in_degree[target_node] == 0:
+                                queue.append(target_node)
+
         return sorted_nodes
     
     def _build_execution_script(
@@ -413,23 +433,70 @@ class BatchGraphExecutor:
         # 收集参数
         kwargs = {}
         extra_vars = []  # 额外变量定义（用于特殊节点）
+        
+        # 调试：记录节点信息
+        with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+            debug_f.write(f"\n[BuildCall] 节点 {node.name} (idx={node_index})\n")
+            debug_f.write(f"  all_nodes: {[getattr(n, 'name', 'Unknown') for n in all_nodes]}\n")
 
         for port in node.input_ports:
             param_name = port.port_name
+            
+            with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                debug_f.write(f"  处理端口 {param_name}:\n")
+                debug_f.write(f"    连接数：{len(port.connections)}\n")
 
             if port.connections:
-                # 如果有连接，使用连接节点的结果
+                # 如果有连接，检查源节点类型
                 conn = port.connections[0]
                 source_node = conn.start_port.parent_node
-                source_idx = all_nodes.index(source_node)
-                kwargs[param_name] = f"results.get('node_{source_idx}', {{}}).get('result')"
+                source_port_name = conn.start_port.port_name
+                
+                with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                    debug_f.write(f"    源节点：{getattr(source_node, 'name', getattr(source_node, 'loop_name', 'Unknown'))}:{source_port_name}\n")
+                    debug_f.write(f"    源节点在 all_nodes 中：{source_node in all_nodes}\n")
+
+                # 检查源节点是否是循环节点的"迭代值"端口
+                if isinstance(source_node, LoopNodeItem) and source_port_name == '迭代值':
+                    # 使用迭代值（从 param_values 中获取，由 loop_executor 提前设置）
+                    if hasattr(node, 'param_values') and param_name in node.param_values:
+                        value = node.param_values[param_name]
+                        kwargs[param_name] = repr(value)
+                        with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                            debug_f.write(f"    使用循环节点迭代值：{param_name}={value}\n")
+                    else:
+                        kwargs[param_name] = "None"
+                        with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                            debug_f.write(f"    警告：param_values 中缺少 {param_name}\n")
+                elif source_node in all_nodes:
+                    # 普通节点连接，使用连接节点的结果
+                    source_idx = all_nodes.index(source_node)
+                    kwargs[param_name] = f"results.get('node_{source_idx}', {{}}).get('result')"
+                    with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                        debug_f.write(f"    使用节点结果：{param_name}=results['node_{source_idx}']\n")
+                else:
+                    # 源节点不在 all_nodes 列表中，检查是否是常量节点
+                    # 如果是常量节点，直接使用其 param_values 中的值
+                    source_param_value = getattr(source_node, 'param_values', {}).get('value')
+                    if source_param_value is not None:
+                        kwargs[param_name] = repr(source_param_value)
+                        with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                            debug_f.write(f"    使用常量节点值：{param_name}={source_param_value}\n")
+                    else:
+                        kwargs[param_name] = "None"
+                        with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                            debug_f.write(f"    源节点不在 all_nodes 中，使用 None\n")
             else:
                 # 如果没有连接，使用预设的参数值
                 if hasattr(node, 'param_values') and param_name in node.param_values:
                     value = node.param_values[param_name]
                     kwargs[param_name] = repr(value)
+                    with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                        debug_f.write(f"    使用预设值：{param_name}={value}\n")
                 else:
                     kwargs[param_name] = "None"
+                    with open('F:/Python Project/node-python/batch_debug.log', 'a', encoding='utf-8') as debug_f:
+                        debug_f.write(f"    无连接且无预设值：{param_name}=None\n")
 
         # 特殊处理：文件选择器节点
         if node.name == "文件选择器":

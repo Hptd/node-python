@@ -193,12 +193,25 @@ class EmbeddedPythonExecutor:
         # 使用 json.dumps 来安全地转义代码字符串
         func_code_escaped = json.dumps(func_code, ensure_ascii=False)
         
+        # 再次转义 args_json，防止插入到脚本中时反斜杠被解释为转义字符
+        # json.dumps 会返回带引号的字符串，我们需要去掉外层引号
+        args_json_escaped = json.dumps(args_json, ensure_ascii=False)[1:-1]
+
         script = f'''# -*- coding: utf-8 -*-
 import sys
 import json
 import traceback
 import site
 import ast
+import io
+
+# 强制设置标准输出编码为 UTF-8，防止 Windows 控制台 GBK 编码导致中文乱码
+if sys.platform == 'win32':
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 # 确保 site-packages 在路径中
 for p in site.getsitepackages():
@@ -228,8 +241,8 @@ if __name__ == "__main__":
             print(json.dumps(error_output, ensure_ascii=False), file=sys.stderr)
             print("__ERROR_END__", file=sys.stderr)
             sys.exit(1)
-        
-        args = json.loads('{args_json}')
+
+        args = json.loads('{args_json_escaped}')
         result = {func_name}(**args)
         
         # 序列化结果

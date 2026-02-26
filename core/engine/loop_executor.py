@@ -187,6 +187,7 @@ def _execute_loop_sequential(
     """逐次执行循环 - 每次迭代独立执行，等待完成后再继续
 
     适用于包含异步操作（API 请求等）的场景，确保每次迭代都完全完成后再开始下一次。
+    使用批量执行器执行每次迭代，确保节点之间的依赖关系正确传递。
 
     Args:
         loop_node: 循环节点
@@ -200,30 +201,88 @@ def _execute_loop_sequential(
         结果列表
     """
     from utils.console_stream import colored_print
+    from .embedded_executor import get_executor as get_embedded_executor
+    from .batch_executor import BatchGraphExecutor
 
     colored_print(f"  检测到异步节点，使用逐次执行模式", "info")
 
     all_results = []
 
+    # 获取嵌入式执行器
+    executor = get_embedded_executor()
+
     for index, current_value in enumerate(iterator_values):
         colored_print(f"\n  [{index + 1}/{len(iterator_values)}] 迭代值：{current_value}", "debug")
         try:
-            result = _execute_single_iteration(
-                loop_node,
-                index,
-                current_value,
-                inner_nodes,
-                iteration_nodes,
-                all_nodes,
-                external_input
-            )
-            loop_node.add_result(result)
-            all_results.append(result)
+            # 合并容器模式和连接模式的节点
+            nodes_to_execute = list(set(inner_nodes + iteration_nodes))
+
+            if not nodes_to_execute:
+                # 没有节点时，直接返回迭代值
+                all_results.append(current_value)
+                loop_node.update_iterator_display(index)
+                continue
+
+            # 设置连接到迭代值端口的节点的参数值
+            for node in nodes_to_execute:
+                for port in node.input_ports:
+                    for conn in port.connections:
+                        if conn.start_port:
+                            source_node = conn.start_port.parent_node
+                            if isinstance(source_node, LoopNodeItem) and conn.start_port.port_name == '迭代值':
+                                # 将当前迭代值设置为节点的参数值
+                                node.param_values[port.port_name] = current_value
+                                with open('F:/Python Project/node-python/loop_debug.log', 'a', encoding='utf-8') as debug_f:
+                                    debug_f.write(f"  [DEBUG] 设置节点 {node.name} 的参数 {port.port_name} = {current_value}\n")
+                                break
+
+            # 使用批量执行器执行当前迭代
+            # 调试：记录传入的节点
+            with open('F:/Python Project/node-python/loop_debug.log', 'a', encoding='utf-8') as debug_f:
+                debug_f.write(f"\n=== 迭代 {index + 1} ===\n")
+                debug_f.write(f"nodes_to_execute 数量：{len(nodes_to_execute)}\n")
+                for i, node in enumerate(nodes_to_execute):
+                    node_name = getattr(node, 'loop_name', getattr(node, 'name', 'Unknown'))
+                    debug_f.write(f"  节点 {i}: {node_name} (type={type(node).__name__})\n")
+                    debug_f.write(f"    param_values: {node.param_values}\n")
+            
+            batch_executor = BatchGraphExecutor(executor.python_exe)
+            success, results, logs = batch_executor.execute_graph(nodes_to_execute)
+            
+            # 调试：记录执行结果
+            with open('F:/Python Project/node-python/loop_debug.log', 'a', encoding='utf-8') as debug_f:
+                debug_f.write(f"执行结果：success={success}, results={results}\n")
+
+            if success:
+                # 获取所有节点的结果（使用拓扑排序后的最后一个节点）
+                # 找到最大的节点索引
+                result_keys = [k for k in results.keys() if k.startswith('node_')]
+                if result_keys:
+                    # 获取最大的索引
+                    max_idx = max(int(k.split('_')[1]) for k in result_keys)
+                    result_key = f'node_{max_idx}'
+                    if results[result_key].get('success'):
+                        result = results[result_key].get('result')
+                        all_results.append(result)
+                        colored_print(f"    迭代 {index + 1} 完成，结果：{result}", "debug")
+                    else:
+                        all_results.append(None)
+                        colored_print(f"    迭代 {index + 1} 完成，无结果", "debug")
+                else:
+                    all_results.append(None)
+                    colored_print(f"    迭代 {index + 1} 完成，无结果", "debug")
+            else:
+                colored_print(f"    迭代 {index + 1} 失败：{logs}", "error")
+                all_results.append(None)
+
             loop_node.update_iterator_display(index)
-            colored_print(f"    迭代 {index + 1} 完成，结果：{result}", "debug")
+
         except Exception as e:
             colored_print(f"    [ERROR] 迭代 {index + 1} 出错：{e}", "error")
+            import traceback
+            colored_print(traceback.format_exc(), "error")
             all_results.append(None)
+            loop_node.update_iterator_display(index)
 
     # 逐次执行完成后，设置节点状态
     for node in iteration_nodes:
@@ -437,12 +496,20 @@ def _build_loop_execution_script(
                             params[port.port_name] = f'__RESULT_node_{source_idx}__'
                             has_connection = True
                             break
-            
+                        else:
+                            # 源节点不在执行列表中，检查是否是常量节点
+                            # 如果是常量节点，直接使用其 param_values 中的值
+                            source_param_value = source_node.param_values.get('value')
+                            if source_param_value is not None:
+                                params[port.port_name] = source_param_value
+                                has_connection = True
+                                break
+
             if not has_connection:
                 # 使用预设参数值
                 param_value = node.param_values.get(port.port_name)
                 params[port.port_name] = param_value
-        
+
         node_params[node_key] = {
             'func_name': next((nf['func_name'] for nf in node_functions if nf['node'] == node), None),
             'params': params
@@ -581,25 +648,25 @@ def _execute_script_in_embedded(executor, script: str, timeout: int = 30) -> Any
 
 def _get_nodes_connected_to_loop(loop_node: LoopNodeItem, all_nodes: List[SimpleNodeItem]) -> tuple:
     """获取连接到循环节点的节点
-    
-    不仅获取直接连接的节点，还包括这些节点的下游节点（节点链）
-    
+
+    不仅获取直接连接的节点，还包括这些节点的下游节点（节点链）以及上游依赖节点
+
     Returns:
         (iteration_nodes, result_nodes) - 迭代节点列表和结果节点列表
     """
     iteration_nodes = set()  # 连接到"迭代值"端口的节点及其下游
     result_nodes = set()     # 连接到"汇总结果"端口的节点及其下游
-    
+
     # 首先获取直接连接的节点
     direct_iteration_nodes = set()
     direct_result_nodes = set()
-    
+
     for node in all_nodes:
         if not isinstance(node, SimpleNodeItem):
             continue
         if node == loop_node:
             continue
-            
+
         for port in node.input_ports:
             for conn in port.connections:
                 if conn.start_port and conn.start_port.parent_node == loop_node:
@@ -607,13 +674,13 @@ def _get_nodes_connected_to_loop(loop_node: LoopNodeItem, all_nodes: List[Simple
                         direct_iteration_nodes.add(node)
                     elif conn.start_port.port_name == '汇总结果':
                         direct_result_nodes.add(node)
-    
+
     # 获取直接连接到迭代值的节点的下游节点（节点链）
     def get_downstream_nodes(start_nodes: Set[SimpleNodeItem], all_nodes: List[SimpleNodeItem]) -> Set[SimpleNodeItem]:
         """获取起始节点的所有下游节点"""
         result = set(start_nodes)
         queue = list(start_nodes)
-        
+
         while queue:
             current = queue.pop(0)
             # 查找以当前节点输出为输入的节点
@@ -624,20 +691,49 @@ def _get_nodes_connected_to_loop(loop_node: LoopNodeItem, all_nodes: List[Simple
                     continue
                 if node == loop_node:
                     continue
-                    
+
                 for port in node.input_ports:
                     for conn in port.connections:
                         if conn.start_port and conn.start_port.parent_node == current:
                             result.add(node)
                             queue.append(node)
                             break
-        
+
         return result
-    
-    # 获取完整的节点链
-    iteration_nodes = get_downstream_nodes(direct_iteration_nodes, all_nodes)
-    result_nodes = get_downstream_nodes(direct_result_nodes, all_nodes)
-    
+
+    # 获取节点的上游依赖节点（递归追溯所有输入依赖）
+    def get_upstream_dependencies(nodes: Set[SimpleNodeItem], all_nodes: List[SimpleNodeItem]) -> Set[SimpleNodeItem]:
+        """获取节点集合的所有上游依赖节点"""
+        result = set(nodes)
+        queue = list(nodes)
+        visited = set()
+
+        while queue:
+            current = queue.pop(0)
+            if id(current) in visited:
+                continue
+            visited.add(id(current))
+
+            # 查找当前节点的所有输入依赖
+            for port in current.input_ports:
+                for conn in port.connections:
+                    if conn.start_port:
+                        source_node = conn.start_port.parent_node
+                        if isinstance(source_node, SimpleNodeItem) and source_node != loop_node:
+                            if source_node not in result:
+                                result.add(source_node)
+                                queue.append(source_node)
+
+        return result
+
+    # 获取完整的节点链（下游）
+    downstream_iteration_nodes = get_downstream_nodes(direct_iteration_nodes, all_nodes)
+    downstream_result_nodes = get_downstream_nodes(direct_result_nodes, all_nodes)
+
+    # 向上游追溯所有依赖节点，确保节点链中的所有依赖都被包含
+    iteration_nodes = get_upstream_dependencies(downstream_iteration_nodes, all_nodes)
+    result_nodes = get_upstream_dependencies(downstream_result_nodes, all_nodes)
+
     return list(iteration_nodes), list(result_nodes)
 
 
