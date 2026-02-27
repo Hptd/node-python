@@ -254,17 +254,44 @@ def _execute_loop_sequential(
                 debug_f.write(f"执行结果：success={success}, results={results}\n")
 
             if success:
-                # 获取所有节点的结果（使用拓扑排序后的最后一个节点）
-                # 找到最大的节点索引
+                # 获取所有节点的结果
+                # 找到直接连接到循环节点"迭代值"端口的节点中，拓扑排序后的最后一个节点
                 result_keys = [k for k in results.keys() if k.startswith('node_')]
                 if result_keys:
-                    # 获取最大的索引
-                    max_idx = max(int(k.split('_')[1]) for k in result_keys)
-                    result_key = f'node_{max_idx}'
-                    if results[result_key].get('success'):
-                        result = results[result_key].get('result')
-                        all_results.append(result)
-                        colored_print(f"    迭代 {index + 1} 完成，结果：{result}", "debug")
+                    # 找到直接连接到迭代值的节点
+                    direct_output_nodes = set()
+                    for node in nodes_to_execute:
+                        for port in node.input_ports:
+                            for conn in port.connections:
+                                if conn.start_port and conn.start_port.parent_node == loop_node:
+                                    if conn.start_port.port_name == '迭代值':
+                                        direct_output_nodes.add(node)
+                                        break
+                    
+                    # 确定结果节点
+                    result_node_idx = None
+                    if direct_output_nodes:
+                        # 找到直接连接的节点中索引最大的
+                        for node in direct_output_nodes:
+                            try:
+                                idx = nodes_to_execute.index(node)
+                                if result_node_idx is None or idx > result_node_idx:
+                                    result_node_idx = idx
+                            except ValueError:
+                                pass
+                    else:
+                        # 没有直接连接的节点，使用最后一个节点
+                        result_node_idx = max(int(k.split('_')[1]) for k in result_keys)
+                    
+                    if result_node_idx is not None:
+                        result_key = f'node_{result_node_idx}'
+                        if result_key in results and results[result_key].get('success'):
+                            result = results[result_key].get('result')
+                            all_results.append(result)
+                            colored_print(f"    迭代 {index + 1} 完成，结果：{result}", "debug")
+                        else:
+                            all_results.append(None)
+                            colored_print(f"    迭代 {index + 1} 完成，无结果", "debug")
                     else:
                         all_results.append(None)
                         colored_print(f"    迭代 {index + 1} 完成，无结果", "debug")
@@ -314,19 +341,26 @@ def _execute_loop_batch(
         结果列表
     """
     from utils.console_stream import colored_print
-    
+
     # 合并容器模式和连接模式的节点
     nodes_to_execute = list(set(inner_nodes + iteration_nodes))
-    
+
     if not nodes_to_execute:
         # 没有节点时，直接返回迭代值
         colored_print(f"    循环内没有节点，直接返回迭代值", "debug")
         return list(iterator_values)
-    
+
+    # 对节点进行拓扑排序，确保依赖关系正确的节点先执行
+    try:
+        nodes_to_execute = topological_sort(nodes_to_execute)
+        colored_print(f"    节点执行顺序：{[n.name for n in nodes_to_execute]}", "debug")
+    except Exception as e:
+        colored_print(f"    拓扑排序失败：{e}", "warning")
+
     # 收集所有节点代码和导入
     all_imports = set()
     node_functions = []
-    
+
     for idx, node in enumerate(nodes_to_execute):
         if hasattr(node, 'is_custom_node') and node.is_custom_node:
             source_code = getattr(node.func, '_custom_source', None)
@@ -350,14 +384,15 @@ def _execute_loop_batch(
             'source_code': source_code,
             'index': idx
         })
-    
+
     # 构建批量执行脚本
     script = _build_loop_execution_script(
         node_functions,
         list(all_imports),
         iterator_values,
         nodes_to_execute,
-        all_nodes
+        all_nodes,
+        loop_node
     )
     
     # 使用嵌入式执行器执行
@@ -466,13 +501,37 @@ def _build_loop_execution_script(
     imports: List[str],
     iterator_values: List[Any],
     nodes_to_execute: List[SimpleNodeItem],
-    all_nodes: List[SimpleNodeItem]
+    all_nodes: List[SimpleNodeItem],
+    loop_node: LoopNodeItem = None
 ) -> str:
-    """构建循环批量执行脚本"""
+    """构建循环批量执行脚本
     
+    Args:
+        node_functions: 节点函数列表
+        imports: 导入模块列表
+        iterator_values: 迭代值列表
+        nodes_to_execute: 待执行的节点列表（已拓扑排序）
+        all_nodes: 所有节点列表
+        loop_node: 循环节点实例（用于识别结果节点）
+    
+    Returns:
+        生成的执行脚本
+    """
+
     # 序列化迭代值
     iterator_values_json = json.dumps(iterator_values, ensure_ascii=False, default=str)
-    
+
+    # 找到直接连接到循环节点"迭代值"输出端口的节点（这些是主要的结果节点）
+    direct_output_nodes = set()
+    if loop_node:
+        for node in nodes_to_execute:
+            for port in node.input_ports:
+                for conn in port.connections:
+                    if conn.start_port and conn.start_port.parent_node == loop_node:
+                        if conn.start_port.port_name == '迭代值':
+                            direct_output_nodes.add(node)
+                            break
+
     # 构建节点参数字典
     node_params = {}
     for node in nodes_to_execute:
@@ -572,12 +631,27 @@ def _build_loop_execution_script(
         script_parts.append(f"        logs.append(f'节点 {node.name} 执行出错：{{e}}')")
         script_parts.append(f"        results['{node_key}'] = None")
         script_parts.append("")
-    
-    # 收集结果（使用最后一个节点的输出）
+
+    # 收集结果
+    # 策略：找到直接连接到循环节点"迭代值"端口的节点中，拓扑排序后的最后一个节点
+    # 如果没有直接连接的节点，则使用拓扑排序后的最后一个节点
     if nodes_to_execute:
-        last_node_key = f"node_{len(nodes_to_execute) - 1}"
-        script_parts.append(f"    # 收集本次迭代结果")
-        script_parts.append(f"    all_results.append(results.get('{last_node_key}'))")
+        # 找到直接连接的节点在拓扑排序列表中的最大索引
+        result_node_key = None
+        if direct_output_nodes:
+            # 找到直接连接的节点中索引最大的
+            max_idx = -1
+            for node in direct_output_nodes:
+                idx = nodes_to_execute.index(node)
+                if idx > max_idx:
+                    max_idx = idx
+                    result_node_key = f"node_{idx}"
+        else:
+            # 没有直接连接的节点，使用最后一个节点
+            result_node_key = f"node_{len(nodes_to_execute) - 1}"
+        
+        script_parts.append(f"    # 收集本次迭代结果（使用节点：{result_node_key})")
+        script_parts.append(f"    all_results.append(results.get('{result_node_key}'))")
         script_parts.append("")
     
     # 输出结果
