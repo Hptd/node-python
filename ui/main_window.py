@@ -28,6 +28,7 @@ from ui.dialogs.ai_node_generator_dialog import AINodeGeneratorDialog
 from ui.dialogs.path_selector_dialog import PathSelectorDialog
 from ui.dialogs.package_manager_dialog import PackageManagerDialog
 from ui.dialogs.node_plugin_dialog import NodePluginExportDialog, NodePluginImportDialog
+from ui.dialogs.regex_generator_dialog import RegexGeneratorDialog
 from utils.console_stream import EmittingStream, get_message_format, detect_message_type
 from utils.theme_manager import theme_manager
 from config.settings import settings
@@ -1179,6 +1180,24 @@ class SimplePyFlowWindow(QMainWindow):
                 picker_btn.setObjectName("btn_primary_small")
                 picker_btn.clicked.connect(lambda: self._open_file_picker_dialog(node_item))
                 row_layout.addWidget(picker_btn)
+            # 特殊处理：正则提取节点的 pattern 参数
+            elif node_item.name == "正则提取" and param_name == "pattern":
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText("点击右侧按钮生成正则表达式...")
+                if current_value is not None:
+                    input_widget.setText(str(current_value))
+                input_widget.textChanged.connect(
+                    lambda text, name=param_name, node=node_item: self._on_param_value_changed(node, name, text)
+                )
+                row_layout.addWidget(input_widget)
+
+                # 添加正则生成器按钮
+                regex_btn = QPushButton("🪄")
+                regex_btn.setFixedWidth(30)
+                regex_btn.setToolTip("打开正则表达式生成器")
+                regex_btn.setStyleSheet("background: #9C27B0; color: white;")
+                regex_btn.clicked.connect(lambda: self._open_regex_generator(node_item))
+                row_layout.addWidget(regex_btn)
             elif param_type == bool or param_type == 'bool':
                 input_widget = QCheckBox()
                 input_widget.setChecked(bool(current_value) if current_value is not None else False)
@@ -1305,6 +1324,24 @@ class SimplePyFlowWindow(QMainWindow):
                 # 刷新参数面板
                 self._setup_param_inputs(self._current_node_item)
                 print(f"数据提取路径已设置为: {selected_path}")
+
+
+    def _open_regex_generator(self, node_item):
+        """打开正则表达式生成对话框，并将结果保存到节点参数"""
+        # 获取当前的 pattern 值
+        current_pattern = node_item.param_values.get("pattern", "")
+
+        # 打开正则表达式生成对话框
+        dialog = RegexGeneratorDialog(self, current_pattern)
+        if dialog.exec() == QDialog.Accepted:
+            selected_pattern = dialog.get_selected_regex()
+            if selected_pattern:
+                # 将结果保存到节点的 param_values 中
+                node_item.param_values["pattern"] = selected_pattern
+                # 刷新参数面板以显示结果
+                self._setup_param_inputs(node_item)
+                print(f"正则表达式已设置为：{selected_pattern}")
+
 
     def _open_file_picker_dialog(self, node_item):
         """打开文件选择对话框，并将结果保存到节点参数"""

@@ -7,7 +7,8 @@ from typing import Dict, Any
 from .base_nodes import (node_print, NODE_CODE_EXAMPLE,
                          const_bool, const_int, const_float, const_string,
                          const_list, const_dict, extract_data, type_test,
-                         file_picker, folder_picker, range_loop, list_loop)
+                         file_picker, folder_picker, range_loop, list_loop,
+                         regex_extract)
 
 # ==========================================
 # 节点库：分类 -> {节点名: 函数}
@@ -26,6 +27,7 @@ NODE_LIBRARY_CATEGORIZED = {
     },
     "提取": {
         "数据提取": extract_data,
+        "正则提取": regex_extract,
     },
     "选择器": {
         "文件选择器": file_picker,

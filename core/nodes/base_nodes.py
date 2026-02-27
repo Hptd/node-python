@@ -318,6 +318,75 @@ folder_picker._source = '''def folder_picker(folder_path: str = "") -> str:
 '''
 
 
+
+
+def regex_extract(input_text: str = "", pattern: str = "") -> str:
+    """
+    正则提取节点。
+    使用正则表达式从输入文本中提取匹配的内容。
+
+    参数:
+        input_text: 需要处理的输入文本
+        pattern: 正则表达式模式，用于匹配和提取内容
+
+    返回:
+        匹配到的内容，如果有多个匹配则用换行符连接；如果没有匹配则返回空字符串
+
+    示例:
+        输入文本："姓名：张三，年龄：25；姓名：李四，年龄：30"
+        正则模式："姓名：([\u4e00-\u9fa5]+)"
+        输出："张三\n李四"
+    """
+    import re
+    if not input_text or not pattern:
+        return ""
+    
+    try:
+        matches = re.findall(pattern, input_text)
+        if matches:
+            # 如果有捕获组，返回捕获组内容；否则返回整个匹配
+            if isinstance(matches[0], tuple):
+                # 多个捕获组，返回第一个捕获组
+                return chr(10).join(str(m[0]) if m else "" for m in matches)
+            return chr(10).join(str(m) for m in matches)
+        return ""
+    except Exception:
+        return ""
+
+regex_extract._source = '''def regex_extract(input_text: str = "", pattern: str = "") -> str:
+    """
+    正则提取节点。
+    使用正则表达式从输入文本中提取匹配的内容。
+
+    参数:
+        input_text: 需要处理的输入文本
+        pattern: 正则表达式模式，用于匹配和提取内容
+
+    返回:
+        匹配到的内容，如果有多个匹配则用换行符连接；如果没有匹配则返回空字符串
+
+    示例:
+        输入文本："姓名：张三，年龄：25；姓名：李四，年龄：30"
+        正则模式："姓名：([\\u4e00-\\u9fa5]+)"
+        输出："张三\\n 李四"
+    """
+    import re
+    if not input_text or not pattern:
+        return ""
+    
+    try:
+        matches = re.findall(pattern, input_text)
+        if matches:
+            # 如果有捕获组，返回捕获组内容；否则返回整个匹配
+            if isinstance(matches[0], tuple):
+                # 多个捕获组，返回第一个捕获组
+                return chr(10).join(str(m[0]) if m else "" for m in matches)
+            return chr(10).join(str(m) for m in matches)
+        return ""
+    except Exception:
+        return ""
+'''
+
 # ==========================================
 # 循环节点函数
 # 注意:循环节点是特殊节点,实际执行由 loop_executor 处理
