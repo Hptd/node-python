@@ -13,35 +13,35 @@ from config.settings import settings
 def setup_application() -> bool:
     """设置应用程序"""
     print("=" * 50)
-    print("启动中文节点python编辑器")
+    print("启动中文节点 python 编辑器")
     print("=" * 50)
-    
+
     # 加载设置
     settings.load()
-    
+
     # 加
     if settings.get("nodes.auto_load_custom_nodes", True):
         print("正在加载自定义节点...")
         load_custom_nodes()
     else:
         print("已禁用自动加载自定义节点")
-    
+
     return True
 
 
 def cleanup_application() -> None:
     """清理应用程序"""
     print("正在清理应用程序...")
-    
+
     # 保存自定义节点
     if settings.get("nodes.auto_save_custom_nodes", True):
         print("正在保存自定义节点...")
         save_custom_nodes()
-    
+
     # 保存设置
     print("正在保存设置...")
     settings.save()
-    
+
     print("应用程序清理完成")
     print("=" * 50)
 
@@ -51,36 +51,48 @@ def main() -> int:
     # 设置应用程序
     if not setup_application():
         return 1
-    
+
     # 注册退出处理函数
     atexit.register(cleanup_application)
-    
-    # 创建Qt应用
+
+    # 创建 Qt 应用
     app = QApplication(sys.argv)
     app.setApplicationName("简易中文节点编辑器")
     app.setOrganizationName("NodePython")
-    
+
+    # 设置应用程序图标（影响窗口左上角和任务栏图标）
+    from pathlib import Path
+    icon_path = Path(__file__).parent / "logo-img" / "node-python-logo-32x32.ico"
+    if icon_path.exists():
+        from PySide6.QtGui import QIcon
+        app.setWindowIcon(QIcon(str(icon_path)))
+
     # 创建主窗口
     window = SimplePyFlowWindow()
-    
+
+    # 设置窗口图标（确保窗口左上角也显示图标）
+    if icon_path.exists():
+        from PySide6.QtGui import QIcon
+        window.setWindowIcon(QIcon(str(icon_path)))
+
     # 应用窗口设置
     window_width = settings.get("window.width", 1000)
     window_height = settings.get("window.height", 700)
     window.resize(window_width, window_height)
-    
+
     window_x = settings.get("window.x")
     window_y = settings.get("window.y")
     if window_x is not None and window_y is not None:
         window.move(window_x, window_y)
-    
+
     if settings.get("window.maximized", False):
         window.showMaximized()
     else:
         window.show()
-    
+
     # 运行应用
     exit_code = app.exec()
-    
+
     # 保存窗口状态
     if not window.isMaximized():
         settings.set("window.width", window.width())
@@ -88,7 +100,7 @@ def main() -> int:
         settings.set("window.x", window.x())
         settings.set("window.y", window.y())
     settings.set("window.maximized", window.isMaximized())
-    
+
     return exit_code
 
 
