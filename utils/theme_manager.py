@@ -361,6 +361,54 @@ class ThemeManager(QObject):
             color: {t('input_text')};
             border: 1px solid {t('border')};
             padding: 4px;
+            padding-right: 28px;  /* 为右侧按钮预留空间，防止文本与按钮重叠 */
+        }}
+
+        QSpinBox::up-button, QDoubleSpinBox::up-button {{
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid {t('border')};
+            border-left: 1px solid {t('border')};
+            width: 24px;
+            margin: 2px;
+            margin-right: 2px;
+            border-radius: 3px;
+        }}
+
+        QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {{
+            background-color: rgba(255, 255, 255, 0.3);
+        }}
+
+        QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed {{
+            background-color: rgba(255, 255, 255, 0.4);
+        }}
+
+        QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
+            width: 10px;
+            height: 10px;
+        }}
+
+        QSpinBox::down-button, QDoubleSpinBox::down-button {{
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid {t('border')};
+            border-left: 1px solid {t('border')};
+            width: 24px;
+            margin: 2px;
+            margin-right: 2px;
+            margin-top: 1px;
+            border-radius: 3px;
+        }}
+
+        QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
+            background-color: rgba(255, 255, 255, 0.3);
+        }}
+
+        QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {{
+            background-color: rgba(255, 255, 255, 0.4);
+        }}
+
+        QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
+            width: 10px;
+            height: 10px;
         }}
 
         QCheckBox {{
