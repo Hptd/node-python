@@ -17,6 +17,7 @@ from core.graphics.simple_node_item import SimpleNodeItem
 from core.graphics.connection_item import ConnectionItem
 from core.graphics.port_item import PortItem
 from core.graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopNodeItem
+from core.graphics.multithread_node_item import MultithreadNodeItem
 from core.engine.graph_executor import execute_graph
 from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRARY,
                                       CUSTOM_CATEGORIES, add_node_to_library,
@@ -191,6 +192,10 @@ class SimplePyFlowWindow(QMainWindow):
                 node = ListLoopNodeItem(node_name, x=0, y=0)
                 self.scene.addItem(node)
                 print(f"已添加 List 循环节点：{node_name}")
+            elif node_name == "多线程处理":
+                node = MultithreadNodeItem(node_name, x=0, y=0)
+                self.scene.addItem(node)
+                print(f"已添加多线程处理节点：{node_name}")
             else:
                 node = SimpleNodeItem(node_name, func, x=0, y=0)
                 self.scene.addItem(node)
@@ -837,7 +842,9 @@ class SimplePyFlowWindow(QMainWindow):
         
         # 处理循环节点
         from core.graphics.loop_node_item import LoopNodeItem
-        if isinstance(item, LoopNodeItem):
+        if isinstance(item, MultithreadNodeItem):
+            self._setup_multithread_node_properties(item)
+        elif isinstance(item, LoopNodeItem):
             self._setup_loop_node_properties(item)
         elif hasattr(item, 'func'):  # SimpleNodeItem
             func = item.func
@@ -1073,6 +1080,71 @@ class SimplePyFlowWindow(QMainWindow):
             except Exception as e:
                 if hasattr(self, '_loop_list_preview_label'):
                     self._loop_list_preview_label.setText(f"错误：{e}")
+
+    def _setup_multithread_node_properties(self, node_item: MultithreadNodeItem):
+        """为多线程处理节点设置属性面板 UI"""
+        from PySide6.QtWidgets import (QGroupBox, QVBoxLayout, QLabel,
+                                       QSpinBox, QTextEdit, QComboBox)
+
+        self._current_node_item = node_item
+
+        doc = (
+            "多线程处理节点\n\n"
+            "使用多线程并发处理列表中的每个元素。\n\n"
+            "端口说明：\n"
+            "  输入列表：待处理的列表数据（JSON 格式）\n"
+            "  线程数量：并发线程数（默认 4）\n"
+            "  返回顺序：按输入顺序 / 按完成顺序\n"
+            "  迭代值：连接到需要并发处理的节点\n"
+            "  汇总结果：所有线程完成后的结果列表"
+        )
+        self.doc_text.setPlainText(doc)
+
+        # 清除旧控件
+        self._clear_param_inputs()
+
+        # ── 输入列表 ──
+        group = QGroupBox("多线程参数")
+        layout = QVBoxLayout()
+
+        layout.addWidget(QLabel("输入列表（JSON 格式）："))
+        self._mt_list_text = QTextEdit()
+        self._mt_list_text.setPlainText(node_item.input_list)
+        self._mt_list_text.setMaximumHeight(80)
+        self._mt_list_text.textChanged.connect(self._on_mt_list_changed)
+        layout.addWidget(self._mt_list_text)
+
+        # ── 线程数量 ──
+        layout.addWidget(QLabel("线程数量："))
+        self._mt_thread_spin = QSpinBox()
+        self._mt_thread_spin.setRange(1, 999999)
+        self._mt_thread_spin.setValue(node_item.thread_count)
+        self._mt_thread_spin.valueChanged.connect(self._on_mt_thread_count_changed)
+        layout.addWidget(self._mt_thread_spin)
+
+        # ── 返回顺序 ──
+        layout.addWidget(QLabel("返回顺序："))
+        self._mt_order_combo = QComboBox()
+        self._mt_order_combo.addItems(["按输入顺序", "按完成顺序"])
+        self._mt_order_combo.setEditable(False)
+        self._mt_order_combo.setCurrentText(node_item.return_order)
+        self._mt_order_combo.currentTextChanged.connect(self._on_mt_order_changed)
+        layout.addWidget(self._mt_order_combo)
+
+        group.setLayout(layout)
+        self.params_layout.addWidget(group)
+
+    def _on_mt_list_changed(self):
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, MultithreadNodeItem):
+            self._current_node_item.input_list = self._mt_list_text.toPlainText()
+
+    def _on_mt_thread_count_changed(self, value):
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, MultithreadNodeItem):
+            self._current_node_item.thread_count = value
+
+    def _on_mt_order_changed(self, text):
+        if hasattr(self, '_current_node_item') and isinstance(self._current_node_item, MultithreadNodeItem):
+            self._current_node_item.return_order = text
 
     def _clear_param_inputs(self):
         """清除参数输入控件"""
@@ -1394,19 +1466,40 @@ class SimplePyFlowWindow(QMainWindow):
         from core.graphics.loop_node_item import LoopNodeItem
         from core.engine.graph_executor import execute_graph_embedded
         from core.engine.loop_executor import execute_graph_with_loops
+        from core.engine.thread_executor import execute_multithreaded_node
 
-        # 获取所有节点
         all_items = self.scene.items()
         nodes = [item for item in all_items if isinstance(item, SimpleNodeItem)]
         loop_nodes = [item for item in all_items if isinstance(item, LoopNodeItem)]
+        thread_nodes = [item for item in all_items if isinstance(item, MultithreadNodeItem)]
 
-        # 检查是否有循环节点
-        if loop_nodes:
-            # 使用循环执行器
+        all_special = loop_nodes + thread_nodes
+
+        if thread_nodes and not loop_nodes:
+            # 只有多线程节点
+            all_nodes = list(nodes)
+            for tn in thread_nodes:
+                tn.reset_execution_state()
+            for node in nodes:
+                node.result = None
+                node.reset_status()
+            from utils.console_stream import colored_print
+            colored_print("=" * 50, "system")
+            colored_print(f"检测到 {len(thread_nodes)} 个多线程处理节点，使用多线程执行模式...", "info")
+            for tn in thread_nodes:
+                execute_multithreaded_node(tn, all_nodes)
+            colored_print("运行完成！", "success")
+            colored_print("=" * 50, "system")
+        elif loop_nodes:
+            # 有循环节点（可能同时有多线程节点，暂由循环执行器处理普通节点）
             print(f"检测到 {len(loop_nodes)} 个循环节点，使用循环执行模式...")
             execute_graph_with_loops(nodes, loop_nodes)
+            # 额外执行多线程节点
+            if thread_nodes:
+                all_nodes = list(nodes)
+                for tn in thread_nodes:
+                    execute_multithreaded_node(tn, all_nodes)
         else:
-            # 使用普通执行器
             execute_graph_embedded(nodes)
 
     def stop_graph(self):
@@ -1429,7 +1522,7 @@ class SimplePyFlowWindow(QMainWindow):
             filepath += '.json'
 
         # 收集图表数据
-        graph_data = {"nodes": [], "connections": [], "groups": [], "loop_nodes": []}
+        graph_data = {"nodes": [], "connections": [], "groups": [], "loop_nodes": [], "thread_nodes": []}
 
         # 导入 NodeGroup
         from core.graphics.node_group import NodeGroup
@@ -1493,6 +1586,19 @@ class SimplePyFlowWindow(QMainWindow):
                     loop_data["inner_nodes"].append(inner_node_data)
                     node_ids.add(inner_node.node_id)
                 graph_data["loop_nodes"].append(loop_data)
+            elif isinstance(item, MultithreadNodeItem):
+                # 保存多线程节点
+                thread_data = {
+                    "id": item.node_id,
+                    "type": "multithread",
+                    "node_name": item.node_name,
+                    "x": item.x(),
+                    "y": item.y(),
+                    "input_list": item.input_list,
+                    "thread_count": item.thread_count,
+                    "return_order": item.return_order,
+                }
+                graph_data["thread_nodes"].append(thread_data)
 
         # 保存到文件
         try:
@@ -1654,7 +1760,23 @@ class SimplePyFlowWindow(QMainWindow):
                             inner_node.param_values.update(param_values)
                         
                         node_map[inner_id] = inner_node
-            
+
+            # 加载多线程节点
+            for thread_data in graph_data.get("thread_nodes", []):
+                thread_id = thread_data.get("id")
+                node_name = thread_data.get("node_name", "多线程处理")
+                x = thread_data.get("x", 0) + offset_x
+                y = thread_data.get("y", 0) + offset_y
+                try:
+                    thread_node = MultithreadNodeItem(name=node_name, x=x, y=y)
+                    thread_node.input_list = thread_data.get("input_list", "[]")
+                    thread_node.thread_count = thread_data.get("thread_count", 4)
+                    thread_node.return_order = thread_data.get("return_order", "按输入顺序")
+                    self.scene.addItem(thread_node)
+                    node_map[thread_id] = thread_node
+                except Exception as e:
+                    print(f"警告：创建多线程节点失败 '{node_name}': {e}")
+
             # 创建连接
             for conn_data in graph_data.get("connections", []):
                 from_node_id = conn_data.get("from_node")
