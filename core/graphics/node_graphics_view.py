@@ -12,6 +12,7 @@ from .port_item import PortItem
 from .connection_item import ConnectionItem
 from .node_group import NodeGroup
 from .loop_node_item import LoopNodeItem
+from .multithread_node_item import MultithreadNodeItem
 from ..nodes.node_library import LOCAL_NODE_LIBRARY
 from utils.theme_manager import theme_manager
 from ui.widgets.node_search_menu import NodeSearchMenu
@@ -123,7 +124,7 @@ class NodeGraphicsView(QGraphicsView):
         if name in LOCAL_NODE_LIBRARY:
             scene_pos = self.mapToScene(event.position().toPoint())
             
-            # 检查是否是循环节点
+            # 检查是否是循环节点或多线程节点
             if name == "区间循环":
                 from .loop_node_item import RangeLoopNodeItem
                 node = RangeLoopNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
@@ -134,6 +135,10 @@ class NodeGraphicsView(QGraphicsView):
                 node = ListLoopNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
                 self.scene().addItem(node)
                 print(f"已添加 List 循环节点：{name}")
+            elif name == "多线程处理":
+                node = MultithreadNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
+                self.scene().addItem(node)
+                print(f"已添加多线程处理节点：{name}")
             else:
                 func = LOCAL_NODE_LIBRARY[name]
                 node = SimpleNodeItem(name, func, scene_pos.x(), scene_pos.y())
@@ -176,7 +181,7 @@ class NodeGraphicsView(QGraphicsView):
 
             # Ctrl + 左键单击：增选/取消选中节点
             if event.modifiers() == Qt.ControlModifier:
-                if isinstance(item, SimpleNodeItem):
+                if isinstance(item, (SimpleNodeItem, MultithreadNodeItem)):
                     # 切换该节点的选中状态
                     item.setSelected(not item.isSelected())
                     event.accept()
@@ -185,11 +190,11 @@ class NodeGraphicsView(QGraphicsView):
                     # Ctrl + 点击空白区域，不做任何操作（保持当前选择）
                     event.accept()
                     return
-            
+
             # 普通左键点击（不含 Ctrl）或 Shift+左键点击
-            # 检查是否是循环节点
+            # 检查是否是循环节点或多线程节点
             from .loop_node_item import LoopNodeItem
-            if not isinstance(item, (SimpleNodeItem, LoopNodeItem)):
+            if not isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem)):
                 # 点击空白区域：开始框选
                 self._selecting = True
                 self._select_start = scene_pos
@@ -229,7 +234,7 @@ class NodeGraphicsView(QGraphicsView):
             
             from .loop_node_item import LoopNodeItem
             for item in self.scene().items():
-                if isinstance(item, (SimpleNodeItem, LoopNodeItem)):
+                if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem)):
                     in_rect = rect.intersects(item.sceneBoundingRect())
                     if is_additive:
                         # 增选模式：框选范围内的节点选中，范围外的保持原有状态
@@ -286,11 +291,11 @@ class NodeGraphicsView(QGraphicsView):
         self.scene().addItem(self.temp_connection)
 
     def fit_all_nodes(self):
-        """自适应所有节点（包括普通节点和循环节点）"""
+        """自适应所有节点（包括普通节点、循环节点和多线程节点）"""
         from core.graphics.loop_node_item import LoopNodeItem
-        
-        # 获取所有节点（包括普通节点和循环节点）
-        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+
+        # 获取所有节点
+        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
         
         if not all_nodes:
             return
@@ -308,20 +313,21 @@ class NodeGraphicsView(QGraphicsView):
         """清空画布中的所有节点、连接和组"""
         from PySide6.QtWidgets import QMessageBox
 
-        # 获取所有节点和组（包括循环节点）
         nodes = [item for item in self.scene().items() if isinstance(item, SimpleNodeItem)]
         loop_nodes = [item for item in self.scene().items() if isinstance(item, LoopNodeItem)]
+        thread_nodes = [item for item in self.scene().items() if isinstance(item, MultithreadNodeItem)]
         groups = [item for item in self.scene().items() if isinstance(item, NodeGroup)]
 
-        if not nodes and not loop_nodes and not groups:
+        if not nodes and not loop_nodes and not thread_nodes and not groups:
             return
 
-        # 确认对话框
         msg_parts = []
         if nodes:
             msg_parts.append(f"{len(nodes)} 个节点")
         if loop_nodes:
             msg_parts.append(f"{len(loop_nodes)} 个循环节点")
+        if thread_nodes:
+            msg_parts.append(f"{len(thread_nodes)} 个多线程节点")
         if groups:
             msg_parts.append(f"{len(groups)} 个组")
         msg = "、".join(msg_parts)
@@ -335,19 +341,16 @@ class NodeGraphicsView(QGraphicsView):
         )
 
         if reply == QMessageBox.Yes:
-            # 删除所有节点（包括连接）
             for node in nodes:
                 self.delete_node(node)
-
-            # 删除所有循环节点
             for loop_node in loop_nodes:
                 self.delete_node(loop_node)
-
-            # 删除所有组
+            for thread_node in thread_nodes:
+                self.delete_node(thread_node)
             for group in groups:
                 group.disband()
 
-            print(f"已清空画布，删除了 {len(nodes)} 个节点，{len(loop_nodes)} 个循环节点，{len(groups)} 个组")
+            print(f"已清空画布，删除了 {len(nodes)} 个节点，{len(loop_nodes)} 个循环节点，{len(thread_nodes)} 个多线程节点，{len(groups)} 个组")
 
     def keyPressEvent(self, event):
         # Ctrl+G 打组快捷键
@@ -388,9 +391,22 @@ class NodeGraphicsView(QGraphicsView):
             item = item.parent_node
 
         from .loop_node_item import LoopNodeItem
-        
-        selected_nodes = [i for i in self.scene().selectedItems() if isinstance(i, (SimpleNodeItem, LoopNodeItem))]
+
+        selected_nodes = [i for i in self.scene().selectedItems() if isinstance(i, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
         selected_loop_nodes = [i for i in selected_nodes if isinstance(i, LoopNodeItem)]
+
+        # 如果点击的是多线程节点
+        if isinstance(item, MultithreadNodeItem):
+            menu = QMenu(self)
+            if len(selected_nodes) > 1:
+                delete_action = menu.addAction(f"删除 ({len(selected_nodes)}个节点)")
+            else:
+                delete_action = menu.addAction("删除")
+            action = menu.exec(event.globalPos())
+            if action == delete_action:
+                for node in (selected_nodes if len(selected_nodes) > 1 and item.isSelected() else [item]):
+                    self.delete_node(node)
+            return
 
         # 如果点击的是循环节点
         if isinstance(item, LoopNodeItem):
@@ -438,9 +454,9 @@ class NodeGraphicsView(QGraphicsView):
         if isinstance(item, SimpleNodeItem):
             menu = QMenu(self)
 
-            # 获取场景中所有节点（包括普通节点和循环节点）
+            # 获取场景中所有节点（包括普通节点、循环节点和多线程节点）
             from core.graphics.loop_node_item import LoopNodeItem
-            all_nodes = [i for i in self.scene().items() if isinstance(i, (SimpleNodeItem, LoopNodeItem))]
+            all_nodes = [i for i in self.scene().items() if isinstance(i, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
 
             # 判断是否可以反选：选中了节点，且不是全部节点
             can_invert = len(selected_nodes) > 0 and len(selected_nodes) < len(all_nodes)
@@ -564,12 +580,27 @@ class NodeGraphicsView(QGraphicsView):
         
         # 连接节点选择信号
         def on_node_selected(name):
-            func = LOCAL_NODE_LIBRARY[name]
-            node = SimpleNodeItem(name, func, scene_pos.x(), scene_pos.y())
-            self.scene().addItem(node)
-            node.setup_ports()
-            self.node_added.emit(name)
-            print(f"已添加节点: {name}")
+            if name == "多线程处理":
+                node = MultithreadNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
+                self.scene().addItem(node)
+                print(f"已添加多线程处理节点: {name}")
+            elif name == "区间循环":
+                from .loop_node_item import RangeLoopNodeItem
+                node = RangeLoopNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
+                self.scene().addItem(node)
+                print(f"已添加区间循环节点: {name}")
+            elif name == "List 循环":
+                from .loop_node_item import ListLoopNodeItem
+                node = ListLoopNodeItem(name, x=scene_pos.x(), y=scene_pos.y())
+                self.scene().addItem(node)
+                print(f"已添加 List 循环节点: {name}")
+            else:
+                func = LOCAL_NODE_LIBRARY[name]
+                node = SimpleNodeItem(name, func, scene_pos.x(), scene_pos.y())
+                self.scene().addItem(node)
+                node.setup_ports()
+                self.node_added.emit(name)
+                print(f"已添加节点: {name}")
             
         menu.node_selected.connect(on_node_selected)
         
@@ -577,42 +608,34 @@ class NodeGraphicsView(QGraphicsView):
         menu.show_at(global_pos)
 
     def invert_selection(self):
-        """反选节点：选中未选中的节点，取消已选中节点的选中状态（支持普通节点和循环节点）"""
+        """反选节点（支持普通节点、循环节点和多线程节点）"""
         from core.graphics.loop_node_item import LoopNodeItem
-        
-        # 获取所有节点（包括普通节点和循环节点）
-        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
         for node in all_nodes:
             node.setSelected(not node.isSelected())
-        selected_count = len([n for n in all_nodes if n.isSelected()])
-        print(f"反选完成，当前选中 {selected_count} 个节点")
 
     def delete_selected_nodes(self):
-        """删除选中的节点（支持普通节点和循环节点）"""
+        """删除选中的节点（支持普通节点、循环节点和多线程节点）"""
         selected_items = self.scene().selectedItems()
-        # 先删除普通节点
-        selected = [item for item in selected_items if isinstance(item, SimpleNodeItem)]
-        for node in selected:
+        for node in [item for item in selected_items if isinstance(item, SimpleNodeItem)]:
             self.delete_node(node)
-        # 删除循环节点
-        selected_loops = [item for item in selected_items if isinstance(item, LoopNodeItem)]
-        for loop_node in selected_loops:
-            self.delete_node(loop_node)
+        for node in [item for item in selected_items if isinstance(item, LoopNodeItem)]:
+            self.delete_node(node)
+        for node in [item for item in selected_items if isinstance(item, MultithreadNodeItem)]:
+            self.delete_node(node)
 
     def delete_node(self, node):
-        """删除节点（支持普通节点和循环节点）"""
+        """删除节点（支持普通节点、循环节点和多线程节点）"""
         # 删除节点的所有连接
         if hasattr(node, 'remove_all_connections'):
-            # 普通节点
             node.remove_all_connections()
-        elif isinstance(node, LoopNodeItem):
-            # 循环节点：删除所有端口的连接
+        elif isinstance(node, (LoopNodeItem, MultithreadNodeItem)):
             for port in node.input_ports + node.output_ports:
                 for conn in list(port.connections):
                     conn.remove_connection()
-            # 删除循环内部的节点
-            for inner_node in list(node.nodes):
-                node.remove_node(inner_node)
+            if isinstance(node, LoopNodeItem):
+                for inner_node in list(node.nodes):
+                    node.remove_node(inner_node)
 
         self.scene().removeItem(node)
 
@@ -621,9 +644,9 @@ class NodeGraphicsView(QGraphicsView):
         print(f"已删除节点：{node_name}")
 
     def duplicate_selected_nodes(self):
-        """复制并粘贴选中的节点（支持普通节点和循环节点）"""
+        """复制并粘贴选中的节点（支持普通节点、循环节点和多线程节点）"""
         selected_items = self.scene().selectedItems()
-        selected_nodes = [item for item in selected_items if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+        selected_nodes = [item for item in selected_items if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
 
         if not selected_nodes:
             print("请先选择要复制的节点")
@@ -641,6 +664,9 @@ class NodeGraphicsView(QGraphicsView):
             elif isinstance(node, LoopNodeItem):
                 new_node = self._duplicate_loop_node(node, offset_x, offset_y)
                 node_pairs.append((node, new_node))
+            elif isinstance(node, MultithreadNodeItem):
+                new_node = self._duplicate_multithread_node(node, offset_x, offset_y)
+                node_pairs.append((node, new_node))
 
         # 复制选中节点之间的连接线
         self._duplicate_connections_between_nodes(node_pairs)
@@ -655,7 +681,7 @@ class NodeGraphicsView(QGraphicsView):
     def _calculate_duplicate_offset(self, selected_nodes):
         """计算复制节点的偏移量（按照增量加载的位置处理方式）"""
         # 获取当前画布中所有节点的边界
-        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+        all_nodes = [item for item in self.scene().items() if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
 
         if not all_nodes:
             return 50, 50  # 默认偏移
@@ -724,6 +750,15 @@ class NodeGraphicsView(QGraphicsView):
 
         return new_node
 
+    def _duplicate_multithread_node(self, node, offset_x, offset_y):
+        """复制多线程节点"""
+        new_node = MultithreadNodeItem(node.node_name, x=node.x() + offset_x, y=node.y() + offset_y)
+        self.scene().addItem(new_node)
+        new_node.input_list = node.input_list
+        new_node.thread_count = node.thread_count
+        new_node.return_order = node.return_order
+        return new_node
+
     def _duplicate_connections_between_nodes(self, node_pairs):
         """复制选中节点之间的连接线
 
@@ -739,9 +774,7 @@ class NodeGraphicsView(QGraphicsView):
         for old_source_node, new_source_node in node_pairs:
             # 获取原节点的所有输出端口连接
             output_ports = []
-            if isinstance(old_source_node, SimpleNodeItem):
-                output_ports = old_source_node.output_ports
-            elif isinstance(old_source_node, LoopNodeItem):
+            if isinstance(old_source_node, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem)):
                 output_ports = old_source_node.output_ports
 
             for out_port in output_ports:
@@ -757,12 +790,7 @@ class NodeGraphicsView(QGraphicsView):
                         new_in_port = None
 
                         # 查找源端口（在新源节点中）
-                        if isinstance(new_source_node, SimpleNodeItem):
-                            for port in new_source_node.output_ports:
-                                if port.port_name == out_port.port_name:
-                                    new_out_port = port
-                                    break
-                        elif isinstance(new_source_node, LoopNodeItem):
+                        if hasattr(new_source_node, 'output_ports'):
                             for port in new_source_node.output_ports:
                                 if port.port_name == out_port.port_name:
                                     new_out_port = port
@@ -770,12 +798,7 @@ class NodeGraphicsView(QGraphicsView):
 
                         # 查找目标端口（在新目标节点中）
                         old_in_port = conn.end_port
-                        if isinstance(new_target_node, SimpleNodeItem):
-                            for port in new_target_node.input_ports:
-                                if port.port_name == old_in_port.port_name:
-                                    new_in_port = port
-                                    break
-                        elif isinstance(new_target_node, LoopNodeItem):
+                        if hasattr(new_target_node, 'input_ports'):
                             for port in new_target_node.input_ports:
                                 if port.port_name == old_in_port.port_name:
                                     new_in_port = port
@@ -791,7 +814,7 @@ class NodeGraphicsView(QGraphicsView):
         """将选中的节点打组（包括普通节点和循环节点）"""
         selected_items = self.scene().selectedItems()
         # 同时支持普通节点和循环节点
-        selected_nodes = [item for item in selected_items if isinstance(item, (SimpleNodeItem, LoopNodeItem))]
+        selected_nodes = [item for item in selected_items if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
 
         if len(selected_nodes) < 1:
             print("请至少选择一个节点进行打组")
