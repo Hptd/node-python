@@ -113,12 +113,30 @@ def _extract_func_name(code: str) -> str:
 
 _BUILTIN_CODE = {
     "打印节点": 'def node_print(data):\n    print(data)\n    return data',
-    "字符串": 'def const_string(value: str = "") -> str:\n    return value',
-    "整数": 'def const_int(value: int = 0) -> int:\n    return value',
-    "浮点数": 'def const_float(value: float = 0.0) -> float:\n    return value',
-    "布尔": 'def const_bool(value: bool = True) -> bool:\n    return value',
-    "列表": 'def const_list(value: list = None) -> list:\n    return value if value is not None else []',
-    "字典": 'def const_dict(value: dict = None) -> dict:\n    return value if value is not None else {}',
+    "字符串": '''def const_string(value= "") -> str:
+    """字符串常量节点。将任意输入转换为字符串值。"""
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_string(value)''',
+    "整数": '''def const_int(value= 0) -> int:
+    """整数常量节点。将任意输入转换为整数值。"""
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_int(value)''',
+    "浮点数": '''def const_float(value= 0.0) -> float:
+    """浮点数常量节点。将任意输入转换为浮点数值。"""
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_float(value)''',
+    "布尔": '''def const_bool(value= True) -> bool:
+    """布尔常量节点。将任意输入转换为布尔值。"""
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_bool(value)''',
+    "列表": '''def const_list(value= None) -> list:
+    """列表常量节点。将任意输入转换为列表值。"""
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_list(value)''',
+    "字典": '''def const_dict(value= None) -> dict:
+    """字典常量节点。将任意输入转换为字典值。"""
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_dict(value)''',
 }
 
 
@@ -223,7 +241,22 @@ def _build_iteration_script(
 
     iter_json = json.dumps(iterator_value, ensure_ascii=False, default=str)
 
-    lines = ["# -*- coding: utf-8 -*-", "import sys, json"]
+    lines = ["# -*- coding: utf-8 -*-", "import sys, json, os"]
+    
+    # 添加项目根目录到 sys.path（以便导入 utils 等模块）
+    lines.append("# 添加项目根目录到路径")
+    lines.append("python_exe_dir = os.path.dirname(os.path.abspath(sys.executable))")
+    lines.append("possible_paths = [")
+    lines.append("    os.environ.get('NODE_PYTHON_PROJECT_DIR', ''),")
+    lines.append("    python_exe_dir,")
+    lines.append("    os.path.dirname(python_exe_dir),")
+    lines.append("]")
+    lines.append("for path in possible_paths:")
+    lines.append("    if path and os.path.isdir(path) and os.path.isdir(os.path.join(path, 'utils')):")
+    lines.append("        sys.path.insert(0, path)")
+    lines.append("        break")
+    lines.append("")
+    
     for imp in sorted(all_imports):
         lines.append(f"import {imp}")
     lines.append("")

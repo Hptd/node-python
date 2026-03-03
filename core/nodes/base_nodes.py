@@ -18,113 +18,189 @@ node_print._source = '''def node_print(data):
 '''
 
 
-def const_bool(value: bool = True) -> bool:
+def const_bool(value= True) -> bool:
     """
     布尔常量节点。
-    返回一个布尔值。
+    将任意输入转换为布尔值。
+
+    转换规则:
+    - 字符串 "false", "0", "no", "off" (不区分大小写) → False
+    - 空值 (None, "", [], {}) → False
+    - 数字 0, 0.0 → False
+    - 其他情况 → True
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_bool(value)
 
 
-const_bool._source = '''def const_bool(value: bool = True) -> bool:
+const_bool._source = '''def const_bool(value= True) -> bool:
     """
     布尔常量节点。
-    返回一个布尔值。
+    将任意输入转换为布尔值。
+
+    转换规则:
+    - 字符串 "false", "0", "no", "off" (不区分大小写) → False
+    - 空值 (None, "", [], {}) → False
+    - 数字 0, 0.0 → False
+    - 其他情况 → True
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_bool(value)
 '''
 
 
-def const_int(value: int = 0) -> int:
+def const_int(value= 0) -> int:
     """
     整数常量节点。
-    返回一个整数值。
+    将任意输入转换为整数值。
+
+    转换规则:
+    - 数字类型 (int/float) → 截断取整
+    - 布尔类型 → True=1, False=0
+    - 字符串 → 尝试解析为数字，失败返回 0
+    - 其他类型 → 返回 0
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_int(value)
 
 
-const_int._source = '''def const_int(value: int = 0) -> int:
+const_int._source = '''def const_int(value= 0) -> int:
     """
     整数常量节点。
-    返回一个整数值。
+    将任意输入转换为整数值。
+
+    转换规则:
+    - 数字类型 (int/float) → 截断取整
+    - 布尔类型 → True=1, False=0
+    - 字符串 → 尝试解析为数字，失败返回 0
+    - 其他类型 → 返回 0
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_int(value)
 '''
 
 
-def const_float(value: float = 0.0) -> float:
+def const_float(value= 0.0) -> float:
     """
     浮点数常量节点。
-    返回一个浮点数值。
+    将任意输入转换为浮点数值。
+
+    转换规则:
+    - 数字类型 (int/float) → 直接转换
+    - 布尔类型 → True=1.0, False=0.0
+    - 字符串 → 尝试解析为 float，失败返回 0.0
+    - 其他类型 → 返回 0.0
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_float(value)
 
 
-const_float._source = '''def const_float(value: float = 0.0) -> float:
+const_float._source = '''def const_float(value= 0.0) -> float:
     """
     浮点数常量节点。
-    返回一个浮点数值。
+    将任意输入转换为浮点数值。
+
+    转换规则:
+    - 数字类型 (int/float) → 直接转换
+    - 布尔类型 → True=1.0, False=0.0
+    - 字符串 → 尝试解析为 float，失败返回 0.0
+    - 其他类型 → 返回 0.0
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_float(value)
 '''
 
 
-def const_string(value: str = "") -> str:
+def const_string(value= "") -> str:
     """
     字符串常量节点。
-    返回一个字符串值。
+    将任意输入转换为字符串值。
+
+    转换规则:
+    - None → 空字符串
+    - 其他类型 → 使用 str() 转换
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_string(value)
 
 
-const_string._source = '''def const_string(value: str = "") -> str:
+const_string._source = '''def const_string(value= "") -> str:
     """
     字符串常量节点。
-    返回一个字符串值。
+    将任意输入转换为字符串值。
+
+    转换规则:
+    - None → 空字符串
+    - 其他类型 → 使用 str() 转换
     """
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_string(value)
 '''
 
 
-def const_list(value: list = None) -> list:
+def const_list(value= None) -> list:
     """
     列表常量节点。
-    返回一个列表值。
+    将任意输入转换为列表值。
+
+    转换规则:
+    - None → 空列表
+    - list/tuple/set → 直接转换
+    - dict → 转为键值对列表
+    - 字符串 → 尝试 JSON 解析，失败则逗号分割，再失败则单元素列表
+    - 其他标量类型 → 包装为单元素列表
     """
-    if value is None:
-        return []
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_list(value)
 
 
-const_list._source = '''def const_list(value: list = None) -> list:
+const_list._source = '''def const_list(value= None) -> list:
     """
     列表常量节点。
-    返回一个列表值。
+    将任意输入转换为列表值。
+
+    转换规则:
+    - None → 空列表
+    - list/tuple/set → 直接转换
+    - dict → 转为键值对列表
+    - 字符串 → 尝试 JSON 解析，失败则逗号分割，再失败则单元素列表
+    - 其他标量类型 → 包装为单元素列表
     """
-    if value is None:
-        return []
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_list(value)
 '''
 
 
-def const_dict(value: dict = None) -> dict:
+def const_dict(value= None) -> dict:
     """
     字典常量节点。
-    返回一个字典值。
+    将任意输入转换为字典值。
+
+    转换规则:
+    - None → 空字典
+    - dict → 原样返回
+    - 字符串 → 尝试 JSON 解析，失败则尝试键值对格式，再失败返回空字典
+    - 列表 → 如果是键值对列表则转换，否则转为索引字典
+    - 其他类型 → 返回空字典
     """
-    if value is None:
-        return {}
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_dict(value)
 
 
-const_dict._source = '''def const_dict(value: dict = None) -> dict:
+const_dict._source = '''def const_dict(value= None) -> dict:
     """
     字典常量节点。
-    返回一个字典值。
+    将任意输入转换为字典值。
+
+    转换规则:
+    - None → 空字典
+    - dict → 原样返回
+    - 字符串 → 尝试 JSON 解析，失败则尝试键值对格式，再失败返回空字典
+    - 列表 → 如果是键值对列表则转换，否则转为索引字典
+    - 其他类型 → 返回空字典
     """
-    if value is None:
-        return {}
-    return value
+    from utils.type_converter import TypeConverter
+    return TypeConverter.to_dict(value)
 '''
 
 def extract_data(data: dict, path: str = "") -> any:
