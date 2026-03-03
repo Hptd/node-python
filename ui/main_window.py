@@ -2051,3 +2051,17 @@ class SimplePyFlowWindow(QMainWindow):
                 item.update_theme()
         # 刷新视图
         self.scene.update()
+
+    def closeEvent(self, event):
+        """窗口关闭事件处理"""
+        # 断开 scene 的信号连接，防止访问已销毁的 C++ 对象
+        try:
+            self.scene.selectionChanged.disconnect(self.on_selection_changed)
+        except (RuntimeError, TypeError):
+            pass  # 已经断开则忽略
+        
+        # 恢复标准输出
+        sys.stdout = sys.__stdout__
+        
+        # 调用父类方法
+        super().closeEvent(event)
