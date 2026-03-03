@@ -4,6 +4,7 @@ import sys
 import json
 import inspect
 import os
+from enum import Enum
 from PySide6.QtWidgets import (QMainWindow, QGraphicsScene, QDockWidget, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QTextEdit, QToolBar, QPushButton,
                                QInputDialog, QMessageBox, QApplication, QTreeWidgetItem,
@@ -35,6 +36,13 @@ from utils.theme_manager import theme_manager
 from config.settings import settings
 
 
+class PropertyPanelMode(Enum):
+    """属性面板显示模式"""
+    EMPTY = 0          # 无选中
+    CANVAS_NODE = 1    # 画布节点选中
+    LIBRARY_NODE = 2   # 本地节点库节点选中
+
+
 class SimplePyFlowWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -48,6 +56,11 @@ class SimplePyFlowWindow(QMainWindow):
         self.setCentralWidget(self.view)
 
         self.scene.selectionChanged.connect(self.on_selection_changed)
+
+        # 属性面板状态管理
+        self._property_panel_mode = PropertyPanelMode.EMPTY
+        self._current_library_node_name = None  # 当前选中的本地节点库节点名
+        self._current_node_item = None  # 当前选中的画布节点引用
 
         self.setup_toolbar()
         self.setup_left_dock()
@@ -156,6 +169,8 @@ class SimplePyFlowWindow(QMainWindow):
         # 连接右键菜单信号
         self.node_tree.node_right_clicked.connect(self._on_node_right_click)
         self.node_tree.node_delete_requested.connect(self._on_node_delete_requested)
+        # 连接单击选中信号
+        self.node_tree.library_node_selected.connect(self._on_library_node_clicked)
         layout.addWidget(self.node_tree)
 
         dock.setWidget(container)
@@ -233,17 +248,20 @@ class SimplePyFlowWindow(QMainWindow):
 
     def _on_node_right_click(self, node_name, global_pos):
         """处理节点树右键点击事件"""
+        # 右键时同步选中该节点，属性面板显示该节点信息
+        self._on_library_node_clicked(node_name)
+        
         # 创建右键菜单
         menu = QMenu(self)
-        
+
         edit_action = QAction("✏️ 编辑节点", self)
         edit_action.triggered.connect(lambda: self._edit_custom_node(node_name))
         menu.addAction(edit_action)
-        
+
         delete_action = QAction("🗑️ 删除节点", self)
         delete_action.triggered.connect(lambda: self._on_node_delete_requested(node_name))
         menu.addAction(delete_action)
-        
+
         menu.exec(global_pos)
 
     def _edit_custom_node(self, node_name):
@@ -388,6 +406,172 @@ class SimplePyFlowWindow(QMainWindow):
                 print(f"节点 '{node_name}' 已从节点库中删除。")
             else:
                 QMessageBox.warning(self, "删除失败", f"无法删除节点 '{node_name}'。")
+
+    def _on_library_node_clicked(self, node_name: str):
+        """处理本地节点库节点单击事件"""
+        # 清除画布节点选中状态（实现互斥）
+        for sel_item in self.scene.selectedItems():
+            sel_item.setSelected(False)
+
+        # 设置状态
+        self._property_panel_mode = PropertyPanelMode.LIBRARY_NODE
+        self._current_library_node_name = node_name
+
+        # 显示属性
+        self._setup_library_node_properties(node_name)
+
+    def _setup_library_node_properties(self, node_name: str):
+        """为本地节点库中的节点显示属性面板"""
+        from PySide6.QtWidgets import QLabel
+
+        # 特殊节点类型处理：循环节点
+        if node_name == "区间循环":
+            self._setup_loop_node_library_properties("range")
+            return
+        elif node_name == "List 循环":
+            self._setup_loop_node_library_properties("list")
+            return
+        elif node_name == "多线程处理":
+            self._setup_multithread_node_library_properties()
+            return
+
+        # 获取节点函数
+        func = LOCAL_NODE_LIBRARY.get(node_name)
+        if not func:
+            self._clear_property_panel()
+            return
+
+        # 获取文档注释
+        doc = inspect.getdoc(func) or "该节点无注释。"
+        self.doc_text.setText(doc)
+
+        # 获取源代码
+        if hasattr(func, '_source'):
+            source = func._source
+        elif hasattr(func, '_custom_source'):
+            source = func._custom_source
+        else:
+            try:
+                source = inspect.getsource(func)
+            except Exception:
+                source = "无法获取源代码。"
+        self.source_text.setText(source)
+
+        # 隐藏错误信息（本地节点库节点不显示错误）
+        self.error_label.setVisible(False)
+        self.error_text.setVisible(False)
+
+        # 显示参数类型信息（只读，不可编辑）
+        self._setup_library_node_param_display(func)
+
+    def _setup_loop_node_library_properties(self, loop_type: str):
+        """为循环节点显示库属性（只读预览）"""
+        if loop_type == "range":
+            doc = """区间循环节点（Range Loop）。
+按照指定的整数范围和步长进行循环迭代，每次迭代输出一个整数值。
+
+端口说明:
+    输入端口（左侧）:
+        • 最小值：循环起始值（包含），int 类型
+        • 最大值：循环结束值（不包含），int 类型
+        • 步长：每次迭代的增量，int 类型
+
+    输出端口（右侧）:
+        • 迭代值：当前循环的整数值，每次迭代更新
+        • 汇总结果：循环完成后输出所有迭代结果的列表"""
+        else:
+            doc = """List 循环节点（List Loop）。
+遍历列表中的每个元素进行循环迭代，每次迭代输出一个列表元素。
+
+端口说明:
+    输入端口（左侧）:
+        • 列表数据：要迭代的列表数据，支持 JSON 格式字符串或 list 类型
+
+    输出端口（右侧）:
+        • 迭代值：当前循环的列表元素，每次迭代更新
+        • 汇总结果：循环完成后输出所有迭代结果的列表"""
+
+        self.doc_text.setPlainText(doc)
+        self.source_text.setPlainText("循环节点是内置功能节点，不支持查看源代码。")
+
+        # 显示只读参数信息
+        self._clear_param_inputs()
+
+        self.error_label.setVisible(False)
+        self.error_text.setVisible(False)
+
+    def _setup_multithread_node_library_properties(self):
+        """为多线程处理节点显示库属性（只读预览）"""
+        doc = """多线程处理节点
+
+使用多线程并发处理列表中的每个元素。
+
+端口说明：
+  输入列表：待处理的列表数据（JSON 格式）
+  线程数量：并发线程数（默认 4）
+  返回顺序：按输入顺序 / 按完成顺序
+  迭代值：连接到需要并发处理的节点
+  汇总结果：所有线程完成后的结果列表"""
+
+        self.doc_text.setPlainText(doc)
+        self.source_text.setPlainText("多线程处理节点是内置功能节点，不支持查看源代码。")
+
+        # 显示只读参数信息
+        self._clear_param_inputs()
+
+        self.error_label.setVisible(False)
+        self.error_text.setVisible(False)
+
+    def _setup_library_node_param_display(self, func):
+        """为本地节点库节点显示只读的参数信息"""
+        self._clear_param_inputs()
+
+        sig = inspect.signature(func)
+        params = list(sig.parameters.items())
+
+        if not params:
+            no_params_label = QLabel("<i>该节点无输入参数</i>")
+            no_params_label.setStyleSheet("color: #888;")
+            self.params_layout.addWidget(no_params_label)
+            return
+
+        for param_name, param in params:
+            # 参数行布局
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+
+            # 参数名标签
+            label = QLabel(f"{param_name}:")
+            label.setFixedWidth(80)
+            row_layout.addWidget(label)
+
+            # 参数类型显示（只读）
+            param_type = param.annotation if param.annotation != inspect.Parameter.empty else str
+            type_name = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
+            type_label = QLabel(f"<{type_name}>")
+            type_label.setStyleSheet("color: #2196F3; font-style: italic;")
+            row_layout.addWidget(type_label)
+
+            # 默认值（如果有）
+            if param.default != inspect.Parameter.empty:
+                default_label = QLabel(f"= {param.default}")
+                default_label.setStyleSheet("color: #4CAF50;")
+                row_layout.addWidget(default_label)
+
+            self.params_layout.addWidget(row)
+
+        self.params_layout.addStretch()
+
+    def _clear_property_panel(self):
+        """清空属性面板所有内容"""
+        self.doc_text.clear()
+        self.source_text.clear()
+        self._clear_param_inputs()
+        self.error_label.setVisible(False)
+        self.error_text.setVisible(False)
+        self._property_panel_mode = PropertyPanelMode.EMPTY
+        self._current_library_node_name = None
 
     def setup_right_dock(self):
         dock = QDockWidget("📝 节点属性", self)
@@ -829,17 +1013,28 @@ class SimplePyFlowWindow(QMainWindow):
 
     def on_selection_changed(self):
         selected_items = self.scene.selectedItems()
+
         if not selected_items:
-            self.doc_text.clear()
-            self.source_text.clear()
-            self._clear_param_inputs()
-            # 隐藏错误信息
-            self.error_label.setVisible(False)
-            self.error_text.setVisible(False)
+            # 画布没有选中节点时，根据当前状态清空面板
+            if self._property_panel_mode == PropertyPanelMode.CANVAS_NODE:
+                self._clear_property_panel()
+            elif self._property_panel_mode == PropertyPanelMode.LIBRARY_NODE:
+                # 清除本地节点库选中状态，清空属性面板
+                self.node_tree.clearSelection()
+                self._clear_property_panel()
             return
 
+        # 如果有画布节点被选中，切换到画布节点模式
         item = selected_items[0]
-        
+
+        # 清除本地节点库的选中状态（实现互斥）
+        if self._property_panel_mode == PropertyPanelMode.LIBRARY_NODE:
+            self.node_tree.clearSelection()
+
+        # 切换到画布节点模式
+        self._property_panel_mode = PropertyPanelMode.CANVAS_NODE
+        self._current_library_node_name = None
+
         # 处理循环节点
         from core.graphics.loop_node_item import LoopNodeItem
         if isinstance(item, MultithreadNodeItem):
@@ -863,7 +1058,7 @@ class SimplePyFlowWindow(QMainWindow):
 
             self.doc_text.setText(doc)
             self.source_text.setText(source)
-            
+
             # 显示错误信息（如果节点有错误）
             if hasattr(item, 'get_error_message') and item.get_error_message():
                 self.error_label.setVisible(True)
@@ -872,7 +1067,7 @@ class SimplePyFlowWindow(QMainWindow):
             else:
                 self.error_label.setVisible(False)
                 self.error_text.setVisible(False)
-            
+
             # 显示参数输入控件
             self._setup_param_inputs(item)
         else:

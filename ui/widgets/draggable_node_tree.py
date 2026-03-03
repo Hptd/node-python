@@ -9,9 +9,11 @@ from PySide6.QtCore import QMimeData
 
 class DraggableNodeTree(QTreeWidget):
     # 信号：右键点击自定义节点时发射
-    node_right_clicked = Signal(str, QPoint)  # 节点名称, 全局位置
+    node_right_clicked = Signal(str, QPoint)  # 节点名称，全局位置
     # 信号：请求删除节点
     node_delete_requested = Signal(str)  # 节点名称
+    # 信号：单击选中本地节点库节点时发射
+    library_node_selected = Signal(str)  # 节点名称
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -19,6 +21,18 @@ class DraggableNodeTree(QTreeWidget):
         self.setDragEnabled(True)
         self._start_pos = None
         self._custom_categories = set()  # 存储自定义分类名称
+        
+        # 连接单击信号
+        self.itemClicked.connect(self._on_item_clicked)
+    
+    def _on_item_clicked(self, item):
+        """处理节点树单击事件"""
+        node_name = item.data(0, Qt.UserRole)
+        parent_item = item.parent()
+
+        # 只有叶子节点（有节点名的）才发送信号
+        if node_name and parent_item:
+            self.library_node_selected.emit(node_name)
 
     def set_custom_categories(self, categories):
         """设置自定义分类列表，用于判断哪些节点可以编辑/删除"""
@@ -39,6 +53,8 @@ class DraggableNodeTree(QTreeWidget):
                     mime_data.setText(item.data(0, Qt.UserRole))
                     drag.setMimeData(mime_data)
                     drag.exec(Qt.CopyAction)
+                    # 拖拽开始后清除选中状态
+                    self.clearSelection()
                     return
         super().mouseMoveEvent(event)
 
