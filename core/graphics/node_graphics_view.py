@@ -173,6 +173,31 @@ class NodeGraphicsView(QGraphicsView):
             scene_pos = self.mapToScene(event.pos())
             item = self.scene().itemAt(scene_pos, self.transform())
 
+            # 点击到组：先让组处理，通过 event.isAccepted() 判断是否被处理
+            if isinstance(item, NodeGroup):
+                # 让组处理事件
+                super().mousePressEvent(event)
+                
+                # 检查事件是否被组接受
+                if event.isAccepted():
+                    # 组已处理（Header 拖拽或其他），视图不再干预
+                    return
+                
+                # 事件未被组接受，说明点击的是内容区域，启动框选
+                self._selecting = True
+                self._select_start = scene_pos
+                self._selection_rect_item = SelectionRectItem().item
+                self.scene().addItem(self._selection_rect_item)
+
+                # 检查是否按住 Ctrl 或 Shift 键进行增选
+                self._ctrl_selecting = bool(event.modifiers() & (Qt.ControlModifier | Qt.ShiftModifier))
+
+                # 如果不是增选模式，先清空选择
+                if not self._ctrl_selecting:
+                    self.scene().clearSelection()
+                event.accept()
+                return
+
             # 点击到端口：让端口自己处理（拖拽连接线）
             if isinstance(item, PortItem):
                 # 调用父类的 mousePressEvent，让事件传播到 PortItem
@@ -815,6 +840,16 @@ class NodeGraphicsView(QGraphicsView):
         selected_items = self.scene().selectedItems()
         # 同时支持普通节点和循环节点
         selected_nodes = [item for item in selected_items if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
+
+        # 检查是否有组被选中（不支持组嵌套）
+        selected_groups = [item for item in selected_items if isinstance(item, NodeGroup)]
+        if selected_groups:
+            QMessageBox.warning(
+                self,
+                "不支持组嵌套",
+                "当前版本不支持将多个组嵌套在一起。\n请解散现有组或选择单个节点进行打组。"
+            )
+            return
 
         if len(selected_nodes) < 1:
             print("请至少选择一个节点进行打组")

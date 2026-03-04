@@ -29,6 +29,9 @@ class MultithreadNodeItem(QGraphicsRectItem):
         self._last_mouse_pos = None
         self._selected_items_initial_pos = {}
 
+        # 组拖拽标记（新增）
+        self._in_group_drag = False
+
         # 多线程配置
         self._input_list = '[]'
         self._thread_count = 4
@@ -270,7 +273,61 @@ class MultithreadNodeItem(QGraphicsRectItem):
         return super().itemChange(change, value)
 
     def mousePressEvent(self, event):
+        """鼠标按下事件"""
+        if event.button() == Qt.LeftButton:
+            # 如果节点属于某个组，且组正在 Header 拖拽中
+            if hasattr(self, '_parent_group') and self._parent_group:
+                if self._parent_group._header_dragging or self._in_group_drag:
+                    # 不处理，让组来处理
+                    super().mousePressEvent(event)
+                    return
+
+            # 检查是否有选中的组
+            scene = self.scene()
+            if scene:
+                selected_items = scene.selectedItems()
+                from .node_group import NodeGroup
+                selected_groups = [item for item in selected_items if isinstance(item, NodeGroup)]
+
+                if selected_groups and self._parent_group in selected_groups:
+                    self._dragging = True
+                    self._last_mouse_pos = event.scenePos()
+                    self._selected_items_initial_pos = {}
+                    for item in selected_items:
+                        self._selected_items_initial_pos[id(item)] = item.pos()
+                    event.accept()
+                    return
+
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """鼠标移动事件"""
+        # 如果正在参与组拖拽，跳过节点自身的移动逻辑
+        if self._in_group_drag:
+            super().mouseMoveEvent(event)
+            return
+
+        if self._dragging and event.buttons() & Qt.LeftButton:
+            delta = event.scenePos() - self._last_mouse_pos
+            if not delta.isNull():
+                scene = self.scene()
+                if scene:
+                    from .node_group import NodeGroup
+                    selected_items = scene.selectedItems()
+                    for item in selected_items:
+                        if id(item) in self._selected_items_initial_pos:
+                            initial_pos = self._selected_items_initial_pos[id(item)]
+                            new_pos = initial_pos + delta
+                            item.setPos(new_pos)
+                            if isinstance(item, MultithreadNodeItem):
+                                for port in item.input_ports + item.output_ports:
+                                    for conn in port.connections:
+                                        conn.update_position()
+                    if self._parent_group:
+                        self._parent_group.on_node_moved(self)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:

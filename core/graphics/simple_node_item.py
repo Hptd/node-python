@@ -46,11 +46,14 @@ class SimpleNodeItem(QGraphicsRectItem):
         
         # 所属的组（如果有的话）
         self._parent_group = None
-        
+
         # 拖拽相关
         self._dragging = False
         self._last_mouse_pos = None
         self._selected_items_initial_pos = {}
+
+        # 组拖拽标记（新增）
+        self._in_group_drag = False
 
         # 检测是否为自定义节点
         self.is_custom_node = hasattr(func, '_custom_source')
@@ -256,13 +259,20 @@ class SimpleNodeItem(QGraphicsRectItem):
     def mousePressEvent(self, event):
         """鼠标按下事件"""
         if event.button() == Qt.LeftButton:
+            # 如果节点属于某个组，且组正在 Header 拖拽中，不处理节点自身拖拽
+            if hasattr(self, '_parent_group') and self._parent_group:
+                if self._parent_group._header_dragging or self._in_group_drag:
+                    # 事件不处理，让组来处理
+                    super().mousePressEvent(event)
+                    return
+
             # 检查是否有选中的组和节点
             scene = self.scene()
             if scene:
                 selected_items = scene.selectedItems()
                 from .node_group import NodeGroup
                 selected_groups = [item for item in selected_items if isinstance(item, NodeGroup)]
-                
+
                 # 如果有选中的组，且当前节点在某个选中的组内
                 if selected_groups and self._parent_group in selected_groups:
                     self._dragging = True
@@ -277,33 +287,38 @@ class SimpleNodeItem(QGraphicsRectItem):
 
     def mouseMoveEvent(self, event):
         """鼠标移动事件"""
+        # 如果正在参与组拖拽，跳过节点自身的移动逻辑
+        if self._in_group_drag:
+            super().mouseMoveEvent(event)
+            return
+
         if self._dragging and event.buttons() & Qt.LeftButton:
             # 计算鼠标移动的偏移量
             delta = event.scenePos() - self._last_mouse_pos
-            
+
             if not delta.isNull():
                 scene = self.scene()
                 if scene:
                     from .node_group import NodeGroup
                     selected_items = scene.selectedItems()
-                    
+
                     # 移动所有选中的项目
                     for item in selected_items:
                         if id(item) in self._selected_items_initial_pos:
                             initial_pos = self._selected_items_initial_pos[id(item)]
                             new_pos = initial_pos + delta
                             item.setPos(new_pos)
-                            
+
                             # 更新连接线
                             if isinstance(item, SimpleNodeItem):
                                 for port in item.input_ports + item.output_ports:
                                     for conn in port.connections:
                                         conn.update_position()
-                    
+
                     # 更新组的边界
                     if self._parent_group:
                         self._parent_group.on_node_moved(self)
-            
+
             event.accept()
             return
         super().mouseMoveEvent(event)

@@ -22,7 +22,7 @@ class NodeGroup(QGraphicsRectItem):
 
     def __init__(self, nodes=None, name="组", parent=None):
         super().__init__(parent)
-        
+
         self._nodes = set()  # 组内的节点集合
         self._group_name = name
         self._header_rect = QRectF()
@@ -33,6 +33,12 @@ class NodeGroup(QGraphicsRectItem):
         self._last_pos = QPointF()  # 记录上一次位置
         self._node_initial_positions = {}  # 拖拽时记录节点初始位置
         self._selected_items_initial_pos = {}  # 拖拽时记录所有选中项目的初始位置
+
+        # Header 拖拽相关（新增）
+        self._header_dragging = False      # 是否正在进行 Header 拖拽
+        self._drag_start_scene_pos = None  # 拖拽开始时的场景坐标
+        self._initial_group_pos = None     # 组的初始位置
+        self._initial_node_positions = {}  # {node_id: initial_pos} 组内节点初始位置
 
         # 设置图形项属性（不使用 ItemIsMovable，改用自定义拖拽）
         self.setFlags(
@@ -446,41 +452,93 @@ class NodeGroup(QGraphicsRectItem):
     def mousePressEvent(self, event):
         """鼠标按下事件"""
         if event.button() == Qt.LeftButton:
-            # 检查组是否选中，以及是否有其他选中项
-            scene = self.scene()
-            if scene and self.isSelected():
-                selected_items = scene.selectedItems()
-                if len(selected_items) > 1:
-                    # 开始拖拽多选项目
-                    self._dragging = True
-                    self._drag_start_pos = self.pos()
-                    self._last_mouse_pos = event.scenePos()
-                    # 记录所有选中项目的初始位置
-                    self._selected_items_initial_pos = {}
-                    for item in selected_items:
-                        self._selected_items_initial_pos[id(item)] = item.pos()
+            scene_pos = event.scenePos()
+
+            # 检查是否点击在 Header 区域
+            if self.is_in_header(scene_pos):
+                # 检查名称编辑框是否正在编辑
+                if self._name_edit.hasFocus():
+                    # 如果正在编辑，先失去焦点保存名称
+                    self._name_edit.clearFocus()
                     event.accept()
                     return
+
+                # 开始 Header 拖拽
+                self._header_dragging = True
+                self._drag_start_scene_pos = scene_pos
+                self._initial_group_pos = self.pos()
+
+                # 记录组内所有节点的初始位置
+                self._initial_node_positions = {
+                    node.node_id: node.pos()
+                    for node in self._nodes
+                }
+
+                # 标记组内所有节点正在参与组拖拽
+                for node in self._nodes:
+                    node._in_group_drag = True
+
+                # 清除场景选择，避免触发框选
+                if self.scene():
+                    self.scene().clearSelection()
+                self.setSelected(True)
+
+                event.accept()
+                return
+
+            # 点击在组内容区域（非 Header）：不拦截事件，让父类处理
+            # 这样事件会传播到视图，触发框选
+            pass
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         """鼠标移动事件"""
+        if self._header_dragging and event.buttons() & Qt.LeftButton:
+            # 计算偏移量
+            delta = event.scenePos() - self._drag_start_scene_pos
+
+            if not delta.isNull():
+                # 移动组本身
+                new_group_pos = self._initial_group_pos + delta
+                self.setPos(new_group_pos)
+
+                # 同步移动所有组内节点
+                for node in list(self._nodes):  # 使用 list() 避免集合变化
+                    if node.scene() is None:  # 节点已从场景移除
+                        continue
+                    if node.node_id in self._initial_node_positions:
+                        initial_node_pos = self._initial_node_positions[node.node_id]
+                        new_node_pos = initial_node_pos + delta
+                        node.setPos(new_node_pos)
+
+                        # 更新节点的连接线
+                        for port in node.input_ports + node.output_ports:
+                            for conn in port.connections:
+                                conn.update_position()
+
+                # 更新组的边界（确保状态同步）
+                self._update_bounds()
+
+            event.accept()
+            return
+
         if self._dragging and event.buttons() & Qt.LeftButton:
             # 计算鼠标移动的偏移量
             delta = event.scenePos() - self._last_mouse_pos
-            
+
             if not delta.isNull():
                 scene = self.scene()
                 if scene:
                     selected_items = scene.selectedItems()
-                    
+
                     # 移动所有选中的项目
                     for item in selected_items:
                         if id(item) in self._selected_items_initial_pos:
                             initial_pos = self._selected_items_initial_pos[id(item)]
                             new_pos = initial_pos + delta
                             item.setPos(new_pos)
-                            
+
                             from .simple_node_item import SimpleNodeItem
                             from .loop_node_item import LoopNodeItem
                             if isinstance(item, (SimpleNodeItem, LoopNodeItem)):
@@ -488,10 +546,10 @@ class NodeGroup(QGraphicsRectItem):
                                 for port in item.input_ports + item.output_ports:
                                     for conn in port.connections:
                                         conn.update_position()
-                    
+
                     # 更新组的边界
                     self._update_bounds()
-            
+
             event.accept()
             return
         super().mouseMoveEvent(event)
@@ -499,6 +557,20 @@ class NodeGroup(QGraphicsRectItem):
     def mouseReleaseEvent(self, event):
         """鼠标释放事件"""
         if event.button() == Qt.LeftButton:
+            if self._header_dragging:
+                # 结束 Header 拖拽
+                self._header_dragging = False
+                self._drag_start_scene_pos = None
+                self._initial_group_pos = None
+
+                # 清除节点的组拖拽标记
+                for node in self._nodes:
+                    node._in_group_drag = False
+                self._initial_node_positions = {}
+
+                event.accept()
+                return
+
             if self._dragging:
                 self._dragging = False
                 self._drag_start_pos = QPointF()

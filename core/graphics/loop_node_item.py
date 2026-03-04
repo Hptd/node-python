@@ -43,6 +43,9 @@ class LoopNodeItem(QGraphicsRectItem):
         self._last_mouse_pos = None
         self._selected_items_initial_pos = {}
 
+        # 组拖拽标记（新增）
+        self._in_group_drag = False
+
         # 循环配置
         self._range_start = 0
         self._range_end = 10
@@ -436,6 +439,13 @@ class LoopNodeItem(QGraphicsRectItem):
                 # 点击头部空白区域，开始拖动
                 pass
 
+            # 如果循环节点属于某个组，且组正在 Header 拖拽中
+            if hasattr(self, '_parent_group') and self._parent_group:
+                if self._parent_group._header_dragging or self._in_group_drag:
+                    # 不处理，让组来处理
+                    super().mousePressEvent(event)
+                    return
+
             # 检查是否有选中的组
             scene = self.scene()
             if scene:
@@ -456,6 +466,11 @@ class LoopNodeItem(QGraphicsRectItem):
 
     def mouseMoveEvent(self, event):
         """鼠标移动事件"""
+        # 如果正在参与组拖拽，跳过循环节点自身的移动逻辑
+        if self._in_group_drag:
+            super().mouseMoveEvent(event)
+            return
+
         if self._dragging and event.buttons() & Qt.LeftButton:
             delta = event.scenePos() - self._last_mouse_pos
             if not delta.isNull():
