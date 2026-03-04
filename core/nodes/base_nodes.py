@@ -29,8 +29,14 @@ def const_bool(value= True) -> bool:
     - 数字 0, 0.0 → False
     - 其他情况 → True
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_bool(value)
+    # 内联 TypeConverter.to_bool 逻辑
+    if isinstance(value, str):
+        lower_val = value.strip().lower()
+        if lower_val in ('false', '0', 'no', 'off', 'none'):
+            return False
+        if lower_val in ('true', '1', 'yes', 'on'):
+            return True
+    return bool(value)
 
 
 const_bool._source = '''def const_bool(value= True) -> bool:
@@ -44,8 +50,13 @@ const_bool._source = '''def const_bool(value= True) -> bool:
     - 数字 0, 0.0 → False
     - 其他情况 → True
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_bool(value)
+    if isinstance(value, str):
+        lower_val = value.strip().lower()
+        if lower_val in ('false', '0', 'no', 'off', 'none'):
+            return False
+        if lower_val in ('true', '1', 'yes', 'on'):
+            return True
+    return bool(value)
 '''
 
 
@@ -60,8 +71,22 @@ def const_int(value= 0) -> int:
     - 字符串 → 尝试解析为数字，失败返回 0
     - 其他类型 → 返回 0
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_int(value)
+    # 内联 TypeConverter.to_int 逻辑
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            try:
+                return int(float(value.strip()))
+            except ValueError:
+                return 0
+    return 0
 
 
 const_int._source = '''def const_int(value= 0) -> int:
@@ -75,8 +100,21 @@ const_int._source = '''def const_int(value= 0) -> int:
     - 字符串 → 尝试解析为数字，失败返回 0
     - 其他类型 → 返回 0
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_int(value)
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            try:
+                return int(float(value.strip()))
+            except ValueError:
+                return 0
+    return 0
 '''
 
 
@@ -91,8 +129,17 @@ def const_float(value= 0.0) -> float:
     - 字符串 → 尝试解析为 float，失败返回 0.0
     - 其他类型 → 返回 0.0
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_float(value)
+    # 内联 TypeConverter.to_float 逻辑
+    if isinstance(value, bool):
+        return 1.0 if value else 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return 0.0
+    return 0.0
 
 
 const_float._source = '''def const_float(value= 0.0) -> float:
@@ -106,8 +153,16 @@ const_float._source = '''def const_float(value= 0.0) -> float:
     - 字符串 → 尝试解析为 float，失败返回 0.0
     - 其他类型 → 返回 0.0
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_float(value)
+    if isinstance(value, bool):
+        return 1.0 if value else 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return 0.0
+    return 0.0
 '''
 
 
@@ -120,8 +175,10 @@ def const_string(value= "") -> str:
     - None → 空字符串
     - 其他类型 → 使用 str() 转换
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_string(value)
+    # 内联 TypeConverter.to_string 逻辑
+    if value is None:
+        return ""
+    return str(value)
 
 
 const_string._source = '''def const_string(value= "") -> str:
@@ -133,8 +190,9 @@ const_string._source = '''def const_string(value= "") -> str:
     - None → 空字符串
     - 其他类型 → 使用 str() 转换
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_string(value)
+    if value is None:
+        return ""
+    return str(value)
 '''
 
 
@@ -150,8 +208,31 @@ def const_list(value= None) -> list:
     - 字符串 → 尝试 JSON 解析，失败则逗号分割，再失败则单元素列表
     - 其他标量类型 → 包装为单元素列表
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_list(value)
+    # 内联 TypeConverter.to_list 逻辑
+    import json
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, (tuple, set)):
+        return list(value)
+    if isinstance(value, dict):
+        return list(value.items())
+    if isinstance(value, str):
+        # 尝试 JSON 解析
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # 尝试逗号分割
+        if ',' in value:
+            return [item.strip() for item in value.split(',')]
+        # 单元素列表
+        return [value]
+    # 其他类型包装为列表
+    return [value]
 
 
 const_list._source = '''def const_list(value= None) -> list:
@@ -166,8 +247,30 @@ const_list._source = '''def const_list(value= None) -> list:
     - 字符串 → 尝试 JSON 解析，失败则逗号分割，再失败则单元素列表
     - 其他标量类型 → 包装为单元素列表
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_list(value)
+    import json
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, (tuple, set)):
+        return list(value)
+    if isinstance(value, dict):
+        return list(value.items())
+    if isinstance(value, str):
+        # 尝试 JSON 解析
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # 尝试逗号分割
+        if ',' in value:
+            return [item.strip() for item in value.split(',')]
+        # 单元素列表
+        return [value]
+    # 其他类型包装为列表
+    return [value]
 '''
 
 
@@ -183,8 +286,39 @@ def const_dict(value= None) -> dict:
     - 列表 → 如果是键值对列表则转换，否则转为索引字典
     - 其他类型 → 返回空字典
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_dict(value)
+    # 内联 TypeConverter.to_dict 逻辑
+    import json
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        # 尝试 JSON 解析
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # 尝试键值对格式 (a=1,b=2)
+        try:
+            result = {}
+            for pair in value.split(','):
+                if '=' in pair:
+                    k, v = pair.split('=', 1)
+                    result[k.strip()] = v.strip()
+            if result:
+                return result
+        except Exception:
+            pass
+        return {}
+    if isinstance(value, list):
+        # 检查是否为键值对列表
+        if all(isinstance(item, (tuple, list)) and len(item) == 2 for item in value):
+            return dict(value)
+        # 否则转为索引字典
+        return {i: v for i, v in enumerate(value)}
+    return {}
 
 
 const_dict._source = '''def const_dict(value= None) -> dict:
@@ -199,8 +333,38 @@ const_dict._source = '''def const_dict(value= None) -> dict:
     - 列表 → 如果是键值对列表则转换，否则转为索引字典
     - 其他类型 → 返回空字典
     """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_dict(value)
+    import json
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        # 尝试 JSON 解析
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # 尝试键值对格式 (a=1,b=2)
+        try:
+            result = {}
+            for pair in value.split(','):
+                if '=' in pair:
+                    k, v = pair.split('=', 1)
+                    result[k.strip()] = v.strip()
+            if result:
+                return result
+        except Exception:
+            pass
+        return {}
+    if isinstance(value, list):
+        # 检查是否为键值对列表
+        if all(isinstance(item, (tuple, list)) and len(item) == 2 for item in value):
+            return dict(value)
+        # 否则转为索引字典
+        return {i: v for i, v in enumerate(value)}
+    return {}
 '''
 
 def extract_data(data: dict, path: str = "") -> any:
