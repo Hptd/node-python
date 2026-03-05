@@ -973,8 +973,10 @@ def execute_loop(
                 loop_node.add_result(result)
                 loop_node.update_iterator_display(index)
 
-            # 批量执行完成后，将所有迭代节点设置为成功状态
-            for node in iteration_nodes:
+            # 批量执行完成后，将所有参与执行的节点设置为成功状态
+            # 包括 iteration_nodes 和 inner_nodes 中的所有节点
+            nodes_executed = set(inner_nodes + iteration_nodes)
+            for node in nodes_executed:
                 node.set_status(SimpleNodeItem.STATUS_SUCCESS)
 
             # 设置循环节点为成功状态（重置迭代索引）
@@ -1003,12 +1005,11 @@ def execute_loop(
                     colored_print(f"    [ERROR] 迭代 {index + 1} 出错：{e2}", "error")
                     all_results.append(None)
 
-            # 回退执行完成后，也设置节点状态
-            for node in iteration_nodes:
-                if node.result is not None:
-                    node.set_status(SimpleNodeItem.STATUS_SUCCESS)
-                else:
-                    node.set_status(SimpleNodeItem.STATUS_ERROR, "节点未执行")
+            # 回退执行完成后，设置节点状态
+            # 所有参与执行的节点都设置为成功状态（无论是否有返回值）
+            nodes_executed = set(inner_nodes + iteration_nodes)
+            for node in nodes_executed:
+                node.set_status(SimpleNodeItem.STATUS_SUCCESS)
 
             # 重置循环节点索引
             loop_node._current_index = -1
@@ -1219,10 +1220,15 @@ def execute_graph_with_loops(
     for loop_node in loop_nodes:
         loop_node.reset_execution_state()
 
-    # 获取场景中所有节点（包括循环节点内部的节点）
+    # 获取场景中所有节点（包括循环节点内部的节点和节点组内的节点）
+    # 注意：nodes 参数中已包含场景中所有 SimpleNodeItem（包括节点组内的节点）
     all_nodes = list(nodes)
+    
+    # 添加循环节点内部的节点（包括节点组内的节点）
     for loop_node in loop_nodes:
-        all_nodes.extend(loop_node.nodes)
+        for node in loop_node.nodes:
+            if node not in all_nodes:
+                all_nodes.append(node)
 
     # 对普通节点进行拓扑排序
     sorted_nodes = topological_sort(nodes) if nodes else []
