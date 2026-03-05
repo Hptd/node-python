@@ -134,6 +134,10 @@ class EmbeddedPythonExecutor:
         
         try:
             # 执行脚本
+            # 设置环境变量强制使用 UTF-8 编码，防止 Windows 控制台 GBK 编码导致中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+            
             result = subprocess.run(
                 [self.python_exe, script_path],
                 capture_output=True,
@@ -141,7 +145,8 @@ class EmbeddedPythonExecutor:
                 timeout=timeout,
                 cwd=str(Path(self.python_exe).parent),
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
             
             if result.returncode != 0:
@@ -407,6 +412,10 @@ if __name__ == "__main__":
             (成功标志, 输出信息)
         """
         try:
+            # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+            
             result = subprocess.run(
                 [self.python_exe, '-m', 'pip', 'install', package_name],
                 capture_output=True,
@@ -414,9 +423,10 @@ if __name__ == "__main__":
                 timeout=300,  # 安装可能较慢
                 cwd=str(Path(self.python_exe).parent),
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
-            
+
             output = result.stdout
             if result.stderr:
                 output += "\n" + result.stderr
@@ -431,6 +441,10 @@ if __name__ == "__main__":
     def uninstall_package(self, package_name: str) -> Tuple[bool, str]:
         """卸载第三方包"""
         try:
+            # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+
             result = subprocess.run(
                 [self.python_exe, '-m', 'pip', 'uninstall', '-y', package_name],
                 capture_output=True,
@@ -438,7 +452,8 @@ if __name__ == "__main__":
                 timeout=60,
                 cwd=str(Path(self.python_exe).parent),
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
             
             output = result.stdout
@@ -452,11 +467,15 @@ if __name__ == "__main__":
     
     def list_installed_packages(self) -> List[Dict[str, str]]:
         """列出已安装的包
-        
+
         Returns:
             包列表，每个包包含 name 和 version
         """
         try:
+            # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+
             result = subprocess.run(
                 [self.python_exe, '-m', 'pip', 'list', '--format=json'],
                 capture_output=True,
@@ -464,7 +483,8 @@ if __name__ == "__main__":
                 timeout=30,
                 cwd=str(Path(self.python_exe).parent),
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
             
             if result.returncode == 0:
@@ -487,6 +507,10 @@ if __name__ == "__main__":
     def get_package_info(self, package_name: str) -> Optional[Dict]:
         """获取包详细信息"""
         try:
+            # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+
             result = subprocess.run(
                 [self.python_exe, '-m', 'pip', 'show', package_name],
                 capture_output=True,
@@ -494,7 +518,8 @@ if __name__ == "__main__":
                 timeout=30,
                 cwd=str(Path(self.python_exe).parent),
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
             
             if result.returncode == 0:
@@ -523,6 +548,10 @@ if __name__ == "__main__":
             return False, f"文件不存在: {requirements_file}"
         
         try:
+            # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+
             result = subprocess.run(
                 [self.python_exe, '-m', 'pip', 'install', '-r', requirements_file],
                 capture_output=True,
@@ -530,7 +559,8 @@ if __name__ == "__main__":
                 timeout=600,
                 cwd=str(Path(self.python_exe).parent),
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
             
             output = result.stdout
@@ -547,6 +577,10 @@ if __name__ == "__main__":
     def export_requirements(self, output_file: str) -> bool:
         """导出当前环境到 requirements.txt"""
         try:
+            # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+
             result = subprocess.run(
                 [self.python_exe, '-m', 'pip', 'freeze'],
                 capture_output=True,
@@ -554,7 +588,8 @@ if __name__ == "__main__":
                 timeout=30,
                 cwd=str(Path(self.python_exe).parent),
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
             
             if result.returncode == 0:
@@ -581,13 +616,18 @@ if __name__ == "__main__":
     def get_python_version(self) -> str:
         """获取嵌入式 Python 版本"""
         try:
+            # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+
             result = subprocess.run(
                 [self.python_exe, '--version'],
                 capture_output=True,
                 text=True,
                 timeout=10,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env
             )
             return result.stdout.strip() or result.stderr.strip()
         except Exception as e:

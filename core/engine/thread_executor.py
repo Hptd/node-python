@@ -312,11 +312,16 @@ def _run_script(script: str, python_exe: str, timeout: int = 300) -> Any:
         f.write(script)
         path = f.name
     try:
+        # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        
         proc = subprocess.run(
             [python_exe, path],
             capture_output=True, text=True,
             timeout=timeout, encoding='utf-8', errors='replace',
-            cwd=str(Path(python_exe).parent)
+            cwd=str(Path(python_exe).parent),
+            env=env
         )
         if proc.returncode != 0:
             raise RuntimeError(proc.stderr or proc.stdout)

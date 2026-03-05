@@ -753,6 +753,10 @@ def _execute_script_in_embedded(executor, script: str, timeout: int = 30) -> Any
     
     try:
         import subprocess
+        # 设置环境变量强制使用 UTF-8 编码，防止中文乱码
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        
         result = subprocess.run(
             [executor.python_exe, script_path],
             capture_output=True,
@@ -760,7 +764,8 @@ def _execute_script_in_embedded(executor, script: str, timeout: int = 30) -> Any
             timeout=timeout,
             encoding='utf-8',
             errors='replace',
-            cwd=str(Path(executor.python_exe).parent)
+            cwd=str(Path(executor.python_exe).parent),
+            env=env
         )
         
         if result.returncode != 0:
