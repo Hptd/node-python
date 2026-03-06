@@ -71,6 +71,8 @@ def execute_graph(
     from utils.console_stream import colored_print
     from .batch_executor import get_batch_executor
 
+    # 添加空行分隔节点操作日志和执行日志
+    colored_print("", "normal")
     colored_print("=" * 40, "system")
     colored_print("开始运行图表（批量执行模式）...", "info")
 
@@ -86,6 +88,7 @@ def execute_graph(
     # 拓扑排序
     sorted_nodes = topological_sort(nodes)
     colored_print(f"执行顺序：{[n.name for n in sorted_nodes]}", "debug")
+    colored_print("-" * 40, "system")
 
     # 将所有待执行节点标记为运行中状态（提供视觉反馈）
     for node in sorted_nodes:
@@ -105,6 +108,7 @@ def execute_graph(
         has_error = False
 
         if success:
+            colored_print("\n执行详情:", "info")
             # 将结果应用到节点
             for idx, node in enumerate(sorted_nodes):
                 result_key = f'node_{idx}'
@@ -114,20 +118,21 @@ def execute_graph(
                         node.result = result_data.get('result')
                         node.set_status(SimpleNodeItem.STATUS_SUCCESS)
                         if node.result is not None:
-                            colored_print(f"\n  节点 '{node.name}' 结果：{node.result}", "success")
+                            colored_print(f"  节点 '{node.name}' 结果：{node.result}", "success")
                         else:
-                            colored_print(f"\n  节点 '{node.name}' 执行完成", "success")
+                            colored_print(f"  节点 '{node.name}' 执行完成", "success")
                     else:
                         error_msg = result_data.get('error', '未知错误')
                         node.set_status(SimpleNodeItem.STATUS_ERROR, error_msg)
-                        colored_print(f"\n  ❌ 节点 '{node.name}' 执行出错：{error_msg}", "error")
+                        colored_print(f"  ❌ 节点 '{node.name}' 执行出错：{error_msg}", "error")
                         has_error = True
                 else:
-                    colored_print(f"\n  ⚠ 节点 '{node.name}' 没有返回结果", "warning")
+                    colored_print(f"  ⚠ 节点 '{node.name}' 没有返回结果", "warning")
 
             # 输出日志
             if logs:
                 colored_print("\n执行日志:", "info")
+                colored_print("-" * 40, "system")
                 for line in logs.split('\n'):
                     if line.strip():
                         colored_print(f"  {line}", "debug")
@@ -149,6 +154,7 @@ def execute_graph(
         else:
             colored_print("运行完成！", "success")
         colored_print("=" * 40, "system")
+        colored_print("", "normal")  # 添加尾部空行，为下次操作预留空间
         return not has_error
 
     except Exception as e:
