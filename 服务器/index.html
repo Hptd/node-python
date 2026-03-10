@@ -644,6 +644,7 @@
                 <li><a href="#features">功能特性</a></li>
                 <li><a href="#nodes">节点库</a></li>
                 <li><a href="#workflow">使用流程</a></li>
+                <li><a href="files/faq.html">常见问题</a></li>
                 <li><a href="downloads/node-py.zip">下载</a></li>
                 <li><button class="contact-btn" onclick="openModal()">💬 联系作者</button></li>
             </ul>
@@ -1005,6 +1006,14 @@
             el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
             observer.observe(el);
         });
+
+        // 页面访问时自动推送给百度
+        (function(){
+            var bp = document.createElement('script');
+            bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(bp, s);
+        })();
     </script>
 </body>
 </html>

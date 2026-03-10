@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO Meta Tags -->
+    <title>NodePy 常见问题 | 图形化 Python 编程 FAQ</title>
+    <meta name="description" content="NodePy 图形化 Python 编辑器常见问题解答，包括使用方法、功能特性、适用场景、下载安装等">
+    <meta name="keywords" content="NodePy 常见问题，图形化编程 FAQ，Python 可视化工具使用问题，拖拽编程教程">
+    <link rel="canonical" href="https://www.nodepy.top/faq">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="NodePy 常见问题 | 图形化 Python 编程 FAQ">
+    <meta property="og:description" content="NodePy 图形化 Python 编辑器常见问题解答，包括使用方法、功能特性、适用场景、下载安装等">
+    <meta property="og:url" content="https://www.nodepy.top/faq">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NodePy 常见问题 | 图形化 Python 编程 FAQ">
+    <meta name="twitter:description" content="NodePy 图形化 Python 编辑器常见问题解答">
+    
+    <style>
+        :root {
+            --primary-color: #4a9eff;
+            --secondary-color: #6c5ce7;
+            --accent-color: #00cec9;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: rgba(255,255,255,0.1);
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        nav .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav .back-btn {
+            background: var(--gradient-1);
+            color: var(--dark-bg);
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        nav .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Hero 区域 */
+        .hero {
+            min-height: 40vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient-1);
+            padding: 8rem 2rem 4rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.9);
+            max-width: 600px;
+        }
+
+        /* FAQ 主体 */
+        .faq-section {
+            padding: 4rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .faq-category {
+            margin-bottom: 3rem;
+        }
+
+        .category-title {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .faq-item {
+            background: var(--card-bg);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .faq-item:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 5px 20px rgba(74, 158, 255, 0.15);
+        }
+
+        .faq-question {
+            padding: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .faq-question:hover {
+            background: rgba(74, 158, 255, 0.1);
+        }
+
+        .faq-question .icon {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            transition: transform 0.3s;
+        }
+
+        .faq-item.active .faq-question .icon {
+            transform: rotate(45deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 2000px;
+        }
+
+        .faq-answer-content {
+            padding: 0 1.5rem 1.5rem;
+            color: var(--text-muted);
+        }
+
+        .faq-answer-content p {
+            margin-bottom: 1rem;
+        }
+
+        .faq-answer-content ul,
+        .faq-answer-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .faq-answer-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .faq-answer-content strong {
+            color: var(--text-color);
+        }
+
+        .faq-answer-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .faq-answer-content a:hover {
+            text-decoration: underline;
+        }
+
+        /* 表格样式 */
+        .faq-answer-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: var(--dark-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .faq-answer-content th,
+        .faq-answer-content td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .faq-answer-content th {
+            background: rgba(74, 158, 255, 0.2);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .faq-answer-content tr:last-child td {
+            border-bottom: none;
+        }
+
+        .faq-answer-content tr:hover td {
+            background: rgba(74, 158, 255, 0.05);
+        }
+
+        /* 代码块 */
+        .faq-answer-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            color: var(--accent-color);
+        }
+
+        .faq-answer-content pre {
+            background: #0d1117;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .faq-answer-content pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* 提示框 */
+        .tip-box {
+            background: rgba(0, 206, 201, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .tip-box.warning {
+            background: rgba(245, 158, 108, 0.1);
+            border-left-color: #f59e6c;
+        }
+
+        .tip-box.info {
+            background: rgba(74, 158, 255, 0.1);
+            border-left-color: var(--primary-color);
+        }
+
+        /* 页脚 */
+        footer {
+            background: #0f0f1a;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        footer a:hover {
+            color: var(--primary-color);
+        }
+
+        footer p {
+            color: var(--text-muted);
+        }
+
+        /* 回顶部按钮 */
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--gradient-3);
+            color: var(--dark-bg);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            font-size: 1.5rem;
+            border: none;
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-5px);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            nav ul {
+                display: none;
+            }
+
+            .faq-question {
+                font-size: 1rem;
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav>
+        <div class="container">
+            <div class="logo">❓ 常见问题</div>
+            <a href="../index.html" class="back-btn">🏠 返回首页</a>
+        </div>
+    </nav>
+
+    <!-- Hero 区域 -->
+    <section class="hero">
+        <h1>常见问题解答</h1>
+        <p>关于 NodePy 图形化 Python 编辑器的所有问题，这里都有答案</p>
+    </section>
+
+    <!-- FAQ 主体 -->
+    <section class="faq-section">
+        
+        <!-- 基础概念 -->
+        <div class="faq-category">
+            <h2 class="category-title">📌 基础概念</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>什么是 NodePy？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p><strong>NodePy（简易中文节点 Python 编辑器）</strong>是一款面向非程序员的图形化编程工具。用户通过拖拽节点和连接线即可构建可执行的数据流图，无需编写传统代码即可完成 Python 编程任务。</p>
+                        <p><strong>核心特点：</strong></p>
+                        <ul>
+                            <li>拖拽式节点操作，支持多种添加方式（拖拽/双击/右键菜单/空格搜索）</li>
+                            <li>内置 6 大类节点库（输出、常量、数据处理、循环、文本、Debug）</li>
+                            <li>支持自定义 Python 节点和 AI 代码生成</li>
+                            <li>多线程并发处理，高性能执行引擎</li>
+                            <li>完全免费，开源项目（MIT License）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>NodePy 适合哪些人使用？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>NodePy 主要适合以下人群：</p>
+                        <ul>
+                            <li><strong>零基础初学者：</strong>想学编程但被代码语法劝退的人</li>
+                            <li><strong>办公人员：</strong>需要处理 Excel、文件批量操作等自动化任务</li>
+                            <li><strong>数据分析师：</strong>需要可视化数据清洗和转换流程</li>
+                            <li><strong>教师：</strong>用于编程教学，帮助学生理解逻辑</li>
+                            <li><strong>快速原型开发者：</strong>快速验证想法，未来支持可导出 Python 代码</li>
+                            <li><strong>研究人员：</strong>需要快速搭建数据处理流程</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>用 NodePy 能做什么项目？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>NodePy 适合以下类型的项目：</p>
+                        <ul>
+                            <li><strong>办公自动化：</strong>Excel 批量处理、PDF 转换、文件整理</li>
+                            <li><strong>数据处理：</strong>数据清洗、格式转换、统计分析、数据可视化</li>
+                            <li><strong>网络请求：</strong>API 调用、网页数据抓取、批量下载</li>
+                            <li><strong>文本处理：</strong>正则提取、批量替换、格式校验、文本分析</li>
+                            <li><strong>学习练习：</strong>理解编程逻辑、算法可视化、Python 入门</li>
+                            <li><strong>自动化脚本：</strong>文件监控、系统操作</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下载安装 -->
+        <div class="faq-category">
+            <h2 class="category-title">📥 下载与安装</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>如何下载和安装 NodePy？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p><strong>本地软件安装步骤：</strong></p>
+                        <ol>
+                            <li>访问官网 <a href="https://www.nodepy.top/">www.nodepy.top</a></li>
+                            <li>点击「下载」按钮获取 node-py.zip</li>
+                            <li>解压到任意目录（建议不要有中文路径）</li>
+                            <li>按照<code>使用教程文档.txt</code>配置文件夹目录</li>
+                            <li>双击<code>node-py.exe</code>免安装直接运行</li>
+                            <li>后续更新直接官网下载最新文件，只需替换<code>node-py.exe</code>即可完成更新</li>
+                        </ol>
+                        <p><strong>程序开发安装：</strong></p>
+                        <ol>
+                            <li>克隆github仓库源码</li>
+                            <li>打开终端/命令提示符，进入项目目录</li>
+                            <li>运行 <code>pip install -r requirements.txt</code> 安装依赖</li>
+                            <li>运行 <code>python main.py</code> 启动程序</li>
+                        </ol>
+                        <div class="tip-box info">
+                            <strong>提示：</strong>首次启动可能会自动下载嵌入式 Python 环境，请保持网络连接。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>NodePy 支持哪些操作系统？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>NodePy 基于 Python 和 PySide6 开发，支持主流操作系统：</p>
+                        <ul>
+                            <li><strong>当前仅 Windows：</strong>Windows 10/11（推荐）</li>
+<!--                            <li><strong>macOS：</strong>macOS 10.15+</li>-->
+<!--                            <li><strong>Linux：</strong>Ubuntu 18.04+, CentOS 7+ 等主流发行版</li>-->
+                        </ul>
+                        <p><strong>系统要求：</strong></p>
+                        <ul>
+                            <li>内存 2GB+（推荐 4GB）</li>
+                            <li>磁盘空间 300MB+</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>开发端运行失败怎么办？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>常见问题及解决方案：</p>
+                        <ul>
+                            <li><strong>pip 库安装失败：</strong>尝试使用国内镜像源
+                                <pre><code>pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple</code></pre>
+                            </li>
+                            <li><strong>缺少 PySide6：</strong>手动安装 <code>pip install PySide6>=6.5.0</code></li>
+                            <li><strong>启动报错：</strong>检查 Python 版本是否>=3.10</li>
+                            <li><strong>嵌入式环境下载失败：</strong>检查网络连接，或手动下载 Python 3.10</li>
+                        </ul>
+                        <div class="tip-box warning">
+                            <strong>注意：</strong>如问题仍未解决，请加入交流群或联系作者获取技术支持。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 功能特性 -->
+        <div class="faq-category">
+            <h2 class="category-title">⚙️ 功能特性</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>NodePy 和 Scratch 有什么区别？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <table>
+                            <tr><th>特性</th><th>NodePy</th><th>Scratch</th></tr>
+                            <tr><td>目标语言</td><td>Python</td><td>Scratch 专有</td></tr>
+                            <tr><td>适用人群</td><td>成人/青少年</td><td>儿童/青少年</td></tr>
+                            <tr><td>应用场景</td><td>办公自动化、数据处理</td><td>游戏、动画、故事</td></tr>
+                            <tr><td>代码导出</td><td>可生成 Python 代码</td><td>不支持</td></tr>
+                            <tr><td>扩展能力</td><td>支持自定义 Python 节点</td><td>有限</td></tr>
+                            <tr><td>学习迁移</td><td>可直接过渡到 Python 编码</td><td>需重新学习</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>NodePy 有 AI 功能吗？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>否，无需配置主流Key，NodePy 内置生成 AI 提示词模板功能：</p>
+                        <ul>
+                            <li>输入函数输入</li>
+                            <li>输入函数功能描述</li>
+                            <li>输入函数输出</li>
+                            <li>一键生成 AI 生成函数节点提示词模板</li>
+                            <li>交给第三方在线 AI 完成函数代码生成</li>
+                            <li>复制、粘贴函数代码，创建自定义节点</li>
+                        </ul>
+                        <div class="tip-box info">
+                            <strong>提示：</strong>可使用国内任意 AI 服务接口。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>NodePy 的性能如何？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>NodePy 采用优化的执行引擎：</p>
+                        <ul>
+                            <li><strong>拓扑排序：</strong>自动确定节点执行顺序，避免循环依赖</li>
+                            <li><strong>批量执行：</strong>将所有节点编译成单个 Python 脚本，只调用一次 Python 解释器</li>
+                            <li><strong>多线程并发：</strong>支持多线程处理列表元素，适合 I/O 密集型任务</li>
+                            <li><strong>循环节点：</strong>支持区间循环、List 循环，可嵌套使用</li>
+                        </ul>
+                        <p>相比逐节点执行，批量执行模式性能提升 10 倍以上。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>支持哪些节点类型？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p><strong>内置节点库（6 大类）：</strong></p>
+                        <ul>
+                            <li><strong>输出类：</strong>打印节点、日志输出</li>
+                            <li><strong>常量类：</strong>布尔/整数/浮点数/字符串/列表/字典常量</li>
+                            <li><strong>数据处理：</strong>数据提取、类型检测</li>
+                            <li><strong>循环控制：</strong>区间循环 (Range Loop)、List 循环、多线程处理</li>
+                            <li><strong>文本处理：</strong>正则提取、正则生成器</li>
+                            <li><strong>Debug：</strong>断点、变量监视</li>
+                        </ul>
+                        <p>还支持自定义 Python 节点和节点插件导入/导出。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 使用教程 -->
+        <div class="faq-category">
+            <h2 class="category-title">📖 使用教程</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>如何学习使用 NodePy？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>推荐学习路径：</p>
+                        <ol>
+                            <li>观看<a href="https://www.bilibili.com/video/BV1rHNuzoENb/" target="_blank">视频教程</a>（B 站，5 分钟快速上手）</li>
+                            <li>阅读<a href="README.html" target="_blank">官方文档</a></li>
+                            <li>完成「四步快速开始」教程：
+                                <ul>
+                                    <li>从节点库拖拽【常量 - 字符串】到画布</li>
+                                    <li>在右侧参数面板输入：Hello, 节点编辑器！</li>
+                                    <li>从字符串节点输出端口拖拽到打印节点输入端口</li>
+                                    <li>点击 ▶ 运行，底部控制台显示结果</li>
+                                </ul>
+                            </li>
+                            <li>尝试复现示例项目</li>
+                            <li>创建自己的第一个流程图</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>如何创建自定义节点？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>有两种方式创建自定义节点：</p>
+
+                        <p><strong>方式 1：AI 模板 / 自定义节点</strong></p>
+                        <ol>
+                            <li>点击工具栏「AI 模板」</li>
+                            <li>参考【NodePy有 AI 功能吗？】描述步骤</li>
+                        </ol>
+
+                        <p><strong>方式 2：开发端代码创建</strong></p>
+                        <ol>
+                            <li>在 <code>core/nodes/base_nodes.py</code> 中添加函数：
+                                <pre><code>def 乘法 (a: int, b: int) -> int:
+    """
+    乘法运算节点。
+    输入两个数字，返回它们的乘积。
+    """
+    return a * b
+
+# 保存源代码字符串（用于序列化）
+乘法._source = '''def 乘法 (a: int, b: int) -> int:
+    """乘法运算节点。"""
+    return a * b
+'''</code></pre>
+                            </li>
+                            <li>在 <code>core/nodes/node_library.py</code> 中注册分类</li>
+                        </ol>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>如何保存和加载流程图？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p><strong>保存流程图：</strong></p>
+                        <ol>
+                            <li>点击菜单栏「保存为 JSON 」</li>
+                            <li>选择保存路径，输入文件名</li>
+                            <li>流程图将保存为 .json 格式</li>
+                        </ol>
+                        <p><strong>加载流程图：</strong></p>
+                        <ol>
+                            <li>点击菜单栏「加载 JSON 」→可选「覆盖加载」|「增量加载」</li>
+                            <li>选择之前保存的 .json 文件</li>
+                            <li>流程图将加载到画布中</li>
+                        </ol>
+                        <div class="tip-box info">
+                            <strong>提示：</strong>流程图文件是 JSON 格式，可以用文本编辑器查看和编辑。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>如何保存和加载节点包？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p><strong>保存节点插件包：</strong></p>
+                        <ol>
+                            <li>点击菜单栏「导出节点插件」</li>
+                            <li>选择保存路径，输入文件名</li>
+                            <li>节点插件包将保存为 .json 格式</li>
+                        </ol>
+                        <p><strong>加载节点插件：</strong></p>
+                        <ol>
+                            <li>点击菜单栏「导入节点插件」</li>
+                            <li>选择插件包的的 .json 文件</li>
+                            <li>将节点导入到本地节点库中</li>
+                        </ol>
+                        <div class="tip-box info">
+                            <strong>提示：</strong>节点插件包文件是 JSON 格式，可以用文本编辑器查看和编辑。后续新增的系统节点插件也是使用此方式导入导出用于分享。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 许可与开源 -->
+        <div class="faq-category">
+            <h2 class="category-title">📜 许可与开源</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>NodePy 是免费的吗？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>是的，NodePy 完全免费，采用 MIT 开源许可证。你可以：</p>
+                        <ul>
+                            <li>免费下载和使用（包括商业用途）</li>
+                            <li>查看和修改源代码</li>
+                            <li>分发和再发布</li>
+                            <li>贡献代码和改进</li>
+                        </ul>
+                        <p>GitHub 仓库：<a href="https://github.com/Hptd/node-python" target="_blank">github.com/Hptd/node-python</a></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>如何贡献代码？</span>
+                    <span class="icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>欢迎贡献！方式如下：</p>
+                        <ol>
+                            <li>Fork 项目到你的 GitHub 账号</li>
+                            <li>创建新分支：<code>git checkout -b feature/your-feature</code></li>
+                            <li>提交更改：<code>git commit -m 'Add some feature'</code></li>
+                            <li>推送分支：<code>git push origin feature/your-feature</code></li>
+                            <li>在 GitHub 上提交 Pull Request</li>
+                        </ol>
+                        <p>贡献内容可以是：新节点、Bug 修复、文档改进、性能优化等。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- 页脚 -->
+    <footer>
+        <div class="container">
+            <div class="links">
+                <a href="../index.html">首页</a>
+                <a href="README.html" target="_blank">使用文档</a>
+                <a href="https://github.com/Hptd/node-python" target="_blank">GitHub</a>
+                <a href="https://doc.qt.io/qtforpython-6/" target="_blank">PySide6 文档</a>
+                <a href="https://docs.python.org/zh-cn/3/" target="_blank">Python 文档</a>
+            </div>
+            <p>© 2025-2026 简易中文节点 Python 编辑器 | MIT License</p>
+        </div>
+    </footer>
+
+    <!-- 回顶部按钮 -->
+    <button class="back-to-top" id="backToTop" onclick="scrollToTop()">↑</button>
+
+    <!-- 百度主动推送 -->
+    <script>
+    (function(){
+        var bp = document.createElement('script');
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(bp, s);
+    })();
+    </script>
+
+    <script>
+        // FAQ 展开/收起
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const item = question.parentElement;
+                const isActive = item.classList.contains('active');
+                
+                // 关闭其他展开的项
+                document.querySelectorAll('.faq-item.active').forEach(activeItem => {
+                    activeItem.classList.remove('active');
+                });
+                
+                // 如果之前不是展开状态，则展开
+                if (!isActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // 回顶部按钮
+        const backToTopBtn = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                backToTopBtn.classList.add('visible');
+            } else {
+                backToTopBtn.classList.remove('visible');
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#' && href.length > 1) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
