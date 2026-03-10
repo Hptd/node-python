@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用教程 - 简易中文节点 Python 编辑器</title>
+    <style>
+        :root {
+            --primary-color: #4a9eff;
+            --secondary-color: #6c5ce7;
+            --accent-color: #00cec9;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: rgba(255,255,255,0.1);
+            --code-bg: #0d1117;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            line-height: 1.8;
+        }
+
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        nav .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav .back-btn {
+            background: var(--gradient-2);
+            color: var(--dark-bg);
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        nav .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        /* 主容器 */
+        .doc-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 6rem 2rem 4rem;
+        }
+
+        /* 标题区域 */
+        .doc-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-header h1 {
+            font-size: 2.5rem;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .doc-header .badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        /* 目录 */
+        .toc {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 3rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .toc h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .toc ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .toc a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+            display: block;
+            padding: 0.3rem 0;
+        }
+
+        .toc a:hover {
+            color: var(--primary-color);
+        }
+
+        /* 内容区域 */
+        .doc-content h2 {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            margin: 2.5rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-content h3 {
+            font-size: 1.4rem;
+            color: var(--accent-color);
+            margin: 2rem 0 0.8rem;
+        }
+
+        .doc-content h4 {
+            font-size: 1.1rem;
+            color: var(--text-color);
+            margin: 1.5rem 0 0.5rem;
+        }
+
+        .doc-content p {
+            margin: 1rem 0;
+            color: var(--text-muted);
+        }
+
+        .doc-content ul, .doc-content ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+            color: var(--text-muted);
+        }
+
+        .doc-content li {
+            margin: 0.5rem 0;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: var(--card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background: rgba(74, 158, 255, 0.1);
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* 代码块 */
+        pre {
+            background: var(--code-bg);
+            padding: 1.5rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border-color);
+        }
+
+        code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+
+        p code, li code {
+            background: rgba(74, 158, 255, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            color: var(--accent-color);
+        }
+
+        /* 引用块 */
+        blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            background: rgba(74, 158, 255, 0.05);
+            border-radius: 0 10px 10px 0;
+        }
+
+        blockquote p {
+            color: var(--text-color);
+        }
+
+        /* 提示框 */
+        .tip {
+            background: rgba(0, 206, 201, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .tip strong {
+            color: var(--accent-color);
+        }
+
+        /* 图片 */
+        img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 链接 */
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* 页脚 */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+            color: var(--text-muted);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .doc-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .toc ul {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">📖 使用教程</div>
+            <a href="../index.html" class="back-btn">← 返回首页</a>
+        </div>
+    </nav>
+
+    <div class="doc-container">
+        <div class="doc-header">
+            <h1>简易中文节点 Python 编辑器</h1>
+            <p style="color: var(--text-muted); font-size: 1.1rem;">图形化编程 · 拖拽节点 · 数据流图执行</p>
+            <div class="badges">
+                <span class="badge">🐍 Python 3.10+</span>
+                <span class="badge">🎨 PySide6 ≥ 6.5.0</span>
+                <span class="badge">📄 MIT License</span>
+            </div>
+        </div>
+
+        <div class="toc">
+            <h3>📑 目录</h3>
+            <ul>
+                <li><a href="#intro">📌 软件介绍</a></li>
+                <li><a href="#installation">💿 安装与启动</a></li>
+                <li><a href="#interface">🖥️ 界面概览</a></li>
+                <li><a href="#quickstart">🚀 快速入门</a></li>
+                <li><a href="#operations">🎯 节点操作</a></li>
+                <li><a href="#nodes">📦 常用节点</a></li>
+                <li><a href="#advanced">🔧 高级功能</a></li>
+                <li><a href="#shortcuts">⌨️ 快捷键</a></li>
+                <li><a href="#help">📞 获取帮助</a></li>
+            </ul>
+        </div>
+
+        <div class="doc-content">
+            <section id="intro">
+                <h2>📌 软件介绍</h2>
+
+                <p><strong>简易中文节点 Python 编辑器</strong>是一款面向非程序员的图形化编程工具。你不需要编写代码，只需通过<strong>拖拽节点</strong>和<strong>连接线条</strong>，就能构建可自动执行的程序流程。</p>
+
+                <h3>适用场景</h3>
+                <ul>
+                    <li>✅ 数据处理与转换</li>
+                    <li>✅ 批量文件操作</li>
+                    <li>✅ 文本分析与提取</li>
+                    <li>✅ 自动化工作流</li>
+                    <li>✅ 原型设计与验证</li>
+                </ul>
+
+                <h3>核心特点</h3>
+                <table>
+                    <tr><th>特点</th><th>说明</th></tr>
+                    <tr><td>🀄 中文界面</td><td>全中文节点名称和操作提示</td></tr>
+                    <tr><td>🔤 拼音搜索</td><td>输入拼音首字母即可快速查找节点（如"fds"→"浮点数"）</td></tr>
+                    <tr><td>🧩 可视化编辑</td><td>拖拽式操作，所见即所得</td></tr>
+                    <tr><td>⚡ 实时执行</td><td>点击运行即刻查看结果</td></tr>
+                    <tr><td>💾 持久保存</td><td>流程图保存为 JSON 文件，随时加载复用</td></tr>
+                </table>
+            </section>
+
+            <section id="installation">
+                <h2>💿 安装与启动</h2>
+
+                <h3>系统要求</h3>
+                <table>
+                    <tr><th>组件</th><th>要求</th></tr>
+                    <tr><td>操作系统</td><td>Windows 7/10/11</td></tr>
+                    <tr><td>内存</td><td>至少 2GB 可用内存</td></tr>
+                    <tr><td>显示</td><td>支持 1280×720 及以上分辨率</td></tr>
+                </table>
+
+                <h3>安装步骤</h3>
+                <ol>
+                    <li><strong>解压压缩包</strong>
+                        <ul>
+                            <li>将下载的压缩包解压到任意目录（建议：<code>D:\node-python</code>）</li>
+                            <li>将<code>python_embedded.zip</code>解压到与<code>node-py.exe</code>同级内</li>
+                        </ul>
+                    </li>
+                    <li><strong>首次启动</strong>
+                        <ul>
+                            <li>双击运行 <code>node-py.exe</code></li>
+                        </ul>
+                    </li>
+                    <li><strong>创建桌面快捷方式</strong>（可选）
+                        <ul>
+                            <li>右键点击 <code>.exe</code> 文件 → 发送到 → 桌面快捷方式</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <div class="tip">
+                    <strong>💡 开发者模式：</strong>如需从源码运行，执行以下命令：
+                    <pre><code># 1. 创建虚拟环境（推荐）
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 运行应用
+python main.py</code></pre>
+                </div>
+            </section>
+
+            <section id="interface">
+                <h2>🖥️ 界面概览</h2>
+
+                <img src="封面.png" alt="软件界面截图" style="width: 100%; border: 1px solid var(--border-color); border-radius: 10px;">
+
+                <h3>主要区域说明</h3>
+                <table>
+                    <tr><th>区域</th><th>功能</th></tr>
+                    <tr><td><strong>工具栏</strong></td><td>运行、停止、保存、加载、主题切换等全局操作</td></tr>
+                    <tr><td><strong>节点库面板</strong></td><td>浏览和搜索可用节点，拖拽添加到画布</td></tr>
+                    <tr><td><strong>画布区域</strong></td><td>编辑流程图的主工作区，支持拖拽、连接、框选</td></tr>
+                    <tr><td><strong>右侧面板</strong></td><td>显示选中节点的参数、文档和源码</td></tr>
+                    <tr><td><strong>控制台</strong></td><td>显示程序运行结果和日志输出</td></tr>
+                </table>
+            </section>
+
+            <section id="quickstart">
+                <h2>🚀 快速入门：第一个流程图</h2>
+
+                <p>让我们创建一个最简单的"Hello World"流程图。</p>
+
+                <h3>步骤 1：添加字符串节点</h3>
+                <ol>
+                    <li>在左侧<strong>节点库面板</strong>中，找到【常量类】→【常量 - 字符串】</li>
+                    <li>按住鼠标左键，将其<strong>拖拽</strong>到画布中央</li>
+                    <li>松开鼠标，节点出现在画布上</li>
+                </ol>
+
+                <h3>步骤 2：设置字符串内容</h3>
+                <ol>
+                    <li>点击选中画布上的【常量 - 字符串】节点</li>
+                    <li>在右侧<strong>参数输入</strong>面板中，找到"值"输入框</li>
+                    <li>输入：<code>Hello, 节点编辑器！</code></li>
+                </ol>
+
+                <h3>步骤 3：添加打印节点</h3>
+                <ol>
+                    <li>在左侧节点库中，找到【输出类】→【打印】</li>
+                    <li>将其拖拽到画布上，放在字符串节点的右侧</li>
+                </ol>
+
+                <h3>步骤 4：连接节点并运行</h3>
+                <ol>
+                    <li>将鼠标移动到【常量 - 字符串】节点右侧的<strong>橙色圆点</strong>（输出端口）</li>
+                    <li>按住鼠标左键，拖拽到【打印】节点左侧的<strong>蓝色圆点</strong>（输入端口）</li>
+                    <li>松开鼠标，一条连接线建立完成</li>
+                </ol>
+
+                <img src="第一个节点连接示例图.png" alt="软件示例节点界面截图" style="width: 100%; border: 1px solid var(--border-color); border-radius: 10px;">
+
+                <div class="tip">
+                    <strong>🎉 恭喜！</strong>你已经成功创建了第一个节点流程图！
+                </div>
+            </section>
+
+            <section id="operations">
+                <h2>🎯 节点操作基础</h2>
+
+                <h3>添加节点的 4 种方法</h3>
+                <table>
+                    <tr><th>方法</th><th>操作</th></tr>
+                    <tr><td><strong>拖拽</strong></td><td>从节点库拖拽节点到画布</td></tr>
+                    <tr><td><strong>双击</strong></td><td>双击节点库中的节点名称</td></tr>
+                    <tr><td><strong>右键菜单</strong></td><td>画布空白处右键 → 选择节点</td></tr>
+                    <tr><td><strong>空格搜索</strong></td><td>画布上按空格键 → 输入拼音首字母/英文模糊搜索</td></tr>
+                </table>
+
+                <h3>移动与选择</h3>
+                <ul>
+                    <li><strong>移动单个节点</strong>：左键拖拽节点</li>
+                    <li><strong>选择多个节点</strong>：左键框选 或 Ctrl+ 点击</li>
+                    <li><strong>取消选择</strong>：点击画布空白处</li>
+                </ul>
+
+                <h3>删除节点</h3>
+                <ol>
+                    <li>选中要删除的节点（可多选）</li>
+                    <li>按 <code>Delete</code> 或 <code>Backspace</code> 键</li>
+                </ol>
+
+                <h3>复制节点</h3>
+                <ol>
+                    <li>选中节点</li>
+                    <li>按 <code>Ctrl+D</code> 复制并粘贴（保留连接关系）</li>
+                </ol>
+
+                <h3>视图操作</h3>
+                <table>
+                    <tr><th>操作</th><th>方法</th></tr>
+                    <tr><td>平移画布</td><td>鼠标中键拖动</td></tr>
+                    <tr><td>缩放画布</td><td>鼠标滚轮滚动</td></tr>
+                    <tr><td>重置视图</td><td>点击右上角【自适应】按钮</td></tr>
+                    <tr><td>清空画布</td><td>点击右上角【清空画布】按钮</td></tr>
+                </table>
+            </section>
+
+            <section id="nodes">
+                <h2>📦 常用节点详解</h2>
+
+                <h3>1. 常量类节点</h3>
+                <p>用于创建固定值，作为数据流的数据传输和强制格式转换处理。</p>
+                <table>
+                    <tr><th>节点名称</th><th>输入参数</th><th>输出</th><th>用途</th></tr>
+                    <tr><td><strong>常量 - 布尔</strong></td><td>复选框</td><td>bool</td><td>真/假值</td></tr>
+                    <tr><td><strong>常量 - 整数</strong></td><td>整数输入框</td><td>int</td><td>整数值（如 42）</td></tr>
+                    <tr><td><strong>常量 - 浮点数</strong></td><td>小数输入框</td><td>float</td><td>小数值（如 3.14）</td></tr>
+                    <tr><td><strong>常量 - 字符串</strong></td><td>文本输入框</td><td>str</td><td>文本内容</td></tr>
+                    <tr><td><strong>常量 - 列表</strong></td><td>JSON 编辑器</td><td>list</td><td>数组（如 <code>[1, 2, 3]</code>）</td></tr>
+                    <tr><td><strong>常量 - 字典</strong></td><td>JSON 编辑器</td><td>dict</td><td>键值对（如 <code>{"name": "张三"}</code>）</td></tr>
+                </table>
+
+                <div class="tip">
+                    <strong>示例：</strong>创建列表 <code>[1, 2, 3, 4, 5]</code>
+                    <ol>
+                        <li>添加【常量 - 列表】节点</li>
+                        <li>在参数输入框中输入：<code>[1, 2, 3, 4, 5]</code></li>
+                        <li>点击其他节点，自动验证格式</li>
+                    </ol>
+                </div>
+
+                <h3>2. 输出类节点</h3>
+                <table>
+                    <tr><th>节点名称</th><th>功能</th></tr>
+                    <tr><td><strong>打印</strong></td><td>输出任意类型的数据到控制台</td></tr>
+                </table>
+
+                <h3>3. 数据处理节点</h3>
+                <table>
+                    <tr><th>节点名称</th><th>功能</th><th>示例</th></tr>
+                    <tr><td><strong>数据提取</strong></td><td>从字典/列表中提取指定路径的值</td><td>见下方详解</td></tr>
+                    <tr><td><strong>数据类型检测</strong></td><td>检测数据的类型名称</td><td>输入 <code>42</code> → 输出 <code>&lt;class 'int'&gt;</code></td></tr>
+                </table>
+
+                <h4>数据提取 - 路径语法</h4>
+                <pre><code>数据源：{"user": {"profile": {"name": "张三", "hobbies": ["阅读", "游泳"]}}}
+
+提取路径                    结果
+─────────────────────────────────────────
+user                       {"profile": {...}}
+user.profile               {"name": "张三", "hobbies": [...]}
+user.profile.name          "张三"
+user.profile.hobbies.0     "阅读"
+user.profile.hobbies[1]    "游泳"</code></pre>
+
+                <h3>4. 内置功能节点</h3>
+
+                <h4>区间循环节点、List循环节点、多线程处理节点的节点输入输出介绍：</h4>
+                <ol>
+                    <li>节点左侧为输入节点</li>
+                    <li>节点右侧上节点：迭代值输出节点：
+                    <p>将循环或者多线程需要迭代处理的单独元素传入函数处理的节点组</p></li>
+                    <li>节点右侧下节点：循环 / 多线程 处理汇总输出端口</li>
+                </ol>
+
+                <img src="特殊节点使用介绍.png" alt="特殊节点介绍" style="width: 100%; border: 1px solid var(--border-color); border-radius: 10px;">
+
+                <h4>区间循环 (Range Loop)</h4>
+                <p>生成一个数字序列，常用于重复操作。</p>
+                <pre><code>参数设置：
+- 最小值：0
+- 最大值：5
+- 步长：1
+
+输出序列：0 → 1 → 2 → 3 → 4</code></pre>
+
+                <h4>List 循环</h4>
+                <p>遍历列表中的每个元素。</p>
+                <pre><code>输入列表：["苹果", "香蕉", "橙子"]
+
+迭代过程：
+第 1 次：当前元素 = "苹果"
+第 2 次：当前元素 = "香蕉"
+第 3 次：当前元素 = "橙子"</code></pre>
+
+                <h4>多线程处理</h4>
+                <p>并发处理列表数据，适合 I/O 密集型任务。</p>
+                <pre><code>适用场景：
+✅ 批量下载文件
+✅ 并发网络请求
+✅ 批量读写文件
+
+不适用场景：
+❌ 复杂数学计算（CPU 密集型）
+❌ 有状态依赖的操作</code></pre>
+
+                <h3>5. 文本处理节点</h3>
+
+                <h4>正则提取</h4>
+                <p>从文本中按模式提取内容。</p>
+                <p><strong>内置模板：</strong>邮箱、手机号、日期、URL、IP 地址、文件名等</p>
+                <p><strong>自定义正则：</strong></p>
+                <pre><code>示例文本：CG 渲染_2026-02-26_21-11-27
+
+标记模板：[CG 渲染]_2026-02-26_21-11-27
+          ↑ 方括号内为要提取的内容
+
+生成正则：([^_]+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}</code></pre>
+            </section>
+
+            <section id="advanced">
+                <h2>🔧 高级功能</h2>
+
+                <h3>1. 代码自定义节点</h3>
+                <p>你可以用 Python 代码创建自己的节点！</p>
+                <p><strong>步骤：</strong></p>
+                <ol>
+                    <li>点击【本地节点库】→【自定义节点】</li>
+                    <li>在代码编辑区输入：
+                        <pre><code>def mul(a: int, b: int) -> int:
+    """
+    乘法运算节点。
+    输入两个数字，返回它们的乘积。
+    """
+    return a * b</code></pre>
+                    </li>
+                    <li>点击【生成节点】</li>
+                    <li>选择一个当前分类 或者 新建分类</li>
+                    <li>新节点出现在指定分类中</li>
+                </ol>
+
+                <div class="tip">
+                    <strong>注意：</strong>
+                    <ul>
+                        <li>代码中的函数名尽量使用英文，可自定义中文节点名</li>
+                        <li>参数类型决定输入控件（<code>int</code>→整数框，<code>str</code>→文本框）</li>
+                        <li>返回类型决定是否有输出端口</li>
+                    </ul>
+                </div>
+
+                <h3>2. AI 节点生成器</h3>
+                <img src="Ai生成节点模板图.png" alt="节点Ai模板生成面板截图" style="width: 100%; border: 1px solid var(--border-color); border-radius: 10px;">
+                <p>让 AI 帮你写节点代码！</p>
+                <p><strong>步骤：</strong></p>
+                <ol>
+                    <li>点击工具栏【🤖 AI 模板】</li>
+                    <li>输入输入参数设定，可点击【添加参数】增加多个输入参数，并且指定输入参数类型</li>
+                    <li>输入核心需求描述，例如：
+                        <blockquote>创建一个节点，输入是一个 Excel 文件路径，输出是 pandas DataFrame 的前 10 行数据。</blockquote>
+                    </li>
+                    <li>如果有返回函数，需要输入最终输出结果要求，例如：
+                        <blockquote>输出是List(json列表结果)，输入表格 pandas DataFrame 的前 10 行数据。</blockquote>
+                    </li>
+                    <li>点击【生成提示词】</li>
+                    <li>点击【复制提示词】，然后交给“豆包”或者“deepseek”等第三方Ai</li>
+                    <li>将Ai返回结果粘贴到自定义节点编辑器</li>
+                    <li>输入节点显示名称</li>
+                    <li>点击【生成节点】</li>
+                    <li>选择节点保存分类（可新建），完成节点创建</li>
+                </ol>
+
+                <h3>3. 节点组</h3>
+                <p>将多个节点打包成组，便于管理和复用。</p>
+                <p><strong>创建节点组：</strong></p>
+                <ol>
+                    <li>框选多个节点（至少 2 个）</li>
+                    <li>按 <code>Ctrl+G</code> 或右键 →【创建节点组】</li>
+                    <li>组可以整体移动</li>
+                </ol>
+
+                <h3>4. 节点插件管理</h3>
+                <p><strong>导出插件（分享给他人）：</strong></p>
+                <ol>
+                    <li>工具栏 →【📤 导出节点插件】</li>
+                    <li>选择要导出的自定义节点</li>
+                    <li>保存为 <code>.json</code> 文件</li>
+                </ol>
+                <p><strong>导入插件（使用他人节点）：</strong></p>
+                <ol>
+                    <li>工具栏 →【📥 导入节点插件】</li>
+                    <li>选择插件 JSON 文件</li>
+                    <li>确认后节点添加到库中</li>
+                </ol>
+            </section>
+
+            <section id="shortcuts">
+                <h2>⌨️ 快捷键速查</h2>
+
+                <h3>编辑操作</h3>
+                <table>
+                    <tr><th>快捷键</th><th>功能</th></tr>
+                    <tr><td><code>Delete</code> / <code>Backspace</code></td><td>删除选中节点</td></tr>
+                    <tr><td><code>Ctrl+D</code></td><td>复制并粘贴（保留连接）</td></tr>
+                    <tr><td><code>Ctrl+G</code></td><td>创建节点组</td></tr>
+                    <tr><td><code>Space</code></td><td>画布右键搜索菜单</td></tr>
+                </table>
+
+                <h3>视图操作</h3>
+                <table>
+                    <tr><th>操作</th><th>方法</th></tr>
+                    <tr><td>平移</td><td>鼠标中键拖动</td></tr>
+                    <tr><td>缩放</td><td>鼠标滚轮</td></tr>
+                </table>
+
+                <h3>选择操作</h3>
+                <table>
+                    <tr><th>操作</th><th>方法</th></tr>
+                    <tr><td>框选</td><td>左键拖动框选</td></tr>
+                    <tr><td>增选</td><td>Ctrl/Shift + 框选/点击</td></tr>
+                    <tr><td>取消选中</td><td>点击画布空白处</td></tr>
+                </table>
+            </section>
+
+            <section id="help">
+                <h2>📞 获取帮助</h2>
+
+                <h3>技术支持</h3>
+                <p>如有问题，请提供以下信息：</p>
+                <ul>
+                    <li>问题复现步骤</li>
+                    <li>截图或日志文件（<code>output_logs/output_log.txt</code>）</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025-2026 简易中文节点 Python 编辑器 | MIT License</p>
+        <p style="margin-top: 0.5rem;">
+            <a href="https://doc.qt.io/qtforpython-6/" target="_blank">PySide6 文档</a> |
+            <a href="https://docs.python.org/zh-cn/3/" target="_blank">Python 官方文档</a>
+        </p>
+    </footer>
+
+    <script>
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 代码块复制功能
+        document.querySelectorAll('pre').forEach(pre => {
+            const button = document.createElement('button');
+            button.textContent = '复制';
+            button.style.cssText = 'position: absolute; right: 10px; top: 10px; padding: 4px 8px; background: var(--primary-color); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px;';
+
+            pre.style.position = 'relative';
+            pre.appendChild(button);
+
+            button.addEventListener('click', () => {
+                const code = pre.querySelector('code').textContent;
+                navigator.clipboard.writeText(code);
+                button.textContent = '已复制!';
+                setTimeout(() => button.textContent = '复制', 2000);
+            });
+        });
+    </script>
+</body>
+</html>

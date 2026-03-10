@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简易中文节点 Python 编辑器 - 图形化编程工具</title>
+    <style>
+        :root {
+            --primary-color: #4a9eff;
+            --secondary-color: #6c5ce7;
+            --accent-color: #00cec9;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: rgba(255,255,255,0.1);
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        nav .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--text-color);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--primary-color);
+        }
+
+        /* 联系作者按钮 */
+        .contact-btn {
+            background: var(--gradient-2);
+            color: var(--dark-bg);
+            padding: 0.5rem 1.2rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            border: none;
+            font-size: 0.9rem;
+        }
+
+        .contact-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(240, 147, 251, 0.4);
+        }
+
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 90%;
+            position: relative;
+            border: 1px solid var(--border-color);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: var(--primary-color);
+        }
+
+        .modal-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-codes {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .qr-item {
+            text-align: center;
+        }
+
+        .qr-item img {
+            max-width: 260px;
+            width: auto;
+            height: auto;
+            border-radius: 10px;
+            border: 3px solid var(--primary-color);
+            margin-bottom: 0.8rem;
+            display: block;
+        }
+
+        .qr-item p {
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .qr-tip {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Hero 区域 */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient-1);
+            padding: 6rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: -100px;
+            right: -100px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+            bottom: -50px;
+            left: -50px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero-content {
+            text-align: center;
+            max-width: 1000px;
+            z-index: 1;
+        }
+
+        .hero-cover {
+            margin-top: 2rem;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .hero-cover img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero .subtitle {
+            font-size: 1.5rem;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 2rem;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--gradient-3);
+            color: var(--dark-bg);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: var(--dark-bg);
+        }
+
+        /* 特性区域 */
+        .features {
+            padding: 6rem 2rem;
+            background: var(--dark-bg);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 4rem;
+            font-size: 1.1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(74, 158, 255, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* 节点展示 */
+        .nodes-section {
+            padding: 6rem 2rem;
+            background: var(--card-bg);
+        }
+
+        .nodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .node-item {
+            background: var(--dark-bg);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary-color);
+            transition: all 0.3s;
+        }
+
+        .node-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(74, 158, 255, 0.15);
+        }
+
+        .node-item h4 {
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .node-item ul {
+            list-style: none;
+            color: var(--text-muted);
+        }
+
+        .node-item li::before {
+            content: '→ ';
+            color: var(--primary-color);
+        }
+
+        /* 更多节点包卡片 */
+        .node-item.coming-soon {
+            background: linear-gradient(135deg, rgba(108, 92, 231, 0.2) 0%, rgba(74, 158, 255, 0.2) 100%);
+            border: 2px dashed var(--primary-color);
+            border-left: none;
+            text-align: center;
+        }
+
+        .node-item.coming-soon h4 {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .node-item.coming-soon .coming-badge {
+            display: inline-block;
+            background: var(--gradient-2);
+            color: var(--dark-bg);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-top: 0.8rem;
+        }
+
+        .node-item.coming-soon p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        /* 使用流程 */
+        .workflow {
+            padding: 6rem 2rem;
+            background: var(--dark-bg);
+        }
+
+        .workflow-steps {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .step {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--dark-bg);
+            margin: 0 auto 1rem;
+        }
+
+        .step h4 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .step p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* 代码示例 */
+        .code-section {
+            padding: 6rem 2rem;
+            background: var(--card-bg);
+        }
+
+        .code-container {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 2rem;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .code-container pre {
+            margin: 0;
+        }
+
+        .code-container code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        .keyword { color: #ff79c6; }
+        .string { color: #f1fa8c; }
+        .comment { color: #6272a4; }
+        .function { color: #8be9fd; }
+        .number { color: #bd93f9; }
+
+        /* 下载区域 */
+        .download {
+            padding: 6rem 2rem;
+            background: var(--gradient-1);
+            text-align: center;
+        }
+
+        .download h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .download p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .download-commands {
+            background: rgba(0,0,0,0.3);
+            padding: 2rem;
+            border-radius: 10px;
+            display: inline-block;
+            text-align: left;
+        }
+
+        .download-commands code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #00f2fe;
+            font-size: 1rem;
+        }
+
+        .download-commands .cmd {
+            margin: 0.5rem 0;
+        }
+
+        .download-commands .cmd::before {
+            content: '$ ';
+            color: var(--accent-color);
+        }
+
+        /* 页脚 */
+        footer {
+            background: #0f0f1a;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        footer a:hover {
+            color: var(--primary-color);
+        }
+
+        footer p {
+            color: var(--text-muted);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero .subtitle {
+                font-size: 1.2rem;
+            }
+
+            nav ul {
+                display: none;
+            }
+
+            .workflow-steps {
+                flex-direction: column;
+            }
+
+            .qr-codes {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav>
+        <div class="container">
+            <div class="logo">🔷 节点 Python 编辑器</div>
+            <ul>
+                <li><a href="#features">功能特性</a></li>
+                <li><a href="#nodes">节点库</a></li>
+                <li><a href="#workflow">使用流程</a></li>
+                <li><a href="downloads/node-py.zip">下载</a></li>
+                <li><button class="contact-btn" onclick="openModal()">💬 联系作者</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero 区域 -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>简易中文节点 Python 编辑器</h1>
+            <p class="subtitle">图形化编程 · 拖拽节点 · 数据流图执行</p>
+            <p>一款面向非程序员的图形化编程工具，通过拖拽节点和连接线即可构建可执行的数据流图。<br>支持自定义 Python 节点、AI 代码生成、多线程并发处理等高级功能。</p>
+            <a href="#download" class="btn btn-primary">🚀 快速开始</a>
+            <a href="https://www.bilibili.com/video/BV1rHNuzoENb/?share_source=copy_web&vd_source=110ed7db11df1a8abe7054540cd48ee3" target="_blank" class="btn btn-secondary">🎬 视频教程讲解</a>
+            <a href="files/README.html" target="_blank" class="btn btn-secondary">📖 查看文档</a>
+            <div class="hero-cover">
+                <img src="files/封面.png" alt="简易中文节点 Python 编辑器 - 界面预览">
+            </div>
+        </div>
+    </section>
+
+    <!-- 功能特性 -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">✨ 功能特性</h2>
+            <p class="section-subtitle">强大的可视化编程能力，让创意自由流动</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>可视化节点编辑</h3>
+                    <p>拖拽式节点操作，支持多种添加方式（拖拽/双击/右键菜单/空格搜索），智能拼音首字母匹配</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>丰富的节点库</h3>
+                    <p>内置输出类、常量类、数据处理、循环控制、文本处理、Debug 等六大类节点</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>循环节点</h3>
+                    <p>支持区间循环、List 循环、多线程处理，可嵌套使用，满足复杂迭代需求</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI 辅助生成</h3>
+                    <p>AI 节点代码生成器，输入功能描述即可生成节点代码，降低编程门槛</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>高性能执行</h3>
+                    <p>拓扑排序 + 批量执行引擎，单次调用 Python 解释器执行所有节点，解决频繁启动卡顿</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🧩</div>
+                    <h3>正则提取</h3>
+                    <p>智能正则表达式生成器，可视化模板标记，内置邮箱、手机号、日期等常用模板</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 节点库展示 -->
+    <section class="nodes-section" id="nodes">
+        <div class="container">
+            <h2 class="section-title">📦 节点库系统</h2>
+            <p class="section-subtitle">内置丰富节点，支持自定义扩展</p>
+
+            <div class="nodes-grid">
+                <div class="node-item">
+                    <h4>输出类</h4>
+                    <ul>
+                        <li>打印节点</li>
+                        <li>日志输出</li>
+                    </ul>
+                </div>
+
+                <div class="node-item">
+                    <h4>常量类</h4>
+                    <ul>
+                        <li>布尔常量</li>
+                        <li>整数常量</li>
+                        <li>浮点数常量</li>
+                        <li>字符串常量</li>
+                        <li>列表常量</li>
+                        <li>字典常量</li>
+                    </ul>
+                </div>
+
+                <div class="node-item">
+                    <h4>数据处理</h4>
+                    <ul>
+                        <li>数据提取</li>
+                        <li>类型检测</li>
+                    </ul>
+                </div>
+
+                <div class="node-item">
+                    <h4>循环控制</h4>
+                    <ul>
+                        <li>区间循环 (Range Loop)</li>
+                        <li>List 循环</li>
+                        <li>多线程处理</li>
+                    </ul>
+                </div>
+
+                <div class="node-item">
+                    <h4>文本处理</h4>
+                    <ul>
+                        <li>正则提取</li>
+                        <li>正则生成器</li>
+                    </ul>
+                </div>
+
+                <div class="node-item">
+                    <h4>扩展能力</h4>
+                    <ul>
+                        <li>自定义 Python 节点</li>
+                        <li>AI 辅助生成</li>
+                        <li>节点插件导入/导出</li>
+                    </ul>
+                </div>
+
+                <div class="node-item coming-soon">
+                    <h4>🎁 更多系统性节点包</h4>
+                    <ul style="text-align: left; display: inline-block;">
+                        <li>数据处理工具包</li>
+                        <li>网络请求工具包</li>
+                        <li>文件操作工具包</li>
+                        <li>Excel/CSV 处理包</li>
+                        <li>图像处理工具包</li>
+                    </ul>
+                    <span class="coming-badge">🚀 即将上线</span>
+                    <p>一键安装 · 开箱即用 · 持续更新</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 使用流程 -->
+    <section class="workflow" id="workflow">
+        <div class="container">
+            <h2 class="section-title">📖 使用流程</h2>
+            <p class="section-subtitle">四步完成你的第一个流程图</p>
+
+            <div class="workflow-steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h4>添加节点</h4>
+                    <p>从左侧节点库拖拽【常量 - 字符串】到画布</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h4>设置参数</h4>
+                    <p>在右侧参数面板输入：Hello, 节点编辑器！</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h4>连接节点</h4>
+                    <p>从字符串节点输出端口拖拽到打印节点输入端口</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h4>运行查看</h4>
+                    <p>点击 ▶ 运行，底部控制台显示结果</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 代码示例 -->
+    <section class="code-section">
+        <div class="container">
+            <h2 class="section-title">👨‍💻 自定义节点示例</h2>
+            <p class="section-subtitle">用 Python 轻松创建属于你的节点</p>
+
+            <div class="code-container">
+                <pre><code><span class="comment"># 在 base_nodes.py 中定义你的节点函数</span>
+
+<span class="keyword">def</span> <span class="function">int_add</span>(a: <span class="keyword">int</span>, b: <span class="keyword">int</span>) -> <span class="keyword">int</span>:
+    <span class="string">"""
+    计算两个整数的和。
+
+    参数:
+        a: 第一个整数
+        b: 第二个整数
+
+    返回:
+        两数之和
+    """</span>
+    <span class="keyword">return</span> a + b
+
+</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- 下载区域 -->
+    <section class="download" id="download">
+        <div class="container">
+            <h2>🚀 快速开始</h2>
+            <p>只需三步，开启你的图形化编程之旅</p>
+
+            <div class="download-commands">
+                <div class="cmd"><code>git clone &lt;repository-url&gt; &amp;&amp; cd node-python</code></div>
+                <div class="cmd"><code>pip install -r requirements.txt</code></div>
+                <div class="cmd"><code>python main.py</code></div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <a href="https://github.com/Hptd/node-python" target="_blank" class="btn btn-primary" style="background: white; color: #667eea;">🐙 GitHub 仓库</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer>
+        <div class="container">
+            <div class="links">
+                <a href="files/README.html" target="_blank">使用文档</a>
+                <a href="https://github.com/Hptd/node-python" target="_blank">GitHub</a>
+                <a href="https://doc.qt.io/qtforpython-6/" target="_blank">PySide6 文档</a>
+                <a href="https://docs.python.org/zh-cn/3/" target="_blank">Python 文档</a>
+            </div>
+            <p>© 2025-2026 简易中文节点 Python 编辑器 | MIT License</p>
+        </div>
+    </footer>
+
+    <!-- 联系作者弹窗 -->
+    <div class="modal-overlay" id="contactModal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModalBtn()">×</button>
+            <h3 class="modal-title">💬 联系作者</h3>
+            <div class="qr-codes">
+                <div class="qr-item">
+                    <img src="files/作者二维码.jpg" alt="作者微信二维码">
+                    <p>📱 作者微信</p>
+                </div>
+                <div class="qr-item">
+                    <img src="files/交流群二维码.jpg" alt="交流群二维码">
+                    <p>👥 交流群</p>
+                </div>
+            </div>
+            <p class="qr-tip">扫码添加作者或加入交流群，获取技术支持和最新动态</p>
+        </div>
+    </div>
+
+    <script>
+        // 弹窗控制
+        function openModal() {
+            document.getElementById('contactModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(event) {
+            if (event.target === event.currentTarget) {
+                closeModalBtn();
+            }
+        }
+
+        function closeModalBtn() {
+            document.getElementById('contactModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // 键盘 ESC 关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModalBtn();
+            }
+        });
+
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 导航栏滚动效果
+        window.addEventListener('scroll', function() {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.style.background = 'rgba(26, 26, 46, 0.98)';
+                nav.style.boxShadow = '0 2px 20px rgba(0,0,0,0.3)';
+            } else {
+                nav.style.background = 'rgba(26, 26, 46, 0.95)';
+                nav.style.boxShadow = 'none';
+            }
+        });
+
+        // 元素进入视口动画
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.feature-card, .node-item, .step').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
