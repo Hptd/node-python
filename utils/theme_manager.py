@@ -321,6 +321,30 @@ class ThemeManager(QObject):
             background-color: {t('button_danger_hover')};
         }}
 
+        /* DEBUG 模式切换开关（复选框按钮样式） */
+        QCheckBox#debug_mode_toggle {{
+            background-color: {t('button_secondary')};
+            color: {t('text_primary')};
+            border: none;
+            padding: 3px 8px;
+            font-size: 11px;
+            border-radius: 3px;
+        }}
+
+        QCheckBox#debug_mode_toggle:hover {{
+            background-color: {t('button_secondary_hover')};
+        }}
+
+        QCheckBox#debug_mode_toggle:checked {{
+            background-color: {t('button_primary')};
+            color: white;
+            font-weight: bold;
+        }}
+
+        QCheckBox#debug_mode_toggle:checked:hover {{
+            background-color: {t('button_primary_hover')};
+        }}
+
         QLineEdit {{
             background-color: {t('input_bg')};
             color: {t('input_text')};

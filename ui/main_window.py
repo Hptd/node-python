@@ -635,6 +635,14 @@ class SimplePyFlowWindow(QMainWindow):
 
         toolbar_layout.addStretch()
 
+        # DEBUG 模式开关（使用按钮样式的复选框）
+        self.debug_mode_checkbox = QCheckBox("🐛 DEBUG")
+        self.debug_mode_checkbox.setToolTip("开启后显示详细执行日志")
+        self.debug_mode_checkbox.setChecked(settings.get("execution.debug_mode", False))
+        self.debug_mode_checkbox.stateChanged.connect(self._on_debug_mode_changed)
+        self.debug_mode_checkbox.setObjectName("debug_mode_toggle")
+        toolbar_layout.addWidget(self.debug_mode_checkbox)
+
         set_log_path_btn = QPushButton("📁 设置日志路径")
         set_log_path_btn.setObjectName("btn_primary_small")
         set_log_path_btn.clicked.connect(self._set_log_path)
@@ -767,6 +775,16 @@ class SimplePyFlowWindow(QMainWindow):
 
             print(f"日志保存路径已设置为: {log_file_path}")
             QMessageBox.information(self, "设置成功", f"日志保存路径已设置为:\n{log_file_path}")
+
+    def _on_debug_mode_changed(self, state):
+        """处理 DEBUG 模式开关状态变化"""
+        # stateChanged 信号传递的是 int 类型 (0=Unchecked, 2=Checked)
+        is_enabled = bool(state)
+        settings.set("execution.debug_mode", is_enabled)
+        settings.save()
+        
+        status = "已开启" if is_enabled else "已关闭"
+        print(f"DEBUG 模式{status}")
 
     def _open_log_folder(self):
         """打开日志文件所在文件夹"""

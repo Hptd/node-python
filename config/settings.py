@@ -52,7 +52,8 @@ class Settings:
             "execution": {
                 "auto_run_on_change": False,
                 "show_execution_time": True,
-                "stop_on_error": True
+                "stop_on_error": True,
+                "debug_mode": False
             },
             "embedded_python": {
                 "path": None,  # 嵌入式 Python 解释器路径

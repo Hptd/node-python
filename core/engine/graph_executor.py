@@ -9,6 +9,7 @@
 from typing import List, Dict, Any, Optional
 from ..graphics.simple_node_item import SimpleNodeItem
 from ..graphics.loop_node_item import LoopNodeItem
+from config.settings import settings
 
 
 def topological_sort(nodes: List[SimpleNodeItem]) -> List[SimpleNodeItem]:
@@ -129,8 +130,8 @@ def execute_graph(
                 else:
                     colored_print(f"  ⚠ 节点 '{node.name}' 没有返回结果", "warning")
 
-            # 输出日志
-            if logs:
+            # 输出日志（仅在 DEBUG 模式下显示）
+            if logs and settings.get("execution.debug_mode", False):
                 colored_print("\n执行日志:", "info")
                 colored_print("-" * 40, "system")
                 for line in logs.split('\n'):
