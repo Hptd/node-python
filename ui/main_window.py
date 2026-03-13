@@ -31,6 +31,7 @@ from ui.dialogs.path_selector_dialog import PathSelectorDialog
 from ui.dialogs.package_manager_dialog import PackageManagerDialog
 from ui.dialogs.node_plugin_dialog import NodePluginExportDialog, NodePluginImportDialog
 from ui.dialogs.regex_generator_dialog import RegexGeneratorDialog
+from ui.dialogs.settings_dialog import SettingsDialog
 from utils.console_stream import EmittingStream, get_message_format, detect_message_type
 from utils.theme_manager import theme_manager
 from config.settings import settings
@@ -142,6 +143,14 @@ class SimplePyFlowWindow(QMainWindow):
         self.theme_action.triggered.connect(self._toggle_theme)
         self.theme_action.setToolTip(f"当前主题: {theme_manager.get_theme_info()['name']}，点击切换")
         toolbar.addAction(self.theme_action)
+
+        toolbar.addSeparator()
+
+        # 设置按钮
+        settings_action = QAction("⚙ 设置", self)
+        settings_action.setToolTip("打开设置对话框")
+        settings_action.triggered.connect(self._open_settings_dialog)
+        toolbar.addAction(settings_action)
 
     def setup_left_dock(self):
         dock = QDockWidget("📦 本地节点库", self)
@@ -2134,10 +2143,10 @@ class SimplePyFlowWindow(QMainWindow):
         try:
             from core.engine.embedded_executor import get_executor
             executor = get_executor()
-            
+
             dialog = PackageManagerDialog(self, executor)
             dialog.exec()
-            
+
         except RuntimeError as e:
             # 嵌入式 Python 未安装
             reply = QMessageBox.question(
@@ -2149,6 +2158,24 @@ class SimplePyFlowWindow(QMainWindow):
                 self._setup_embedded_python()
         except Exception as e:
             QMessageBox.critical(self, "错误", f"打开包管理器失败:\n{e}")
+
+    def _open_settings_dialog(self):
+        """打开设置对话框"""
+        dialog = SettingsDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            # 设置已保存
+            print("设置已保存。")
+            
+            # 如果主题改变，立即应用
+            theme = settings.get("ui.theme", "dark")
+            if theme != theme_manager.get_theme_info()["id"]:
+                theme_manager.set_theme(theme)
+            
+            # 提示需要重启的设置
+            QMessageBox.information(
+                self, "设置已保存",
+                "部分设置（如窗口、嵌入式环境、日志等）将在下次启动时生效。"
+            )
 
     def _open_export_plugin_dialog(self):
         """打开节点插件导出对话框"""
