@@ -119,6 +119,12 @@ class SimplePyFlowWindow(QMainWindow):
         import_plugin_action.triggered.connect(self._open_import_plugin_dialog)
         toolbar.addAction(import_plugin_action)
         
+        
+        # 导出 Python 文件
+        export_py_action = QAction("📄 导出 .py 文件", self)
+        export_py_action.setToolTip("将当前画布导出为可独立运行的 Python 文件")
+        export_py_action.triggered.connect(self.export_to_python)
+        toolbar.addAction(export_py_action)
         # 依赖包管理
         pkg_action = QAction("📦 依赖管理", self)
         pkg_action.triggered.connect(self._open_package_manager)
@@ -1672,6 +1678,47 @@ class SimplePyFlowWindow(QMainWindow):
     def get_all_nodes(self):
         from core.graphics.simple_node_item import SimpleNodeItem
         return [item for item in self.scene.items() if isinstance(item, SimpleNodeItem)]
+
+
+    def export_to_python(self):
+        """导出图表为 Python 文件"""
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        from core.graphics.simple_node_item import SimpleNodeItem
+        from core.graphics.loop_node_item import LoopNodeItem
+        from core.graphics.multithread_node_item import MultithreadNodeItem
+        from storage.python_exporter import export_graph_to_python
+
+        # 获取所有节点（包含普通节点、循环节点、多线程节点）
+        all_items = self.scene.items()
+        nodes = [item for item in all_items if isinstance(item, (SimpleNodeItem, LoopNodeItem, MultithreadNodeItem))]
+
+        if not nodes:
+            QMessageBox.warning(self, "警告", "画布中没有节点可导出。")
+            return
+
+        # 弹出保存文件对话框
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "导出图表为 Python 文件",
+            "flow_chart.py",
+            "Python Files (*.py);;All Files (*)"
+        )
+        if not filepath:
+            return  # 用户取消了对话框
+
+        # 确保文件扩展名为 .py
+        if not filepath.endswith('.py'):
+            filepath += '.py'
+
+        # 调用导出函数
+        success, message = export_graph_to_python(nodes, filepath)
+
+        if success:
+            QMessageBox.information(self, "导出成功", f"Python 文件已导出到:\n{filepath}")
+            print(f"已导出 Python 文件：{filepath}")
+        else:
+            QMessageBox.critical(self, "导出失败", f"导出时出错:\n{message}")
+            print(f"导出 Python 文件失败：{message}")
 
     def run_graph(self):
         """执行图表"""
