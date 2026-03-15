@@ -29,6 +29,11 @@
     
     <!-- 百度移动适配 -->
     <meta name="applicable-device" content="pc,mobile">
+
+    <!-- Favicon -->
+    <link rel="icon" href="files/node-python-logo-64x64.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="files/node-python-logo-64x64.ico" type="image/x-icon">
+
     <style>
         :root {
             --primary-color: #4a9eff;
@@ -458,6 +463,79 @@
             margin-top: 0.8rem;
         }
 
+        /* 自动办公节点包卡片 */
+        .node-item.plugin-card {
+            background: linear-gradient(135deg, rgba(0, 206, 201, 0.15) 0%, rgba(74, 158, 255, 0.15) 100%);
+            border: 2px solid var(--accent-color);
+            border-left: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+        }
+
+        .node-item.plugin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 206, 201, 0.3);
+            border-color: var(--accent-color);
+        }
+
+        .node-item.plugin-card h4 {
+            color: var(--accent-color);
+            font-size: 1.3rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .node-item.plugin-card .plugin-desc {
+            color: var(--text-color);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+        }
+
+        .node-item.plugin-card .plugin-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .node-item.plugin-card .plugin-count {
+            background: var(--gradient-3);
+            color: var(--dark-bg);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .node-item.plugin-card .plugin-count:hover {
+            transform: scale(1.05);
+            box-shadow: 0 3px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        .node-item.plugin-card .plugin-link {
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .node-item.plugin-card .plugin-link::after {
+            content: '→';
+            transition: transform 0.3s;
+        }
+
+        .node-item.plugin-card:hover .plugin-link::after {
+            transform: translateX(5px);
+        }
+
         .node-item.coming-soon p {
             color: var(--text-muted);
             font-size: 0.9rem;
@@ -645,7 +723,7 @@
                 <li><a href="#nodes">节点库</a></li>
                 <li><a href="#workflow">使用流程</a></li>
                 <li><a href="files/faq.html">常见问题</a></li>
-                <li><a href="downloads/node-py.zip">下载</a></li>
+                <li><a href="files/download.html">下载</a></li>
                 <li><button class="contact-btn" onclick="openModal()">💬 联系作者</button></li>
             </ul>
         </div>
@@ -773,17 +851,24 @@
                     </ul>
                 </div>
 
+                <div class="node-item plugin-card" onclick="window.open('plugins/自动化办公节点包.html', '_blank')">
+                    <h4>🤖 自动办公节点包</h4>
+                    <p class="plugin-desc">面向办公场景的自动化处理节点集合，包含文件处理、Excel、Word、PDF、图像处理等 36 个实用节点，让重复性工作自动化。</p>
+                    <div class="plugin-meta">
+                        <a href="downloads/plugins/自动化办公节点包_20260315_084812.zip" download class="plugin-count" onclick="event.stopPropagation()">36 个节点包下载</a>
+                        <span class="plugin-link">了解详情</span>
+                    </div>
+                </div>
+
                 <div class="node-item coming-soon">
-                    <h4>🎁 更多系统性节点包</h4>
-                    <ul style="text-align: left; display: inline-block;">
-                        <li>数据处理工具包</li>
-                        <li>网络请求工具包</li>
-                        <li>文件操作工具包</li>
-                        <li>Excel/CSV 处理包</li>
-                        <li>图像处理工具包</li>
-                    </ul>
-                    <span class="coming-badge">🚀 即将上线</span>
-                    <p>一键安装 · 开箱即用 · 持续更新</p>
+                    <h4>🎁 更多节点包制作中</h4>
+                    <p style="color: var(--text-muted); margin-top: 1rem;">
+                        我们正在持续开发更多系统性节点包，涵盖数据处理、网络请求、文件操作、图像处理等多个领域。
+                        每个节点包都将提供一键安装、开箱即用的体验，并持续更新优化。
+                    </p>
+                    <p style="color: var(--text-muted); margin-top: 0.8rem; font-size: 0.9rem;">
+                        📢 敬请期待，让自动化办公更高效！
+                    </p>
                 </div>
             </div>
         </div>
@@ -919,7 +1004,7 @@
       "featureList": "可视化节点编辑，丰富的节点库，循环节点，AI 辅助生成，高性能执行，正则提取",
       "programmingLanguage": "Python",
       "screenshot": "https://www.nodepy.top/files/封面.png",
-      "downloadUrl": "https://www.nodepy.top/downloads/node-py.zip",
+      "downloadUrl": "https://www.nodepy.top/files/download.html",
       "codeRepository": "https://github.com/Hptd/node-python",
       "license": "https://www.nodepy.top/LICENSE",
       "author": {

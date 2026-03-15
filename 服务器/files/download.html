@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO Meta Tags -->
+    <title>下载 - 简易中文节点 Python 编辑器 | NodePy</title>
+    <meta name="description" content="下载 NodePy 图形化编程工具，新用户下载全量包，老用户更新 exe 本体即可。提供历史版本下载和更新说明。">
+    <meta name="keywords" content="NodePy 下载，图形化编程工具下载，Python 可视化编辑器，节点编辑器更新">
+    <link rel="canonical" href="https://www.nodepy.top/download.html">
+
+    <!-- Open Graph / 社交媒体分享优化 -->
+    <meta property="og:title" content="下载 - 简易中文节点 Python 编辑器">
+    <meta property="og:description" content="新用户下载全量包，老用户更新 exe 本体即可">
+    <meta property="og:image" content="https://www.nodepy.top/files/封面.png">
+    <meta property="og:url" content="https://www.nodepy.top/download.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="NodePy">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="下载 - NodePy">
+    <meta name="twitter:description" content="新用户下载全量包，老用户更新 exe 本体即可">
+    <meta name="twitter:image" content="https://www.nodepy.top/files/封面.png">
+
+    <!-- Favicon -->
+    <link rel="icon" href="node-python-logo-64x64.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="node-python-logo-64x64.ico" type="image/x-icon">
+
+    <style>
+        :root {
+            --primary-color: #4a9eff;
+            --secondary-color: #6c5ce7;
+            --accent-color: #00cec9;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: rgba(255,255,255,0.1);
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        nav .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--text-color);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--primary-color);
+        }
+
+        /* 联系作者按钮 */
+        .contact-btn {
+            background: var(--gradient-2);
+            color: var(--dark-bg);
+            padding: 0.5rem 1.2rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            border: none;
+            font-size: 0.9rem;
+        }
+
+        .contact-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(240, 147, 251, 0.4);
+        }
+
+        /* 主内容区域 */
+        .page-header {
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient-1);
+            padding: 8rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: -100px;
+            right: -100px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .page-header::after {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+            bottom: -50px;
+            left: -50px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            z-index: 1;
+        }
+
+        .page-header p {
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.9);
+            max-width: 600px;
+            z-index: 1;
+        }
+
+        /* 下载区域 */
+        .download-section {
+            padding: 4rem 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .download-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .download-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(74, 158, 255, 0.2);
+        }
+
+        .download-card.highlight {
+            background: linear-gradient(135deg, rgba(74, 158, 255, 0.15) 0%, rgba(108, 92, 231, 0.15) 100%);
+            border: 2px solid var(--primary-color);
+        }
+
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .download-card h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .download-card h3 {
+            font-size: 1.3rem;
+            color: var(--accent-color);
+            margin: 1.5rem 0 1rem;
+        }
+
+        .download-card p {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .download-card ul {
+            list-style: none;
+            color: var(--text-muted);
+            margin: 1rem 0;
+        }
+
+        .download-card ul li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .download-card ul li::before {
+            content: '✓';
+            color: var(--primary-color);
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        .download-btn {
+            display: inline-block;
+            width: 100%;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 1.5rem;
+            text-align: center;
+            background: var(--gradient-3);
+            color: var(--dark-bg);
+            font-size: 1.1rem;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+        }
+
+        .download-btn.secondary {
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .download-btn.secondary:hover {
+            background: var(--primary-color);
+            color: var(--dark-bg);
+        }
+
+        .info-box {
+            background: rgba(74, 158, 255, 0.1);
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            border-radius: 0 10px 10px 0;
+            margin: 1.5rem 0;
+        }
+
+        .info-box strong {
+            color: var(--primary-color);
+        }
+
+        .info-box p {
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        /* 历史版本区域 */
+        .versions-section {
+            padding: 4rem 2rem;
+            background: var(--card-bg);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            background: var(--gradient-3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+        }
+
+        .version-list {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .version-item {
+            background: var(--dark-bg);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .version-item:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 5px 20px rgba(74, 158, 255, 0.15);
+        }
+
+        .version-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .version-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .version-number {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .version-date {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .version-badge {
+            background: var(--gradient-3);
+            color: var(--dark-bg);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .version-changes {
+            color: var(--text-muted);
+            margin: 1rem 0;
+        }
+
+        .version-changes ul {
+            list-style: none;
+        }
+
+        .version-changes li {
+            padding: 0.3rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .version-changes li::before {
+            content: '•';
+            color: var(--accent-color);
+            position: absolute;
+            left: 0;
+        }
+
+        .version-download {
+            display: inline-block;
+            padding: 0.6rem 1.5rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+            background: var(--gradient-3);
+            color: var(--dark-bg);
+            font-size: 0.95rem;
+        }
+
+        .version-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        /* 页脚 */
+        footer {
+            background: #0f0f1a;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        footer a:hover {
+            color: var(--primary-color);
+        }
+
+        footer p {
+            color: var(--text-muted);
+        }
+
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 90%;
+            position: relative;
+            border: 1px solid var(--border-color);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: var(--primary-color);
+        }
+
+        .modal-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-codes {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .qr-item {
+            text-align: center;
+        }
+
+        .qr-item img {
+            max-width: 260px;
+            width: auto;
+            height: auto;
+            border-radius: 10px;
+            border: 3px solid var(--primary-color);
+            margin-bottom: 0.8rem;
+            display: block;
+        }
+
+        .qr-item p {
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .qr-tip {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 2rem;
+            }
+
+            .download-grid {
+                grid-template-columns: 1fr;
+            }
+
+            nav ul {
+                display: none;
+            }
+
+            .version-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav>
+        <div class="container">
+            <div class="logo">🔷 节点 Python 编辑器</div>
+            <ul>
+                <li><a href="../index.html#features">功能特性</a></li>
+                <li><a href="../index.html#nodes">节点库</a></li>
+                <li><a href="../index.html#workflow">使用流程</a></li>
+                <li><a href="faq.html">常见问题</a></li>
+                <li><a href="../index.html#download">返回首页</a></li>
+                <li><button class="contact-btn" onclick="openModal()">💬 联系作者</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 页面头部 -->
+    <section class="page-header">
+        <h1>📥 下载中心</h1>
+        <p>选择适合你的下载方式，新用户请下载全量包，老用户直接更新 exe 即可</p>
+    </section>
+
+    <!-- 下载选项 -->
+    <section class="download-section">
+        <div class="container">
+            <div class="download-grid">
+                <!-- 新用户全量包 -->
+                <div class="download-card highlight">
+                    <div class="card-icon">🎉</div>
+                    <h2>新用户 · 全量安装包</h2>
+                    <p>首次使用推荐下载完整安装包，包含运行所需的所有文件。</p>
+                    
+                    <h3>📦 包含内容</h3>
+                    <ul>
+                        <li>NodePy 主程序（exe）</li>
+                        <li>运行配置文件</li>
+                        <li>使用说明文档</li>
+                    </ul>
+
+                    <h3>📖 安装步骤</h3>
+                    <ul>
+                        <li>下载全量压缩包（node-py.zip）</li>
+                        <li>解压到任意目录（建议非系统盘）</li>
+                        <li>双击运行 node-py.exe 即可启动</li>
+                        <li>阅读附带的说明文档了解使用方法</li>
+                    </ul>
+
+                    <div class="info-box">
+                        <strong>❓ 为什么初次安装需要下载全量包？</strong>
+                        <p style="margin-top: 0.5rem;">全量包包含了软件运行所需的所有配置文件和说明文档，确保新用户能够完整体验软件功能。单独下载 exe 本体可能因缺少必要的配置目录结构而导致运行异常。</p>
+                    </div>
+
+                    <a href="../downloads/node-py.zip" class="download-btn">
+                        🚀 下载全量包（最新版）
+                    </a>
+                </div>
+
+                <!-- 老用户更新包 -->
+                <div class="download-card">
+                    <div class="card-icon">⚡</div>
+                    <h2>老用户 · exe 更新包</h2>
+                    <p>已有旧版本的用户，只需替换 exe 文件即可完成更新。</p>
+                    
+                    <h3>🔄 更新步骤</h3>
+                    <ul>
+                        <li>下载最新版本的 exe 文件</li>
+                        <li>关闭正在运行的旧版本软件</li>
+                        <li>将新 exe 复制到原安装目录</li>
+                        <li>替换旧版本的 exe 文件</li>
+                        <li>重新启动软件即完成更新</li>
+                    </ul>
+
+                    <h3>📝 注意事项</h3>
+                    <ul>
+                        <li>更新前建议备份重要工作流文件</li>
+                        <li>配置文件无需替换，保留即可</li>
+                        <li>如遇到问题可重新下载全量包</li>
+                    </ul>
+
+                    <div class="info-box">
+                        <strong>💡 提示</strong>
+                        <p style="margin-top: 0.5rem;">下方列出了所有历史版本的 exe 下载链接和更新说明，你可以根据需要选择版本下载。</p>
+                    </div>
+
+                    <a href="#versions" class="download-btn secondary">
+                        📋 查看历史版本
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 历史版本 -->
+    <section class="versions-section" id="versions">
+        <div class="container">
+            <h2 class="section-title">📜 历史版本下载</h2>
+            <p class="section-subtitle">所有历史版本的 exe 更新包及更新说明（最新版本在上）</p>
+
+            <div class="version-list">
+                <!-- 版本 1.0.0 -->
+                <div class="version-item">
+                    <div class="version-header">
+                        <div class="version-title">
+                            <span class="version-number">v1.0.0</span>
+                            <span class="version-badge">最新版</span>
+                        </div>
+                        <span class="version-date">2026-03-15</span>
+                    </div>
+                    <div class="version-changes">
+                        <strong>更新内容：</strong>
+                        <ul>
+                            <li>初始版本发布</li>
+                            <li>支持可视化节点编辑</li>
+                            <li>内置丰富的节点库（输出类、常量类、数据处理、循环控制、文本处理）</li>
+                            <li>支持自定义 Python 节点</li>
+                            <li>AI 辅助生成节点代码</li>
+                            <li>拓扑排序 + 批量执行引擎</li>
+                            <li>正则表达式可视化生成器</li>
+                            <li>支持节点组功能</li>
+                            <li>黑/白双主题切换</li>
+                            <li>拼音首字母模糊搜索</li>
+                        </ul>
+                    </div>
+                    <div class="version-changes">
+                        <strong>增量更新：</strong>
+                        <ul>
+                            <li>新增设置选项卡</li>
+                            <li>优化控制台部分输出冗余信息</li>
+                            <li>附加更新自动办公插件包</li>
+                        </ul>
+                    </div>
+                    <a href="../downloads/exe_update/node-py-1.0.0.exe" class="version-download">
+                        📥 下载 exe 更新包
+                    </a>
+                </div>
+
+                <!-- 更多版本占位 - 后续添加新版本时复制上方模板 -->
+                <!--
+                <div class="version-item">
+                    <div class="version-header">
+                        <div class="version-title">
+                            <span class="version-number">v0.x.x</span>
+                        </div>
+                        <span class="version-date">YYYY-MM-DD</span>
+                    </div>
+                    <div class="version-changes">
+                        <strong>更新内容：</strong>
+                        <ul>
+                            <li>更新说明 1</li>
+                            <li>更新说明 2</li>
+                        </ul>
+                    </div>
+                    <a href="downloads/exe_update/node-py-0.x.x.exe" class="version-download">
+                        📥 下载 exe 更新包
+                    </a>
+                </div>
+                -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer>
+        <div class="container">
+            <div class="links">
+                <a href="README.html" target="_blank">使用文档</a>
+                <a href="https://github.com/Hptd/node-python" target="_blank">GitHub</a>
+                <a href="https://doc.qt.io/qtforpython-6/" target="_blank">PySide6 文档</a>
+                <a href="https://docs.python.org/zh-cn/3/" target="_blank">Python 文档</a>
+            </div>
+            <p>© 2025-2026 简易中文节点 Python 编辑器 | MIT License</p>
+        </div>
+    </footer>
+
+    <!-- 联系作者弹窗 -->
+    <div class="modal-overlay" id="contactModal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModalBtn()">×</button>
+            <h3 class="modal-title">💬 联系作者</h3>
+            <div class="qr-codes">
+                <div class="qr-item">
+                    <img src="作者二维码.jpg" alt="作者微信二维码">
+                    <p>📱 作者微信</p>
+                </div>
+                <div class="qr-item">
+                    <img src="交流群二维码.jpg" alt="交流群二维码">
+                    <p>👥 交流群</p>
+                </div>
+            </div>
+            <p class="qr-tip">扫码添加作者或加入交流群，获取技术支持和最新动态</p>
+        </div>
+    </div>
+
+    <script>
+        // 弹窗控制
+        function openModal() {
+            document.getElementById('contactModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(event) {
+            if (event.target === event.currentTarget) {
+                closeModalBtn();
+            }
+        }
+
+        function closeModalBtn() {
+            document.getElementById('contactModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // 键盘 ESC 关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModalBtn();
+            }
+        });
+
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 导航栏滚动效果
+        window.addEventListener('scroll', function() {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.style.background = 'rgba(26, 26, 46, 0.98)';
+                nav.style.boxShadow = '0 2px 20px rgba(0,0,0,0.3)';
+            } else {
+                nav.style.background = 'rgba(26, 26, 46, 0.95)';
+                nav.style.boxShadow = 'none';
+            }
+        });
+
+        // 元素进入视口动画
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.download-card, .version-item').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
