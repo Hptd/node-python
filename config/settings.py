@@ -71,8 +71,7 @@ class Settings:
                 "log_filename": "output_log.txt",
                 "enabled": True
             },
-            "recent_files": [],
-            "version": "1.0.0"
+            "recent_files": []
         }
     
     def load(self) -> bool:

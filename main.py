@@ -8,12 +8,13 @@ from PySide6.QtWidgets import QApplication
 from ui.main_window import SimplePyFlowWindow
 from storage.custom_node_storage import load_custom_nodes, save_custom_nodes
 from config.settings import settings
+from utils.version import __version__
 
 
 def setup_application() -> bool:
     """设置应用程序"""
     print("=" * 50)
-    print("启动中文节点 python 编辑器")
+    print(f"启动中文节点 python 编辑器 v{__version__}")
     print("=" * 50)
 
     # 加载设置

@@ -34,6 +34,7 @@ from ui.dialogs.regex_generator_dialog import RegexGeneratorDialog
 from ui.dialogs.settings_dialog import SettingsDialog
 from utils.console_stream import EmittingStream, get_message_format, detect_message_type
 from utils.theme_manager import theme_manager
+from utils.version import __version__
 from config.settings import settings
 
 
@@ -47,7 +48,7 @@ class PropertyPanelMode(Enum):
 class SimplePyFlowWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("中文节点py编辑器")
+        self.setWindowTitle(f"中文节点 py 编辑器 v{__version__}")
         self.resize(1000, 700)
 
         self.setup_bottom_dock()
