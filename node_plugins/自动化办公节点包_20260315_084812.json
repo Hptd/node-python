@@ -1,0 +1,541 @@
+{
+  "plugin_type": "node_plugin",
+  "version": "1.0",
+  "name": "自动化办公节点包",
+  "description": "面向办公场景的自动化处理节点集合，包含文件处理、Excel、Word、PDF、数据处理、日期时间、图像处理等功能",
+  "author": "自动化办公节点项目组",
+  "created_at": "2026-03-15T08:48:12.878579",
+  "dependencies": [
+    "PIL",
+    "PyPDF2",
+    "beautifulsoup4",
+    "openpyxl",
+    "pdf2image",
+    "python-docx",
+    "reportlab"
+  ],
+  "node_count": 36,
+  "categories": {
+    "文件处理": {
+      "nodes": [
+        {
+          "name": "文件读取",
+          "source_code": "def read_file(file_path: str, encoding: str = \"utf-8\") -> str:\n    \"\"\"\n    读取文本文件内容。\n    \n    参数:\n        file_path (str): 要读取的文件绝对路径\n        encoding (str): 文件编码格式，默认 utf-8，支持 gbk、gb2312 等\n    \n    返回:\n        str: 文件内容字符串，读取失败返回空字符串\n    \"\"\"\n    import os\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件不存在 - {file_path}\")\n            return \"\"\n        with open(file_path, 'r', encoding=encoding) as f:\n            content = f.read()\n        print(f\"成功读取文件：{file_path}\")\n        return content\n    except UnicodeDecodeError as e:\n        print(f\"错误：编码解码失败 - {e}，请尝试其他编码格式\")\n        return \"\"\n    except Exception as e:\n        print(f\"错误：读取文件失败 - {e}\")\n        return \"\"",
+          "parameters": [
+            "file_path",
+            "encoding"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "读取文本文件内容。\n\n参数:\n    file_path (str): 要读取的文件绝对路径\n    encoding (str): 文件编码格式，默认 utf-8，支持 gbk、gb2312 等\n\n返回:\n    str: 文件内容字符串，读取失败返回空字符串",
+          "dependencies": []
+        },
+        {
+          "name": "文件写入",
+          "source_code": "def write_file(file_path: str, content: str, encoding: str = \"utf-8\", append_mode: bool = False) -> bool:\n    \"\"\"\n    将内容写入文本文件。\n    \n    参数:\n        file_path (str): 要写入的文件绝对路径\n        content (str): 要写入的文本内容\n        encoding (str): 文件编码格式，默认 utf-8\n        append_mode (bool): True 为追加模式，False 为覆盖模式\n    \n    返回:\n        bool: 写入成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    try:\n        # 创建目录（如果不存在）\n        dir_path = os.path.dirname(file_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        # 选择写入模式\n        mode = 'a' if append_mode else 'w'\n        with open(file_path, mode, encoding=encoding) as f:\n            f.write(content)\n        \n        print(f\"成功写入文件：{file_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：写入文件失败 - {e}\")\n        return False",
+          "parameters": [
+            "file_path",
+            "content",
+            "encoding",
+            "append_mode"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "将内容写入文本文件。\n\n参数:\n    file_path (str): 要写入的文件绝对路径\n    content (str): 要写入的文本内容\n    encoding (str): 文件编码格式，默认 utf-8\n    append_mode (bool): True 为追加模式，False 为覆盖模式\n\n返回:\n    bool: 写入成功返回 True，失败返回 False",
+          "dependencies": []
+        },
+        {
+          "name": "文件复制",
+          "source_code": "def copy_file(src_path: str, dst_path: str, overwrite: bool = False) -> bool:\n    \"\"\"\n    复制文件到指定位置。\n    \n    参数:\n        src_path (str): 源文件路径\n        dst_path (str): 目标文件路径（可以是文件或文件夹）\n        overwrite (bool): 目标存在时是否覆盖，默认 False\n    \n    返回:\n        bool: 复制成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    import shutil\n    try:\n        if not os.path.exists(src_path):\n            print(f\"错误：源文件不存在 - {src_path}\")\n            return False\n        \n        # 如果目标是文件夹，拼接文件名\n        if os.path.isdir(dst_path):\n            dst_path = os.path.join(dst_path, os.path.basename(src_path))\n        \n        # 检查目标是否存在\n        if os.path.exists(dst_path) and not overwrite:\n            print(f\"错误：目标文件已存在 - {dst_path}\")\n            return False\n        \n        shutil.copy2(src_path, dst_path)\n        print(f\"成功复制：{src_path} -> {dst_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：复制文件失败 - {e}\")\n        return False",
+          "parameters": [
+            "src_path",
+            "dst_path",
+            "overwrite"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "复制文件到指定位置。\n\n参数:\n    src_path (str): 源文件路径\n    dst_path (str): 目标文件路径（可以是文件或文件夹）\n    overwrite (bool): 目标存在时是否覆盖，默认 False\n\n返回:\n    bool: 复制成功返回 True，失败返回 False",
+          "dependencies": []
+        },
+        {
+          "name": "文件移动",
+          "source_code": "def move_file(src_path: str, dst_path: str, overwrite: bool = False) -> bool:\n    \"\"\"\n    移动文件到指定位置。\n    \n    参数:\n        src_path (str): 源文件路径\n        dst_path (str): 目标文件路径\n        overwrite (bool): 目标存在时是否覆盖，默认 False\n    \n    返回:\n        bool: 移动成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    import shutil\n    try:\n        if not os.path.exists(src_path):\n            print(f\"错误：源文件不存在 - {src_path}\")\n            return False\n        \n        # 如果目标是文件夹，拼接文件名\n        if os.path.isdir(dst_path):\n            dst_path = os.path.join(dst_path, os.path.basename(src_path))\n        \n        shutil.move(src_path, dst_path)\n        print(f\"成功移动：{src_path} -> {dst_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：移动文件失败 - {e}\")\n        return False",
+          "parameters": [
+            "src_path",
+            "dst_path",
+            "overwrite"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "移动文件到指定位置。\n\n参数:\n    src_path (str): 源文件路径\n    dst_path (str): 目标文件路径\n    overwrite (bool): 目标存在时是否覆盖，默认 False\n\n返回:\n    bool: 移动成功返回 True，失败返回 False",
+          "dependencies": []
+        },
+        {
+          "name": "文件删除",
+          "source_code": "def delete_file(file_path: str, allow_delete_folder: bool = False) -> bool:\n    \"\"\"\n    删除文件或文件夹。\n    \n    参数:\n        file_path (str): 要删除的文件或文件夹路径\n        allow_delete_folder (bool): 是否允许删除文件夹，默认 False\n    \n    返回:\n        bool: 删除成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    import shutil\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件/文件夹不存在 - {file_path}\")\n            return False\n        \n        if os.path.isfile(file_path):\n            os.remove(file_path)\n            print(f\"成功删除文件：{file_path}\")\n            return True\n        elif os.path.isdir(file_path):\n            if allow_delete_folder:\n                shutil.rmtree(file_path)\n                print(f\"成功删除文件夹：{file_path}\")\n                return True\n            else:\n                print(f\"错误：目标是文件夹，但 allow_delete_folder 为 False - {file_path}\")\n                return False\n        return False\n    except Exception as e:\n        print(f\"错误：删除失败 - {e}\")\n        return False",
+          "parameters": [
+            "file_path",
+            "allow_delete_folder"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "删除文件或文件夹。\n\n参数:\n    file_path (str): 要删除的文件或文件夹路径\n    allow_delete_folder (bool): 是否允许删除文件夹，默认 False\n\n返回:\n    bool: 删除成功返回 True，失败返回 False",
+          "dependencies": []
+        },
+        {
+          "name": "文件重命名",
+          "source_code": "def rename_file(file_path: str, new_name: str) -> str:\n    \"\"\"\n    重命名文件或文件夹。\n    \n    参数:\n        file_path (str): 原文件路径\n        new_name (str): 新的文件名（不含路径）\n    \n    返回:\n        str: 重命名后的完整路径，失败返回空字符串\n    \"\"\"\n    import os\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件/文件夹不存在 - {file_path}\")\n            return \"\"\n        \n        # 获取目录路径\n        dir_path = os.path.dirname(file_path)\n        # 拼接新路径\n        new_path = os.path.join(dir_path, new_name)\n        \n        # 检查新名称是否已存在\n        if os.path.exists(new_path):\n            print(f\"错误：新名称已存在 - {new_path}\")\n            return \"\"\n        \n        os.rename(file_path, new_path)\n        print(f\"成功重命名：{file_path} -> {new_path}\")\n        return new_path\n    except Exception as e:\n        print(f\"错误：重命名失败 - {e}\")\n        return \"\"",
+          "parameters": [
+            "file_path",
+            "new_name"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "重命名文件或文件夹。\n\n参数:\n    file_path (str): 原文件路径\n    new_name (str): 新的文件名（不含路径）\n\n返回:\n    str: 重命名后的完整路径，失败返回空字符串",
+          "dependencies": []
+        },
+        {
+          "name": "文件夹遍历",
+          "source_code": "def list_files(folder_path: str, recursive: bool = True, file_filter: str = \"\") -> list:\n    \"\"\"\n    遍历文件夹获取文件列表。\n    \n    参数:\n        folder_path (str): 要遍历的文件夹路径\n        recursive (bool): 是否递归遍历子文件夹，默认 True\n        file_filter (str): 文件扩展名过滤，如 \"*.txt\" 或 \"*.jpg;*.png\"，空表示不过滤\n    \n    返回:\n        list: 文件路径列表\n    \"\"\"\n    import os\n    try:\n        if not os.path.exists(folder_path):\n            print(f\"错误：文件夹不存在 - {folder_path}\")\n            return []\n        \n        if not os.path.isdir(folder_path):\n            print(f\"错误：路径不是文件夹 - {folder_path}\")\n            return []\n        \n        # 解析文件类型过滤\n        filters = [e.strip().lower() for e in file_filter.split(\";\") if e.strip()] if file_filter else []\n        file_list = []\n        \n        if recursive:\n            # 递归遍历\n            for root, dirs, files in os.walk(folder_path):\n                for f in files:\n                    if filters:\n                        ext = os.path.splitext(f)[1].lower()\n                        if not any(ext == e or ext == f\".{e.lstrip('*')}\" for e in filters):\n                            continue\n                    file_list.append(os.path.join(root, f))\n        else:\n            # 仅遍历当前目录\n            for f in os.listdir(folder_path):\n                fp = os.path.join(folder_path, f)\n                if os.path.isfile(fp):\n                    if filters:\n                        ext = os.path.splitext(f)[1].lower()\n                        if not any(ext == e or ext == f\".{e.lstrip('*')}\" for e in filters):\n                            continue\n                    file_list.append(fp)\n        \n        print(f\"遍历完成，共找到 {len(file_list)} 个文件\")\n        return file_list\n    except Exception as e:\n        print(f\"错误：遍历文件夹失败 - {e}\")\n        return []",
+          "parameters": [
+            "folder_path",
+            "recursive",
+            "file_filter"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "遍历文件夹获取文件列表。\n\n参数:\n    folder_path (str): 要遍历的文件夹路径\n    recursive (bool): 是否递归遍历子文件夹，默认 True\n    file_filter (str): 文件扩展名过滤，如 \"*.txt\" 或 \"*.jpg;*.png\"，空表示不过滤\n\n返回:\n    list: 文件路径列表",
+          "dependencies": []
+        },
+        {
+          "name": "文件信息获取",
+          "source_code": "def get_file_info(file_path: str) -> dict:\n    \"\"\"\n    获取文件详细信息。\n    \n    参数:\n        file_path (str): 文件路径\n    \n    返回:\n        dict: 包含文件信息的字典\n            - name: 文件名\n            - size: 文件大小（字节）\n            - created_time: 创建时间\n            - modified_time: 修改时间\n            - is_file: 是否为文件\n            - is_dir: 是否为文件夹\n            - extension: 文件扩展名\n            - full_path: 完整路径\n    \"\"\"\n    import os\n    from datetime import datetime\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件/文件夹不存在 - {file_path}\")\n            return {}\n        \n        s = os.stat(file_path)\n        info = {\n            \"name\": os.path.basename(file_path),\n            \"size\": s.st_size,\n            \"created_time\": datetime.fromtimestamp(s.st_ctime).strftime(\"%Y-%m-%d %H:%M:%S\"),\n            \"modified_time\": datetime.fromtimestamp(s.st_mtime).strftime(\"%Y-%m-%d %H:%M:%S\"),\n            \"is_file\": os.path.isfile(file_path),\n            \"is_dir\": os.path.isdir(file_path),\n            \"extension\": os.path.splitext(file_path)[1],\n            \"full_path\": file_path\n        }\n        return info\n    except Exception as e:\n        print(f\"错误：获取文件信息失败 - {e}\")\n        return {}",
+          "parameters": [
+            "file_path"
+          ],
+          "return_type": "<class 'dict'>",
+          "docstring": "获取文件详细信息。\n\n参数:\n    file_path (str): 文件路径\n\n返回:\n    dict: 包含文件信息的字典",
+          "dependencies": []
+        }
+      ]
+    },
+    "Excel 处理": {
+      "nodes": [
+        {
+          "name": "Excel 读取",
+          "source_code": "def read_excel(file_path: str, sheet_name: str = \"\", range: str = \"\", header_row: int = 0) -> list:\n    \"\"\"\n    读取 Excel 文件数据。\n    \n    参数:\n        file_path (str): Excel 文件路径\n        sheet_name (str): 要读取的工作表名称，空则读取第一个\n        range (str): 单元格范围，如 \"A1:C10\"，空则读取全部\n        header_row (int): 表头所在行号（从 0 开始），-1 表示无表头\n    \n    返回:\n        list: 数据列表，每行一个字典（有表头）或列表（无表头）\n    \"\"\"\n    import os\n    from openpyxl import load_workbook\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件不存在 - {file_path}\")\n            return []\n        \n        # 加载工作簿\n        wb = load_workbook(file_path, data_only=True)\n        \n        # 选择工作表\n        if sheet_name and sheet_name in wb.sheetnames:\n            ws = wb[sheet_name]\n        else:\n            ws = wb.active\n        \n        # 读取数据\n        data = [[c.value for c in row] for row in ws.iter_rows()]\n        wb.close()\n        \n        # 转换为字典列表（如果有表头）\n        if header_row >= 0 and len(data) > header_row:\n            headers = data[header_row]\n            result = [{h: row[i] if i < len(row) else None for i, h in enumerate(headers) if h} for row in data[header_row+1:]]\n            return result\n        return data\n    except Exception as e:\n        print(f\"错误：读取 Excel 失败 - {e}\")\n        return []",
+          "parameters": [
+            "file_path",
+            "sheet_name",
+            "range",
+            "header_row"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "读取 Excel 文件数据。\n\n参数:\n    file_path (str): Excel 文件路径\n    sheet_name (str): 要读取的工作表名称，空则读取第一个\n    range (str): 单元格范围，如 \"A1:C10\"，空则读取全部\n    header_row (int): 表头所在行号（从 0 开始），-1 表示无表头\n\n返回:\n    list: 数据列表，每行一个字典（有表头）或列表（无表头）",
+          "dependencies": [
+            "openpyxl"
+          ]
+        },
+        {
+          "name": "Excel 写入",
+          "source_code": "def write_excel(file_path: str, data: list, sheet_name: str = \"Sheet1\", write_mode: str = \"overwrite\", include_header: bool = True) -> bool:\n    \"\"\"\n    将数据写入 Excel 文件。\n    \n    参数:\n        file_path (str): Excel 文件路径\n        data (list): 要写入的数据（列表的列表或列表的字典）\n        sheet_name (str): 工作表名称\n        write_mode (str): \"overwrite\" 覆盖 或 \"append\" 追加\n        include_header (bool): 数据是否包含表头\n    \n    返回:\n        bool: 写入成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from openpyxl import Workbook, load_workbook\n    try:\n        # 创建目录\n        dir_path = os.path.dirname(file_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        # 创建工作簿\n        if write_mode == \"append\" and os.path.exists(file_path):\n            wb = load_workbook(file_path)\n            ws = wb[sheet_name] if sheet_name in wb.sheetnames else wb.create_sheet(sheet_name)\n        else:\n            wb = Workbook()\n            ws = wb.active\n            ws.title = sheet_name\n        \n        # 写入数据\n        if data and isinstance(data[0], dict):\n            headers = list(data[0].keys())\n            if include_header:\n                ws.append(headers)\n            for row in data:\n                ws.append([row.get(h) for h in headers])\n        else:\n            for row in data:\n                ws.append(row if isinstance(row, list) else [row])\n        \n        wb.save(file_path)\n        wb.close()\n        print(f\"成功写入 Excel: {file_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：写入 Excel 失败 - {e}\")\n        return False",
+          "parameters": [
+            "file_path",
+            "data",
+            "sheet_name",
+            "write_mode",
+            "include_header"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "将数据写入 Excel 文件。\n\n参数:\n    file_path (str): Excel 文件路径\n    data (list): 要写入的数据（列表的列表或列表的字典）\n    sheet_name (str): 工作表名称\n    write_mode (str): \"overwrite\" 覆盖 或 \"append\" 追加\n    include_header (bool): 数据是否包含表头\n\n返回:\n    bool: 写入成功返回 True，失败返回 False",
+          "dependencies": [
+            "openpyxl"
+          ]
+        },
+        {
+          "name": "Excel 合并",
+          "source_code": "def merge_excel(file_list: list, output_path: str, merge_mode: str = \"vertical\", sheet_name: str = \"\") -> bool:\n    \"\"\"\n    合并多个 Excel 文件。\n    \n    参数:\n        file_list (list): 要合并的 Excel 文件路径列表\n        output_path (str): 合并后的输出文件路径\n        merge_mode (str): \"vertical\" 上下合并 或 \"horizontal\" 左右合并\n        sheet_name (str): 要合并的工作表名，空则使用第一个\n    \n    返回:\n        bool: 合并成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from openpyxl import Workbook, load_workbook\n    try:\n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        # 创建输出工作簿\n        wb_out = Workbook()\n        ws_out = wb_out.active\n        \n        # 遍历文件列表\n        for fp in file_list:\n            if os.path.exists(fp):\n                wb = load_workbook(fp, data_only=True)\n                ws = wb[sheet_name] if sheet_name in wb.sheetnames else wb.active\n                for row in ws.iter_rows(values_only=True):\n                    ws_out.append(row)\n                wb.close()\n        \n        wb_out.save(output_path)\n        wb_out.close()\n        print(f\"成功合并 {len(file_list)} 个文件到：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：合并 Excel 失败 - {e}\")\n        return False",
+          "parameters": [
+            "file_list",
+            "output_path",
+            "merge_mode",
+            "sheet_name"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "合并多个 Excel 文件。\n\n参数:\n    file_list (list): 要合并的 Excel 文件路径列表\n    output_path (str): 合并后的输出文件路径\n    merge_mode (str): \"vertical\" 上下合并 或 \"horizontal\" 左右合并\n    sheet_name (str): 要合并的工作表名，空则使用第一个\n\n返回:\n    bool: 合并成功返回 True，失败返回 False",
+          "dependencies": [
+            "openpyxl"
+          ]
+        },
+        {
+          "name": "Excel 拆分",
+          "source_code": "def split_excel(file_path: str, output_folder: str, split_by: str = \"sheet\", group_column: str = \"\") -> list:\n    \"\"\"\n    拆分 Excel 文件为多个文件。\n    \n    参数:\n        file_path (str): 要拆分的 Excel 文件\n        output_folder (str): 输出文件存放文件夹\n        split_by (str): \"sheet\" 按工作表 或 \"column\" 按列分组\n        group_column (str): 按列分组时的列名\n    \n    返回:\n        list: 生成的文件路径列表\n    \"\"\"\n    import os\n    from openpyxl import Workbook, load_workbook\n    try:\n        # 创建输出目录\n        os.makedirs(output_folder, exist_ok=True)\n        \n        wb = load_workbook(file_path, data_only=True)\n        result = []\n        \n        if split_by == \"sheet\":\n            # 按工作表拆分\n            for name in wb.sheetnames:\n                wb_out = Workbook()\n                ws_out = wb_out.active\n                for row in wb[name].iter_rows(values_only=True):\n                    ws_out.append(row)\n                out_path = os.path.join(output_folder, f\"{name}.xlsx\")\n                wb_out.save(out_path)\n                wb_out.close()\n                result.append(out_path)\n                print(f\"已拆分工作表：{name}\")\n        \n        wb.close()\n        print(f\"成功拆分为 {len(result)} 个文件\")\n        return result\n    except Exception as e:\n        print(f\"错误：拆分 Excel 失败 - {e}\")\n        return []",
+          "parameters": [
+            "file_path",
+            "output_folder",
+            "split_by",
+            "group_column"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "拆分 Excel 文件为多个文件。\n\n参数:\n    file_path (str): 要拆分的 Excel 文件\n    output_folder (str): 输出文件存放文件夹\n    split_by (str): \"sheet\" 按工作表 或 \"column\" 按列分组\n    group_column (str): 按列分组时的列名\n\n返回:\n    list: 生成的文件路径列表",
+          "dependencies": [
+            "openpyxl"
+          ]
+        },
+        {
+          "name": "读取单元格",
+          "source_code": "def read_cell(file_path: str, cell_address: str, sheet_name: str = \"\") -> any:\n    \"\"\"\n    读取指定单元格的值。\n    \n    参数:\n        file_path (str): Excel 文件路径\n        cell_address (str): 单元格地址，如 \"A1\"、\"B3\"\n        sheet_name (str): 工作表名称，空则使用第一个\n    \n    返回:\n        any: 单元格的值\n    \"\"\"\n    import os\n    from openpyxl import load_workbook\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件不存在 - {file_path}\")\n            return None\n        \n        wb = load_workbook(file_path, data_only=True)\n        \n        # 选择工作表\n        if sheet_name and sheet_name in wb.sheetnames:\n            ws = wb[sheet_name]\n        else:\n            ws = wb.active\n        \n        value = ws[cell_address].value\n        wb.close()\n        return value\n    except Exception as e:\n        print(f\"错误：读取单元格失败 - {e}\")\n        return None",
+          "parameters": [
+            "file_path",
+            "cell_address",
+            "sheet_name"
+          ],
+          "return_type": "any",
+          "docstring": "读取指定单元格的值。\n\n参数:\n    file_path (str): Excel 文件路径\n    cell_address (str): 单元格地址，如 \"A1\"、\"B3\"\n    sheet_name (str): 工作表名称，空则使用第一个\n\n返回:\n    any: 单元格的值",
+          "dependencies": [
+            "openpyxl"
+          ]
+        },
+        {
+          "name": "写入单元格",
+          "source_code": "def write_cell(file_path: str, cell_address: str, value: any, sheet_name: str = \"\") -> bool:\n    \"\"\"\n    写入指定单元格。\n    \n    参数:\n        file_path (str): Excel 文件路径\n        cell_address (str): 单元格地址\n        value (any): 要写入的值\n        sheet_name (str): 工作表名称\n    \n    返回:\n        bool: 写入成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from openpyxl import load_workbook\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件不存在 - {file_path}\")\n            return False\n        \n        wb = load_workbook(file_path)\n        \n        # 选择工作表\n        if sheet_name and sheet_name in wb.sheetnames:\n            ws = wb[sheet_name]\n        else:\n            ws = wb.active\n        \n        ws[cell_address] = value\n        wb.save(file_path)\n        wb.close()\n        print(f\"成功写入单元格 {cell_address}: {value}\")\n        return True\n    except Exception as e:\n        print(f\"错误：写入单元格失败 - {e}\")\n        return False",
+          "parameters": [
+            "file_path",
+            "cell_address",
+            "value",
+            "sheet_name"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "写入指定单元格。\n\n参数:\n    file_path (str): Excel 文件路径\n    cell_address (str): 单元格地址\n    value (any): 要写入的值\n    sheet_name (str): 工作表名称\n\n返回:\n    bool: 写入成功返回 True，失败返回 False",
+          "dependencies": [
+            "openpyxl"
+          ]
+        }
+      ]
+    },
+    "Word 处理": {
+      "nodes": [
+        {
+          "name": "Word 读取",
+          "source_code": "def read_word(file_path: str, read_type: str = \"full\") -> str:\n    \"\"\"\n    读取 Word 文档内容。\n    \n    参数:\n        file_path (str): Word 文件路径 (.docx)\n        read_type (str): \"full\" 全文、\"paragraphs\" 段落列表、\"tables\" 表格列表\n    \n    返回:\n        str: 文档内容（全文为字符串，段落/表格为 JSON 字符串）\n    \"\"\"\n    import os\n    import json\n    from docx import Document\n    try:\n        if not os.path.exists(file_path):\n            print(f\"错误：文件不存在 - {file_path}\")\n            return \"\"\n        \n        doc = Document(file_path)\n        \n        if read_type == \"full\":\n            content = \"\\n\".join([p.text for p in doc.paragraphs])\n            return content\n        elif read_type == \"paragraphs\":\n            return json.dumps([p.text for p in doc.paragraphs], ensure_ascii=False)\n        elif read_type == \"tables\":\n            tables_data = []\n            for table in doc.tables:\n                table_data = [[c.text for c in row.cells] for row in table.rows]\n                tables_data.append(table_data)\n            return json.dumps(tables_data, ensure_ascii=False)\n        return \"\"\n    except Exception as e:\n        print(f\"错误：读取 Word 失败 - {e}\")\n        return \"\"",
+          "parameters": [
+            "file_path",
+            "read_type"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "读取 Word 文档内容。\n\n参数:\n    file_path (str): Word 文件路径 (.docx)\n    read_type (str): \"full\" 全文、\"paragraphs\" 段落列表、\"tables\" 表格列表\n\n返回:\n    str: 文档内容（全文为字符串，段落/表格为 JSON 字符串）",
+          "dependencies": [
+            "python-docx"
+          ]
+        },
+        {
+          "name": "Word 写入",
+          "source_code": "def write_word(file_path: str, content: str, write_mode: str = \"new\") -> bool:\n    \"\"\"\n    创建或写入 Word 文档。\n    \n    参数:\n        file_path (str): Word 文件路径\n        content (str): 要写入的文本内容\n        write_mode (str): \"new\" 新建 或 \"append\" 追加\n    \n    返回:\n        bool: 写入成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from docx import Document\n    try:\n        # 创建目录\n        dir_path = os.path.dirname(file_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        # 创建或加载文档\n        if write_mode == \"append\" and os.path.exists(file_path):\n            doc = Document(file_path)\n        else:\n            doc = Document()\n        \n        # 添加段落\n        for p in content.split(\"\\n\"):\n            doc.add_paragraph(p)\n        \n        doc.save(file_path)\n        print(f\"成功写入 Word: {file_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：写入 Word 失败 - {e}\")\n        return False",
+          "parameters": [
+            "file_path",
+            "content",
+            "write_mode"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "创建或写入 Word 文档。\n\n参数:\n    file_path (str): Word 文件路径\n    content (str): 要写入的文本内容\n    write_mode (str): \"new\" 新建 或 \"append\" 追加\n\n返回:\n    bool: 写入成功返回 True，失败返回 False",
+          "dependencies": [
+            "python-docx"
+          ]
+        },
+        {
+          "name": "Word 模板填充",
+          "source_code": "def fill_word_template(template_path: str, output_path: str, replace_data: dict) -> bool:\n    \"\"\"\n    使用数据填充 Word 模板（使用 {{变量名}} 占位）。\n    \n    参数:\n        template_path (str): Word 模板文件路径\n        output_path (str): 填充后的输出文件路径\n        replace_data (dict): 变量名到值的映射字典\n    \n    返回:\n        bool: 填充成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from docx import Document\n    try:\n        if not os.path.exists(template_path):\n            print(f\"错误：模板文件不存在 - {template_path}\")\n            return False\n        \n        # 创建输出目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        doc = Document(template_path)\n        \n        # 替换段落中的占位符\n        for para in doc.paragraphs:\n            for k, v in replace_data.items():\n                para.text = para.text.replace(f\"{{{{{k}}}}}\", str(v))\n        \n        # 替换表格中的占位符\n        for table in doc.tables:\n            for row in table.rows:\n                for cell in row.cells:\n                    for k, v in replace_data.items():\n                        cell.text = cell.text.replace(f\"{{{{{k}}}}}\", str(v))\n        \n        doc.save(output_path)\n        print(f\"成功填充模板并保存：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：模板填充失败 - {e}\")\n        return False",
+          "parameters": [
+            "template_path",
+            "output_path",
+            "replace_data"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "使用数据填充 Word 模板（使用 {{变量名}} 占位）。\n\n参数:\n    template_path (str): Word 模板文件路径\n    output_path (str): 填充后的输出文件路径\n    replace_data (dict): 变量名到值的映射字典\n\n返回:\n    bool: 填充成功返回 True，失败返回 False",
+          "dependencies": [
+            "python-docx"
+          ]
+        },
+        {
+          "name": "添加段落",
+          "source_code": "def add_paragraph(file_path: str, content: str, style: str = \"Normal\", position: str = \"end\") -> bool:\n    \"\"\"\n    向 Word 文档添加段落。\n    \n    参数:\n        file_path (str): Word 文件路径\n        content (str): 段落内容\n        style (str): 段落样式（\"Normal\"、\"Heading 1\"、\"Heading 2\"等）\n        position (str): \"end\" 末尾 或 \"start\" 开头\n    \n    返回:\n        bool: 添加成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from docx import Document\n    try:\n        doc = Document(file_path) if os.path.exists(file_path) else Document()\n        para = doc.add_paragraph(content)\n        \n        # 应用样式\n        if style == \"Heading 1\":\n            para.style = \"Heading 1\"\n        elif style == \"Heading 2\":\n            para.style = \"Heading 2\"\n        \n        doc.save(file_path)\n        print(f\"成功添加段落到：{file_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：添加段落失败 - {e}\")\n        return False",
+          "parameters": [
+            "file_path",
+            "content",
+            "style",
+            "position"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "向 Word 文档添加段落。\n\n参数:\n    file_path (str): Word 文件路径\n    content (str): 段落内容\n    style (str): 段落样式（\"Normal\"、\"Heading 1\"、\"Heading 2\"等）\n    position (str): \"end\" 末尾 或 \"start\" 开头\n\n返回:\n    bool: 添加成功返回 True，失败返回 False",
+          "dependencies": [
+            "python-docx"
+          ]
+        }
+      ]
+    },
+    "PDF 处理": {
+      "nodes": [
+        {
+          "name": "PDF 读取",
+          "source_code": "def read_pdf(pdf_path: str, page_range: str = \"\") -> str:\n    \"\"\"\n    读取 PDF 文档内容。\n    \n    参数:\n        pdf_path (str): PDF 文件路径\n        page_range (str): 要读取的页码范围，如 \"1-5\"，空则读取全部\n    \n    返回:\n        str: PDF 文本内容\n    \"\"\"\n    from PyPDF2 import PdfReader\n    import os\n    try:\n        if not os.path.exists(pdf_path):\n            print(f\"错误：文件不存在 - {pdf_path}\")\n            return \"\"\n        \n        reader = PdfReader(pdf_path)\n        texts = []\n        \n        # 解析页码范围\n        if page_range and \"-\" in page_range:\n            s, e = map(int, page_range.split(\"-\"))\n            pages = reader.pages[s-1:min(e, len(reader.pages))]\n        else:\n            pages = reader.pages\n        \n        for page in pages:\n            texts.append(page.extract_text())\n        \n        return \"\\n\".join(texts)\n    except Exception as e:\n        print(f\"错误：读取 PDF 失败 - {e}\")\n        return \"\"",
+          "parameters": [
+            "pdf_path",
+            "page_range"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "读取 PDF 文档内容。\n\n参数:\n    pdf_path (str): PDF 文件路径\n    page_range (str): 要读取的页码范围，如 \"1-5\"，空则读取全部\n\n返回:\n    str: PDF 文本内容",
+          "dependencies": [
+            "PyPDF2"
+          ]
+        },
+        {
+          "name": "PDF 合并",
+          "source_code": "def merge_pdf(pdf_list: list, output_path: str) -> bool:\n    \"\"\"\n    合并多个 PDF 文件。\n    \n    参数:\n        pdf_list (list): 要合并的 PDF 文件路径列表\n        output_path (str): 合并后的输出文件路径\n    \n    返回:\n        bool: 合并成功返回 True，失败返回 False\n    \"\"\"\n    from PyPDF2 import PdfWriter, PdfReader\n    import os\n    try:\n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        writer = PdfWriter()\n        \n        for fp in pdf_list:\n            if os.path.exists(fp):\n                reader = PdfReader(fp)\n                for page in reader.pages:\n                    writer.add_page(page)\n        \n        with open(output_path, \"wb\") as f:\n            writer.write(f)\n        \n        print(f\"成功合并 {len(pdf_list)} 个 PDF 到：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：合并 PDF 失败 - {e}\")\n        return False",
+          "parameters": [
+            "pdf_list",
+            "output_path"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "合并多个 PDF 文件。\n\n参数:\n    pdf_list (list): 要合并的 PDF 文件路径列表\n    output_path (str): 合并后的输出文件路径\n\n返回:\n    bool: 合并成功返回 True，失败返回 False",
+          "dependencies": [
+            "PyPDF2"
+          ]
+        },
+        {
+          "name": "PDF 拆分",
+          "source_code": "def split_pdf(pdf_path: str, output_folder: str, split_mode: str = \"by_page\", page_range: str = \"\") -> list:\n    \"\"\"\n    拆分 PDF 文件。\n    \n    参数:\n        pdf_path (str): 要拆分的 PDF 文件\n        output_folder (str): 输出文件存放文件夹\n        split_mode (str): \"by_page\" 逐页拆分 或 \"by_range\" 按范围拆分\n        page_range (str): 按范围拆分时的页码，如 \"1-5,8-10\"\n    \n    返回:\n        list: 生成的 PDF 文件路径列表\n    \"\"\"\n    from PyPDF2 import PdfReader, PdfWriter\n    import os\n    try:\n        os.makedirs(output_folder, exist_ok=True)\n        reader = PdfReader(pdf_path)\n        result = []\n        name = os.path.splitext(os.path.basename(pdf_path))[0]\n        \n        # 逐页拆分\n        for i, page in enumerate(reader.pages):\n            writer = PdfWriter()\n            writer.add_page(page)\n            out_path = os.path.join(output_folder, f\"{name}_page{i+1}.pdf\")\n            with open(out_path, \"wb\") as f:\n                writer.write(f)\n            result.append(out_path)\n        \n        print(f\"成功拆分为 {len(result)} 个 PDF\")\n        return result\n    except Exception as e:\n        print(f\"错误：拆分 PDF 失败 - {e}\")\n        return []",
+          "parameters": [
+            "pdf_path",
+            "output_folder",
+            "split_mode",
+            "page_range"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "拆分 PDF 文件。\n\n参数:\n    pdf_path (str): 要拆分的 PDF 文件\n    output_folder (str): 输出文件存放文件夹\n    split_mode (str): \"by_page\" 逐页拆分 或 \"by_range\" 按范围拆分\n    page_range (str): 按范围拆分时的页码，如 \"1-5,8-10\"\n\n返回:\n    list: 生成的 PDF 文件路径列表",
+          "dependencies": [
+            "PyPDF2"
+          ]
+        },
+        {
+          "name": "PDF 加水印",
+          "source_code": "def add_pdf_watermark(pdf_path: str, watermark_text: str, output_path: str, position: str = \"center\", opacity: float = 0.3) -> bool:\n    \"\"\"\n    给 PDF 添加文字水印（需要 reportlab 库）。\n    \n    参数:\n        pdf_path (str): 要添加水印的 PDF 文件\n        watermark_text (str): 水印文字内容\n        output_path (str): 添加水印后的输出文件路径\n        position (str): \"center\" 居中、\"bottom_right\" 右下角\n        opacity (float): 水印透明度（0-1），默认 0.3\n    \n    返回:\n        bool: 添加成功返回 True，失败返回 False\n    \"\"\"\n    from PyPDF2 import PdfReader, PdfWriter\n    from reportlab.pdfgen import canvas\n    from reportlab.lib.pagesizes import letter\n    from reportlab.lib import colors\n    import io, os\n    try:\n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        # 创建水印\n        packet = io.BytesIO()\n        c = canvas.Canvas(packet, pagesize=letter)\n        w, h = letter\n        c.setFillColor(colors.Color(0.5, 0.5, 0.5, alpha=opacity))\n        c.setFont(\"Helvetica-Bold\", 50)\n        \n        if position == \"center\":\n            c.drawCentredString(w/2, h/2, watermark_text)\n        elif position == \"bottom_right\":\n            c.drawString(w-150, 50, watermark_text)\n        \n        c.save()\n        packet.seek(0)\n        watermark = PdfReader(packet).pages[0]\n        \n        # 应用到每一页\n        reader = PdfReader(pdf_path)\n        writer = PdfWriter()\n        for page in reader.pages:\n            page.merge_page(watermark)\n            writer.add_page(page)\n        \n        with open(output_path, \"wb\") as f:\n            writer.write(f)\n        \n        print(f\"成功添加水印到：{output_path}\")\n        return True\n    except ImportError:\n        print(\"错误：需要安装 reportlab 库\")\n        return False\n    except Exception as e:\n        print(f\"错误：添加水印失败 - {e}\")\n        return False",
+          "parameters": [
+            "pdf_path",
+            "watermark_text",
+            "output_path",
+            "position",
+            "opacity"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "给 PDF 添加文字水印（需要 reportlab 库）。\n\n参数:\n    pdf_path (str): 要添加水印的 PDF 文件\n    watermark_text (str): 水印文字内容\n    output_path (str): 添加水印后的输出文件路径\n    position (str): \"center\" 居中、\"bottom_right\" 右下角\n    opacity (float): 水印透明度（0-1），默认 0.3\n\n返回:\n    bool: 添加成功返回 True，失败返回 False",
+          "dependencies": [
+            "PyPDF2",
+            "reportlab"
+          ]
+        },
+        {
+          "name": "PDF 转图片",
+          "source_code": "def pdf_to_image(pdf_path: str, output_folder: str, image_format: str = \"PNG\", dpi: int = 150) -> list:\n    \"\"\"\n    将 PDF 转换为图片（需要 pdf2image 和 poppler）。\n    \n    参数:\n        pdf_path (str): PDF 文件路径\n        output_folder (str): 输出图片存放文件夹\n        image_format (str): \"PNG\" 或 \"JPG\"\n        dpi (int): 图片分辨率，默认 150\n    \n    返回:\n        list: 生成的图片文件路径列表\n    \"\"\"\n    from pdf2image import convert_from_path\n    from PIL import Image\n    import os\n    try:\n        os.makedirs(output_folder, exist_ok=True)\n        images = convert_from_path(pdf_path, dpi=dpi)\n        name = os.path.splitext(os.path.basename(pdf_path))[0]\n        ext = \".png\" if image_format.upper() == \"PNG\" else \".jpg\"\n        result = []\n        \n        for i, img in enumerate(images):\n            out_path = os.path.join(output_folder, f\"{name}_page{i+1}{ext}\")\n            if image_format.upper() == \"PNG\":\n                img.save(out_path, \"PNG\")\n            else:\n                img.convert(\"RGB\").save(out_path, \"JPEG\", quality=95)\n            result.append(out_path)\n        \n        print(f\"成功转换 {len(images)} 页为图片\")\n        return result\n    except ImportError:\n        print(\"错误：需要安装 pdf2image 和 poppler\")\n        return []\n    except Exception as e:\n        print(f\"错误：PDF 转图片失败 - {e}\")\n        return []",
+          "parameters": [
+            "pdf_path",
+            "output_folder",
+            "image_format",
+            "dpi"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "将 PDF 转换为图片（需要 pdf2image 和 poppler）。\n\n参数:\n    pdf_path (str): PDF 文件路径\n    output_folder (str): 输出图片存放文件夹\n    image_format (str): \"PNG\" 或 \"JPG\"\n    dpi (int): 图片分辨率，默认 150\n\n返回:\n    list: 生成的图片文件路径列表",
+          "dependencies": [
+            "pdf2image",
+            "PIL"
+          ]
+        }
+      ]
+    },
+    "数据处理": {
+      "nodes": [
+        {
+          "name": "数据清洗",
+          "source_code": "def clean_data(input_data: list, rule: str = \"remove_empty\") -> list:\n    \"\"\"\n    清洗数据列表。\n    \n    参数:\n        input_data (list): 输入数据列表\n        rule (str): 清洗规则\n            - \"remove_empty\": 去除空值\n            - \"remove_duplicates\": 去重\n            - \"strip\": 去除空白\n            - \"lower\": 转小写\n            - \"upper\": 转大写\n    \n    返回:\n        list: 清洗后的数据\n    \"\"\"\n    try:\n        if not input_data:\n            return []\n        \n        result = input_data.copy()\n        \n        if rule == \"remove_empty\":\n            result = [x for x in result if x is not None and x != \"\"]\n        elif rule == \"remove_duplicates\":\n            seen = set()\n            result = [x for x in result if not isinstance(x, (list, dict)) and x not in seen and not seen.add(x) or isinstance(x, (list, dict))]\n        elif rule == \"strip\":\n            result = [str(x).strip() if x is not None else x for x in result]\n        elif rule == \"lower\":\n            result = [str(x).lower() if isinstance(x, str) else x for x in result]\n        elif rule == \"upper\":\n            result = [str(x).upper() if isinstance(x, str) else x for x in result]\n        \n        print(f\"数据清洗完成，共 {len(result)} 条数据\")\n        return result\n    except Exception as e:\n        print(f\"错误：数据清洗失败 - {e}\")\n        return []",
+          "parameters": [
+            "input_data",
+            "rule"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "清洗数据列表。\n\n参数:\n    input_data (list): 输入数据列表\n    rule (str): 清洗规则\n        - \"remove_empty\": 去除空值\n        - \"remove_duplicates\": 去重\n        - \"strip\": 去除空白\n        - \"lower\": 转小写\n        - \"upper\": 转大写\n\n返回:\n    list: 清洗后的数据",
+          "dependencies": []
+        },
+        {
+          "name": "数据筛选",
+          "source_code": "def filter_data(input_data: list, field: str, condition: str, value: any) -> list:\n    \"\"\"\n    根据条件筛选数据。\n    \n    参数:\n        input_data (list): 输入数据列表（字典列表）\n        field (str): 要筛选的字段名\n        condition (str): 筛选条件\n            - \"equals\": 等于\n            - \"not_equals\": 不等于\n            - \"contains\": 包含\n            - \"greater\": 大于\n            - \"less\": 小于\n            - \"greater_equal\": 大于等于\n            - \"less_equal\": 小于等于\n        value (any): 筛选比较值\n    \n    返回:\n        list: 筛选后的数据列表\n    \"\"\"\n    try:\n        if not input_data:\n            return []\n        \n        result = []\n        for item in input_data:\n            if not isinstance(item, dict) or field not in item:\n                continue\n            \n            v = item[field]\n            match = False\n            \n            if condition == \"equals\":\n                match = v == value\n            elif condition == \"not_equals\":\n                match = v != value\n            elif condition == \"contains\":\n                match = str(value) in str(v)\n            elif condition == \"greater\":\n                match = v > value\n            elif condition == \"less\":\n                match = v < value\n            elif condition == \"greater_equal\":\n                match = v >= value\n            elif condition == \"less_equal\":\n                match = v <= value\n            \n            if match:\n                result.append(item)\n        \n        print(f\"数据筛选完成，共 {len(result)} 条数据符合条件\")\n        return result\n    except Exception as e:\n        print(f\"错误：数据筛选失败 - {e}\")\n        return []",
+          "parameters": [
+            "input_data",
+            "field",
+            "condition",
+            "value"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "根据条件筛选数据。\n\n参数:\n    input_data (list): 输入数据列表（字典列表）\n    field (str): 要筛选的字段名\n    condition (str): 筛选条件\n        - \"equals\": 等于\n        - \"not_equals\": 不等于\n        - \"contains\": 包含\n        - \"greater\": 大于\n        - \"less\": 小于\n        - \"greater_equal\": 大于等于\n        - \"less_equal\": 小于等于\n    value (any): 筛选比较值\n\n返回:\n    list: 筛选后的数据列表",
+          "dependencies": []
+        },
+        {
+          "name": "数据排序",
+          "source_code": "def sort_data(input_data: list, field: str, order: str = \"asc\") -> list:\n    \"\"\"\n    对数据进行排序。\n    \n    参数:\n        input_data (list): 输入数据列表（字典列表）\n        field (str): 要排序的字段名\n        order (str): \"asc\" 升序 或 \"desc\" 降序\n    \n    返回:\n        list: 排序后的数据列表\n    \"\"\"\n    try:\n        if not input_data:\n            return []\n        \n        reverse = order == \"desc\"\n        \n        if input_data and isinstance(input_data[0], dict):\n            result = sorted(input_data, key=lambda x: x.get(field, 0) or 0, reverse=reverse)\n        else:\n            result = sorted(input_data, reverse=reverse)\n        \n        print(f\"数据排序完成，共 {len(result)} 条数据\")\n        return result\n    except Exception as e:\n        print(f\"错误：数据排序失败 - {e}\")\n        return []",
+          "parameters": [
+            "input_data",
+            "field",
+            "order"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "对数据进行排序。\n\n参数:\n    input_data (list): 输入数据列表（字典列表）\n    field (str): 要排序的字段名\n    order (str): \"asc\" 升序 或 \"desc\" 降序\n\n返回:\n    list: 排序后的数据列表",
+          "dependencies": []
+        },
+        {
+          "name": "数据聚合",
+          "source_code": "def aggregate_data(input_data: list, group_field: str, agg_field: str, agg_func: str = \"count\") -> list:\n    \"\"\"\n    对数据进行分组聚合。\n    \n    参数:\n        input_data (list): 输入数据列表（字典列表）\n        group_field (str): 分组依据字段\n        agg_field (str): 要聚合的字段\n        agg_func (str): 聚合方式\n            - \"count\": 计数\n            - \"sum\": 求和\n            - \"avg\": 平均值\n            - \"max\": 最大值\n            - \"min\": 最小值\n    \n    返回:\n        list: 聚合结果列表\n    \"\"\"\n    try:\n        if not input_data:\n            return []\n        \n        groups = {}\n        for item in input_data:\n            if isinstance(item, dict):\n                k = item.get(group_field)\n                if k not in groups:\n                    groups[k] = []\n                groups[k].append(item.get(agg_field))\n        \n        result = []\n        for k, vals in groups.items():\n            if agg_func == \"count\":\n                v = len(vals)\n            elif agg_func == \"sum\":\n                v = sum(x for x in vals if isinstance(x, (int, float)))\n            elif agg_func == \"avg\":\n                nums = [x for x in vals if isinstance(x, (int, float))]\n                v = sum(nums) / len(nums) if nums else 0\n            elif agg_func == \"max\":\n                v = max(x for x in vals if isinstance(x, (int, float))) if any(isinstance(x, (int, float)) for x in vals) else None\n            elif agg_func == \"min\":\n                v = min(x for x in vals if isinstance(x, (int, float))) if any(isinstance(x, (int, float)) for x in vals) else None\n            else:\n                v = len(vals)\n            \n            result.append({group_field: k, f\"{agg_field}_{agg_func}\": v})\n        \n        print(f\"数据聚合完成，共 {len(result)} 组\")\n        return result\n    except Exception as e:\n        print(f\"错误：数据聚合失败 - {e}\")\n        return []",
+          "parameters": [
+            "input_data",
+            "group_field",
+            "agg_field",
+            "agg_func"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "对数据进行分组聚合。\n\n参数:\n    input_data (list): 输入数据列表（字典列表）\n    group_field (str): 分组依据字段\n    agg_field (str): 要聚合的字段\n    agg_func (str): 聚合方式\n        - \"count\": 计数\n        - \"sum\": 求和\n        - \"avg\": 平均值\n        - \"max\": 最大值\n        - \"min\": 最小值\n\n返回:\n    list: 聚合结果列表",
+          "dependencies": []
+        }
+      ]
+    },
+    "日期时间": {
+      "nodes": [
+        {
+          "name": "日期格式化",
+          "source_code": "def format_date(date_str: str = \"\", input_format: str = \"\", output_format: str = \"%Y-%m-%d\") -> str:\n    \"\"\"\n    格式化日期字符串。\n    \n    参数:\n        date_str (str): 日期字符串，空则使用当前时间\n        input_format (str): 输入日期的格式，空则自动识别\n        output_format (str): 输出格式，如 \"%Y-%m-%d %H:%M:%S\"\n    \n    返回:\n        str: 格式化后的日期字符串\n    \"\"\"\n    from datetime import datetime\n    try:\n        if not date_str:\n            dt = datetime.now()\n        elif input_format:\n            dt = datetime.strptime(date_str, input_format)\n        else:\n            for fmt in [\"%Y-%m-%d\", \"%Y/%m/%d\", \"%Y-%m-%d %H:%M:%S\", \"%Y%m%d\"]:\n                try:\n                    dt = datetime.strptime(date_str, fmt)\n                    break\n                except:\n                    continue\n            else:\n                return \"\"\n        return dt.strftime(output_format)\n    except Exception as e:\n        print(f\"错误：日期格式化失败 - {e}\")\n        return \"\"",
+          "parameters": [
+            "date_str",
+            "input_format",
+            "output_format"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "格式化日期字符串。\n\n参数:\n    date_str (str): 日期字符串，空则使用当前时间\n    input_format (str): 输入日期的格式，空则自动识别\n    output_format (str): 输出格式，如 \"%Y-%m-%d %H:%M:%S\"\n\n返回:\n    str: 格式化后的日期字符串",
+          "dependencies": []
+        },
+        {
+          "name": "日期计算",
+          "source_code": "def calculate_date(date_str: str, operation: str, value: int, date_format: str = \"%Y-%m-%d\") -> str:\n    \"\"\"\n    计算日期加减。\n    \n    参数:\n        date_str (str): 日期字符串\n        operation (str): \"add\" 加 或 \"sub\" 减\n        value (int): 要加减的天数\n        date_format (str): 日期格式\n    \n    返回:\n        str: 计算后的日期字符串\n    \"\"\"\n    from datetime import datetime, timedelta\n    try:\n        dt = datetime.strptime(date_str, date_format)\n        delta = timedelta(days=value) if operation == \"add\" else -timedelta(days=value)\n        return (dt + delta).strftime(date_format)\n    except Exception as e:\n        print(f\"错误：日期计算失败 - {e}\")\n        return \"\"",
+          "parameters": [
+            "date_str",
+            "operation",
+            "value",
+            "date_format"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "计算日期加减。\n\n参数:\n    date_str (str): 日期字符串\n    operation (str): \"add\" 加 或 \"sub\" 减\n    value (int): 要加减的天数\n    date_format (str): 日期格式\n\n返回:\n    str: 计算后的日期字符串",
+          "dependencies": []
+        },
+        {
+          "name": "时间戳转日期",
+          "source_code": "def timestamp_to_date(timestamp: int, output_format: str = \"%Y-%m-%d %H:%M:%S\") -> str:\n    \"\"\"\n    将时间戳转换为日期字符串。\n    \n    参数:\n        timestamp (int): Unix 时间戳（秒或毫秒）\n        output_format (str): 输出格式\n    \n    返回:\n        str: 日期字符串\n    \"\"\"\n    from datetime import datetime\n    try:\n        # 判断是秒还是毫秒\n        if timestamp > 1e12:\n            timestamp /= 1000\n        return datetime.fromtimestamp(timestamp).strftime(output_format)\n    except Exception as e:\n        print(f\"错误：时间戳转换失败 - {e}\")\n        return \"\"",
+          "parameters": [
+            "timestamp",
+            "output_format"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "将时间戳转换为日期字符串。\n\n参数:\n    timestamp (int): Unix 时间戳（秒或毫秒）\n    output_format (str): 输出格式\n\n返回:\n    str: 日期字符串",
+          "dependencies": []
+        },
+        {
+          "name": "日期转时间戳",
+          "source_code": "def date_to_timestamp(date_str: str, date_format: str = \"%Y-%m-%d %H:%M:%S\") -> int:\n    \"\"\"\n    将日期字符串转换为时间戳。\n    \n    参数:\n        date_str (str): 日期字符串\n        date_format (str): 日期格式\n    \n    返回:\n        int: Unix 时间戳（秒）\n    \"\"\"\n    from datetime import datetime\n    try:\n        return int(datetime.strptime(date_str, date_format).timestamp())\n    except Exception as e:\n        print(f\"错误：日期转时间戳失败 - {e}\")\n        return 0",
+          "parameters": [
+            "date_str",
+            "date_format"
+          ],
+          "return_type": "<class 'int'>",
+          "docstring": "将日期字符串转换为时间戳。\n\n参数:\n    date_str (str): 日期字符串\n    date_format (str): 日期格式\n\n返回:\n    int: Unix 时间戳（秒）",
+          "dependencies": []
+        }
+      ]
+    },
+    "图像处理": {
+      "nodes": [
+        {
+          "name": "图片缩放",
+          "source_code": "def resize_image(image_path: str, output_path: str, width: int = None, height: int = None, keep_aspect: bool = True, scale: float = None) -> bool:\n    \"\"\"\n    缩放图片。\n    \n    参数:\n        image_path (str): 源图片路径\n        output_path (str): 输出图片路径\n        width (int): 目标宽度（像素）\n        height (int): 目标高度（像素）\n        keep_aspect (bool): 是否保持宽高比\n        scale (float): 缩放比例（0-1 缩小，>1 放大）\n    \n    返回:\n        bool: 处理成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from PIL import Image\n    try:\n        if not os.path.exists(image_path):\n            print(f\"错误：图片不存在 - {image_path}\")\n            return False\n        \n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        img = Image.open(image_path)\n        w, h = img.size\n        \n        # 计算新尺寸\n        if scale:\n            w, h = int(w * scale), int(h * scale)\n        elif width and height:\n            w, h = width, height\n        elif width:\n            h = int(h * width / w) if keep_aspect else h\n            w = width\n        elif height:\n            w = int(w * height / h) if keep_aspect else w\n            h = height\n        \n        img.resize((w, h), Image.Resampling.LANCZOS).save(output_path)\n        print(f\"成功缩放图片：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：图片缩放失败 - {e}\")\n        return False",
+          "parameters": [
+            "image_path",
+            "output_path",
+            "width",
+            "height",
+            "keep_aspect",
+            "scale"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "缩放图片。\n\n参数:\n    image_path (str): 源图片路径\n    output_path (str): 输出图片路径\n    width (int): 目标宽度（像素）\n    height (int): 目标高度（像素）\n    keep_aspect (bool): 是否保持宽高比\n    scale (float): 缩放比例（0-1 缩小，>1 放大）\n\n返回:\n    bool: 处理成功返回 True，失败返回 False",
+          "dependencies": [
+            "PIL"
+          ]
+        },
+        {
+          "name": "图片裁剪",
+          "source_code": "def crop_image(image_path: str, output_path: str, left: int, top: int, right: int, bottom: int) -> bool:\n    \"\"\"\n    裁剪图片。\n    \n    参数:\n        image_path (str): 源图片路径\n        output_path (str): 输出图片路径\n        left (int): 裁剪区域左边界\n        top (int): 裁剪区域上边界\n        right (int): 裁剪区域右边界\n        bottom (int): 裁剪区域下边界\n    \n    返回:\n        bool: 处理成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from PIL import Image\n    try:\n        if not os.path.exists(image_path):\n            print(f\"错误：图片不存在 - {image_path}\")\n            return False\n        \n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        img = Image.open(image_path)\n        img.crop((left, top, right, bottom)).save(output_path)\n        print(f\"成功裁剪图片：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：图片裁剪失败 - {e}\")\n        return False",
+          "parameters": [
+            "image_path",
+            "output_path",
+            "left",
+            "top",
+            "right",
+            "bottom"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "裁剪图片。\n\n参数:\n    image_path (str): 源图片路径\n    output_path (str): 输出图片路径\n    left (int): 裁剪区域左边界\n    top (int): 裁剪区域上边界\n    right (int): 裁剪区域右边界\n    bottom (int): 裁剪区域下边界\n\n返回:\n    bool: 处理成功返回 True，失败返回 False",
+          "dependencies": [
+            "PIL"
+          ]
+        },
+        {
+          "name": "图片格式转换",
+          "source_code": "def convert_image_format(image_path: str, output_path: str, target_format: str = \"PNG\", quality: int = 95, bg_color: str = \"#FFFFFF\") -> bool:\n    \"\"\"\n    转换图片格式。\n    \n    参数:\n        image_path (str): 源图片路径\n        output_path (str): 输出图片路径\n        target_format (str): \"PNG\"、\"JPG\"、\"BMP\"、\"GIF\"、\"WEBP\"\n        quality (int): JPG/WEBP 质量（1-100）\n        bg_color (str): 透明转不透明时的背景色（#RRGGBB）\n    \n    返回:\n        bool: 转换成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from PIL import Image\n    try:\n        if not os.path.exists(image_path):\n            print(f\"错误：图片不存在 - {image_path}\")\n            return False\n        \n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        img = Image.open(image_path)\n        \n        # 处理 JPG 转换（需要 RGB 模式）\n        if target_format.upper() == \"JPG\" and img.mode in (\"RGBA\", \"LA\", \"P\"):\n            bg = Image.new(\"RGB\", img.size, bg_color)\n            if img.mode == \"P\":\n                img = img.convert(\"RGBA\")\n            bg.paste(img, mask=img.split()[-1] if img.mode == \"RGBA\" else None)\n            img = bg\n        \n        img.save(output_path, target_format.upper(), quality=quality if target_format.upper() in [\"JPG\", \"JPEG\", \"WEBP\"] else None)\n        print(f\"成功转换图片格式：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：图片格式转换失败 - {e}\")\n        return False",
+          "parameters": [
+            "image_path",
+            "output_path",
+            "target_format",
+            "quality",
+            "bg_color"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "转换图片格式。\n\n参数:\n    image_path (str): 源图片路径\n    output_path (str): 输出图片路径\n    target_format (str): \"PNG\"、\"JPG\"、\"BMP\"、\"GIF\"、\"WEBP\"\n    quality (int): JPG/WEBP 质量（1-100）\n    bg_color (str): 透明转不透明时的背景色（#RRGGBB）\n\n返回:\n    bool: 转换成功返回 True，失败返回 False",
+          "dependencies": [
+            "PIL"
+          ]
+        },
+        {
+          "name": "图片水印",
+          "source_code": "def add_image_watermark(image_path: str, output_path: str, watermark_text: str = \"\", watermark_image: str = \"\", position: str = \"bottom_right\", opacity: float = 0.5, font_size: int = 24, font_color: str = \"#FFFFFF\") -> bool:\n    \"\"\"\n    给图片添加文字或图片水印。\n    \n    参数:\n        image_path (str): 源图片路径\n        output_path (str): 输出图片路径\n        watermark_text (str): 水印文字\n        watermark_image (str): 水印图片路径（与文本二选一）\n        position (str): \"bottom_right\" 右下、\"bottom_left\" 左下、\"top_right\" 右上、\"top_left\" 左上、\"center\" 居中\n        opacity (float): 水印透明度（0-1）\n        font_size (int): 文字水印字体大小\n        font_color (str): 文字水印颜色（#RRGGBB）\n    \n    返回:\n        bool: 处理成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from PIL import Image, ImageDraw, ImageFont\n    try:\n        if not os.path.exists(image_path):\n            print(f\"错误：图片不存在 - {image_path}\")\n            return False\n        \n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        img = Image.open(image_path).convert(\"RGBA\")\n        txt_layer = Image.new(\"RGBA\", img.size, (255, 255, 255, 0))\n        draw = ImageDraw.Draw(txt_layer)\n        \n        # 加载字体\n        try:\n            font = ImageFont.truetype(\"simhei.ttf\", font_size)\n        except:\n            font = ImageFont.load_default()\n        \n        w, h = img.size\n        tw, th = draw.textbbox((0, 0), watermark_text, font=font)[2:4]\n        \n        # 计算位置\n        if position == \"bottom_right\":\n            pos = (w - tw - 10, h - th - 10)\n        elif position == \"bottom_left\":\n            pos = (10, h - th - 10)\n        elif position == \"top_right\":\n            pos = (w - tw - 10, 10)\n        elif position == \"top_left\":\n            pos = (10, 10)\n        elif position == \"center\":\n            pos = ((w - tw) // 2, (h - th) // 2)\n        else:\n            pos = (w - tw - 10, h - th - 10)\n        \n        # 解析颜色\n        r, g, b = int(font_color[1:3], 16), int(font_color[3:5], 16), int(font_color[5:7], 16)\n        draw.text(pos, watermark_text, font=font, fill=(r, g, b, int(255 * opacity)))\n        \n        # 合成图片\n        out = Image.alpha_composite(img, txt_layer)\n        out.convert(\"RGB\").save(output_path)\n        print(f\"成功添加水印：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：图片水印失败 - {e}\")\n        return False",
+          "parameters": [
+            "image_path",
+            "output_path",
+            "watermark_text",
+            "watermark_image",
+            "position",
+            "opacity",
+            "font_size",
+            "font_color"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "给图片添加文字或图片水印。\n\n参数:\n    image_path (str): 源图片路径\n    output_path (str): 输出图片路径\n    watermark_text (str): 水印文字\n    watermark_image (str): 水印图片路径（与文本二选一）\n    position (str): \"bottom_right\" 右下、\"bottom_left\" 左下、\"top_right\" 右上、\"top_left\" 左上、\"center\" 居中\n    opacity (float): 水印透明度（0-1）\n    font_size (int): 文字水印字体大小\n    font_color (str): 文字水印颜色（#RRGGBB）\n\n返回:\n    bool: 处理成功返回 True，失败返回 False",
+          "dependencies": [
+            "PIL"
+          ]
+        },
+        {
+          "name": "图片压缩",
+          "source_code": "def compress_image(image_path: str, output_path: str, quality: int = 75, max_width: int = None, max_height: int = None) -> bool:\n    \"\"\"\n    压缩图片。\n    \n    参数:\n        image_path (str): 源图片路径\n        output_path (str): 输出图片路径\n        quality (int): 压缩质量（1-100）\n        max_width (int): 限制最大宽度\n        max_height (int): 限制最大高度\n    \n    返回:\n        bool: 压缩成功返回 True，失败返回 False\n    \"\"\"\n    import os\n    from PIL import Image\n    try:\n        if not os.path.exists(image_path):\n            print(f\"错误：图片不存在 - {image_path}\")\n            return False\n        \n        # 创建目录\n        dir_path = os.path.dirname(output_path)\n        if dir_path and not os.path.exists(dir_path):\n            os.makedirs(dir_path, exist_ok=True)\n        \n        img = Image.open(image_path)\n        w, h = img.size\n        \n        # 调整尺寸\n        if max_width and w > max_width:\n            h = int(h * max_width / w)\n            w = max_width\n        if max_height and h > max_height:\n            w = int(w * max_height / h)\n            h = max_height\n        \n        if w != img.size[0] or h != img.size[1]:\n            img = img.resize((w, h), Image.Resampling.LANCZOS)\n        \n        # 转换为 RGB 模式（JPG 需要）\n        if img.mode in (\"RGBA\", \"LA\", \"P\"):\n            img = img.convert(\"RGB\")\n        \n        img.save(output_path, \"JPEG\", quality=quality, optimize=True)\n        print(f\"成功压缩图片：{output_path}\")\n        return True\n    except Exception as e:\n        print(f\"错误：图片压缩失败 - {e}\")\n        return False",
+          "parameters": [
+            "image_path",
+            "output_path",
+            "quality",
+            "max_width",
+            "max_height"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "压缩图片。\n\n参数:\n    image_path (str): 源图片路径\n    output_path (str): 输出图片路径\n    quality (int): 压缩质量（1-100）\n    max_width (int): 限制最大宽度\n    max_height (int): 限制最大高度\n\n返回:\n    bool: 压缩成功返回 True，失败返回 False",
+          "dependencies": [
+            "PIL"
+          ]
+        }
+      ]
+    }
+  }
+}
