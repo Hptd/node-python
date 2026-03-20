@@ -3,30 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
     <!-- SEO Meta Tags -->
-    <title>简易中文节点 Python 编辑器 | 拖拽式图形化编程工具 - NodePy</title>
-    <meta name="description" content="NodePy 是一款面向非程序员的中文图形化 Python 编程工具，通过拖拽节点和连接线即可构建可执行的数据流图。支持 AI 代码生成、多线程并发，零基础也能轻松编程。免费下载使用。">
-    <meta name="keywords" content="图形化编程，Python 可视化，节点式编程，拖拽编程，零基础学 Python，数据流图，NodePy，Python 入门工具，非程序员编程工具">
+    <title>NodePy - 自动化工作流编辑器 | 拖拽完成重复工作</title>
+    <meta name="description" content="每天花 2 小时处理 Excel、文件、数据？用 NodePy 拖拽几下构建自动化流程，一键完成重复工作。支持 AI 辅助、36+ 办公节点，零基础也能轻松上手。免费下载使用。">
+    <meta name="keywords" content="自动化办公，Excel 自动化，文件批量处理，数据提取，工作流自动化，拖拽编程，NodePy，重复工作自动化，办公效率工具">
     <link rel="canonical" href="https://www.nodepy.top/">
-    
+
     <!-- 百度站长验证（请替换为你的验证代码） -->
     <meta name="baidu-site-verification" content="codeva-VGFtSaeQjS" />
-    
+
     <!-- Open Graph / 社交媒体分享优化 -->
-    <meta property="og:title" content="简易中文节点 Python 编辑器 | 拖拽式图形化编程工具">
-    <meta property="og:description" content="面向非程序员的中文图形化 Python 编程工具，拖拽节点即可编程，支持 AI 代码生成">
+    <meta property="og:title" content="NodePy - 自动化工作流编辑器 | 拖拽完成重复工作">
+    <meta property="og:description" content="每天花 2 小时处理 Excel、文件、数据？用 NodePy 拖拽几下，构建专属自动化流程，一键完成重复工作。">
     <meta property="og:image" content="https://www.nodepy.top/files/封面.png">
     <meta property="og:url" content="https://www.nodepy.top/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="NodePy">
-    
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="NodePy - 简易中文节点 Python 编辑器">
-    <meta name="twitter:description" content="拖拽式图形化编程，零基础也能写 Python">
+    <meta name="twitter:title" content="NodePy - 自动化工作流编辑器">
+    <meta name="twitter:description" content="拖拽几下，让重复工作自动完成">
     <meta name="twitter:image" content="https://www.nodepy.top/files/封面.png">
-    
+
     <!-- 百度移动适配 -->
     <meta name="applicable-device" content="pc,mobile">
 
@@ -257,7 +257,7 @@
             border-radius: 50%;
             bottom: -50px;
             left: -50px;
-            animation: float 8s ease-in-out infinite reverse;
+            animation: float 8s ease-in-out reverse;
         }
 
         @keyframes float {
@@ -398,10 +398,68 @@
             font-size: 0.95rem;
         }
 
+        /* 场景化案例区域 */
+        .use-cases {
+            padding: 6rem 2rem;
+            background: var(--card-bg);
+        }
+
+        .use-cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .use-case-card {
+            background: var(--dark-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .use-case-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 30px rgba(0, 206, 201, 0.2);
+        }
+
+        .use-case-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .use-case-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.8rem;
+            color: var(--accent-color);
+        }
+
+        .use-case-card ul {
+            list-style: none;
+            color: var(--text-muted);
+        }
+
+        .use-case-card li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .use-case-card li:last-child {
+            border-bottom: none;
+        }
+
+        .use-case-card li::before {
+            content: '✓ ';
+            color: var(--primary-color);
+        }
+
         /* 节点展示 */
         .nodes-section {
             padding: 6rem 2rem;
-            background: var(--card-bg);
+            background: var(--dark-bg);
         }
 
         .nodes-grid {
@@ -412,21 +470,23 @@
         }
 
         .node-item {
-            background: var(--dark-bg);
+            background: var(--card-bg);
             padding: 1.5rem;
             border-radius: 10px;
-            border-left: 4px solid var(--primary-color);
+            border: 1px solid var(--border-color);
             transition: all 0.3s;
         }
 
         .node-item:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 30px rgba(74, 158, 255, 0.15);
+            border-color: var(--primary-color);
         }
 
         .node-item h4 {
             color: var(--accent-color);
             margin-bottom: 0.5rem;
+            font-size: 1.1rem;
         }
 
         .node-item ul {
@@ -443,7 +503,6 @@
         .node-item.coming-soon {
             background: linear-gradient(135deg, rgba(108, 92, 231, 0.2) 0%, rgba(74, 158, 255, 0.2) 100%);
             border: 2px dashed var(--primary-color);
-            border-left: none;
             text-align: center;
         }
 
@@ -467,7 +526,6 @@
         .node-item.plugin-card {
             background: linear-gradient(135deg, rgba(0, 206, 201, 0.15) 0%, rgba(74, 158, 255, 0.15) 100%);
             border: 2px solid var(--accent-color);
-            border-left: none;
             cursor: pointer;
             text-decoration: none;
             display: block;
@@ -717,9 +775,10 @@
     <!-- 导航栏 -->
     <nav>
         <div class="container">
-            <div class="logo">🔷 节点 Python 编辑器</div>
+            <div class="logo">🔷 NodePy 自动化工作流</div>
             <ul>
                 <li><a href="#features">功能特性</a></li>
+                <li><a href="#use-cases">应用场景</a></li>
                 <li><a href="#nodes">节点库</a></li>
                 <li><a href="#workflow">使用流程</a></li>
                 <li><a href="files/faq.html">常见问题</a></li>
@@ -732,14 +791,14 @@
     <!-- Hero 区域 -->
     <section class="hero">
         <div class="hero-content">
-            <h1>简易中文节点 Python 编辑器</h1>
-            <p class="subtitle">图形化编程 · 拖拽节点 · 数据流图执行</p>
-            <p>一款面向非程序员的图形化编程工具，通过拖拽节点和连接线即可构建可执行的数据流图。<br>支持自定义 Python 节点、AI 代码生成、多线程并发处理等高级功能。</p>
-            <a href="#download" class="btn btn-primary">🚀 快速开始</a>
+            <h1>NodePy - 自动化工作流编辑器</h1>
+            <p class="subtitle">拖拽几下，让重复工作自动完成</p>
+            <p>每天花 2 小时处理 Excel、整理文件、提取数据？用 NodePy 拖拽几下，构建专属自动化流程，一键完成重复工作。<br>支持自定义 Python 节点、AI 代码生成、多线程并发处理等高级功能。</p>
+            <a href="#download" class="btn btn-primary">🚀 开始自动化</a>
             <a href="https://www.bilibili.com/video/BV1rHNuzoENb/?share_source=copy_web&vd_source=110ed7db11df1a8abe7054540cd48ee3" target="_blank" class="btn btn-secondary">🎬 视频教程讲解</a>
             <a href="files/README.html" target="_blank" class="btn btn-secondary">📖 查看文档</a>
             <div class="hero-cover">
-                <img src="files/封面.png" alt="简易中文节点 Python 编辑器 - 界面预览">
+                <img src="files/封面.png" alt="NodePy 自动化工作流编辑器 - 界面预览">
             </div>
         </div>
     </section>
@@ -747,44 +806,98 @@
     <!-- 功能特性 -->
     <section class="features" id="features">
         <div class="container">
-            <h2 class="section-title">✨ 功能特性</h2>
-            <p class="section-subtitle">强大的可视化编程能力，让创意自由流动</p>
+            <h2 class="section-title">✨ 为什么选择 NodePy</h2>
+            <p class="section-subtitle">强大的可视化能力，让重复工作消失</p>
 
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">🎨</div>
-                    <h3>可视化节点编辑</h3>
-                    <p>拖拽式节点操作，支持多种添加方式（拖拽/双击/右键菜单/空格搜索），智能拼音首字母匹配</p>
+                    <h3>所见即所得的流程图设计</h3>
+                    <p>拖拽式操作，支持多种添加方式（拖拽/双击/右键菜单/空格搜索），智能拼音首字母匹配，像搭积木一样简单</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">📦</div>
-                    <h3>丰富的节点库</h3>
-                    <p>内置输出类、常量类、数据处理、循环控制、文本处理、Debug 等六大类节点</p>
+                    <h3>36+ 自动化办公节点，开箱即用</h3>
+                    <p>内置输出类、常量类、数据处理、循环控制、文本处理、Debug 等六大类节点，覆盖常见办公场景</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">🔄</div>
-                    <h3>循环节点</h3>
+                    <h3>批量处理 100/1000/10000 条数据，不卡顿</h3>
                     <p>支持区间循环、List 循环、多线程处理，可嵌套使用，满足复杂迭代需求</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">🤖</div>
-                    <h3>AI 辅助生成</h3>
+                    <h3>不会写代码？告诉 AI 你要做什么</h3>
                     <p>AI 节点代码生成器，输入功能描述即可生成节点代码，降低编程门槛</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">⚡</div>
-                    <h3>高性能执行</h3>
+                    <h3>一次点击，全部自动跑完</h3>
                     <p>拓扑排序 + 批量执行引擎，单次调用 Python 解释器执行所有节点，解决频繁启动卡顿</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">🧩</div>
-                    <h3>正则提取</h3>
+                    <h3>从 1000 封邮件中提取手机号/邮箱</h3>
                     <p>智能正则表达式生成器，可视化模板标记，内置邮箱、手机号、日期等常用模板</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 应用场景 -->
+    <section class="use-cases" id="use-cases">
+        <div class="container">
+            <h2 class="section-title">📋 常见自动化场景</h2>
+            <p class="section-subtitle">直接套用模板，快速实现你的自动化流程</p>
+
+            <div class="use-cases-grid">
+                <div class="use-case-card">
+                    <div class="use-case-icon">📊</div>
+                    <h3>Excel 自动化</h3>
+                    <ul>
+                        <li>一键合并 100 个 Excel 表格</li>
+                        <li>数据格式自动转换</li>
+                        <li>批量提取指定列数据</li>
+                        <li>自动生成汇总报表</li>
+                    </ul>
+                </div>
+
+                <div class="use-case-card">
+                    <div class="use-case-icon">📁</div>
+                    <h3>文件批量处理</h3>
+                    <ul>
+                        <li>按日期/类型自动分类整理</li>
+                        <li>批量重命名 1000 个文件</li>
+                        <li>自动压缩打包归档</li>
+                        <li>定时清理过期文件</li>
+                    </ul>
+                </div>
+
+                <div class="use-case-card">
+                    <div class="use-case-icon">📧</div>
+                    <h3>信息提取</h3>
+                    <ul>
+                        <li>从文本提取手机号/邮箱</li>
+                        <li>提取发票信息到 Excel</li>
+                        <li>抓取网页指定数据</li>
+                        <li>生成结构化数据报告</li>
+                    </ul>
+                </div>
+
+                <div class="use-case-card">
+                    <div class="use-case-icon">📝</div>
+                    <h3>文本处理</h3>
+                    <ul>
+                        <li>批量替换/格式化文本</li>
+                        <li>自动拆分/合并文档</li>
+                        <li>提取关键词/摘要</li>
+                        <li>多语言翻译批处理</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -878,7 +991,7 @@
     <section class="workflow" id="workflow">
         <div class="container">
             <h2 class="section-title">📖 使用流程</h2>
-            <p class="section-subtitle">四步完成你的第一个流程图</p>
+            <p class="section-subtitle">四步完成你的第一个自动化流程</p>
 
             <div class="workflow-steps">
                 <div class="step">
@@ -939,7 +1052,7 @@
     <section class="download" id="download">
         <div class="container">
             <h2>🚀 快速开始</h2>
-            <p>只需三步，开启你的图形化编程之旅</p>
+            <p>只需三步，开启你的自动化之旅</p>
 
             <div class="download-commands">
                 <div class="cmd"><code>git clone &lt;repository-url&gt; &amp;&amp; cd node-python</code></div>
@@ -962,7 +1075,7 @@
                 <a href="https://doc.qt.io/qtforpython-6/" target="_blank">PySide6 文档</a>
                 <a href="https://docs.python.org/zh-cn/3/" target="_blank">Python 文档</a>
             </div>
-            <p>© 2025-2026 简易中文节点 Python 编辑器 | MIT License</p>
+            <p>© 2025-2026 NodePy 自动化工作流编辑器 | MIT License</p>
         </div>
     </footer>
 
@@ -990,18 +1103,18 @@
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "简易中文节点 Python 编辑器",
+      "name": "NodePy 自动化工作流编辑器",
       "alternateName": "NodePy",
       "url": "https://www.nodepy.top/",
-      "description": "一款面向非程序员的图形化编程工具，通过拖拽节点和连接线即可构建可执行的数据流图",
-      "applicationCategory": "DeveloperApplication",
+      "description": "每天花 2 小时处理 Excel、文件、数据？用 NodePy 拖拽几下，构建专属自动化流程，一键完成重复工作。",
+      "applicationCategory": "ProductivityApplication",
       "operatingSystem": "Windows, macOS, Linux",
       "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "CNY"
       },
-      "featureList": "可视化节点编辑，丰富的节点库，循环节点，AI 辅助生成，高性能执行，正则提取",
+      "featureList": "可视化节点编辑，丰富的节点库，循环节点，AI 辅助生成，高性能执行，正则提取，自动化办公",
       "programmingLanguage": "Python",
       "screenshot": "https://www.nodepy.top/files/封面.png",
       "downloadUrl": "https://www.nodepy.top/files/download.html",
@@ -1085,7 +1198,7 @@
             });
         }, observerOptions);
 
-        document.querySelectorAll('.feature-card, .node-item, .step').forEach(el => {
+        document.querySelectorAll('.feature-card, .node-item, .step, .use-case-card').forEach(el => {
             el.style.opacity = '0';
             el.style.transform = 'translateY(30px)';
             el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
