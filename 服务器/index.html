@@ -151,6 +151,8 @@
             border-radius: 20px;
             max-width: 800px;
             width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
             position: relative;
             border: 1px solid var(--border-color);
             animation: modalSlideIn 0.3s ease;
@@ -176,11 +178,52 @@
             color: var(--text-muted);
             font-size: 1.5rem;
             cursor: pointer;
-            transition: color 0.3s;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .modal-close:hover {
             color: var(--primary-color);
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* 移动端关闭按钮增强 */
+        @media (max-width: 768px) {
+            .modal-close {
+                top: 10px;
+                right: 10px;
+                width: 44px;
+                height: 44px;
+                font-size: 1.8rem;
+                background: rgba(255,255,255,0.1);
+                color: var(--text-color);
+            }
+
+            .modal-content {
+                padding: 3rem 1.5rem 1.5rem;
+                max-width: 90%;
+                width: 90%;
+                max-height: 75vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
+            }
+
+            .modal-overlay {
+                padding: 1rem;
+            }
+
+            .qr-codes {
+                gap: 1.5rem;
+            }
+
+            .qr-item img {
+                max-width: 180px;
+            }
         }
 
         .modal-title {
@@ -221,6 +264,34 @@
             color: var(--text-muted);
             margin-top: 1.5rem;
             font-size: 0.9rem;
+        }
+
+        .modal-hint {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* 弹窗滚动条美化 */
+        .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
         }
 
         /* Hero 区域 */
@@ -756,8 +827,23 @@
                 font-size: 1.2rem;
             }
 
-            nav ul {
+            /* 桌面导航：隐藏菜单项，只保留 Logo 居中 */
+            nav.desktop-nav ul {
                 display: none;
+            }
+
+            nav.desktop-nav .container {
+                justify-content: center;
+            }
+
+            /* 移动端底部导航显示 */
+            .mobile-bottom-nav {
+                display: flex;
+            }
+
+            /* 为底部导航留出空间，避免内容被遮挡 */
+            body {
+                padding-bottom: 70px;
             }
 
             .workflow-steps {
@@ -769,11 +855,68 @@
                 align-items: center;
             }
         }
+
+        @media (min-width: 769px) {
+            .mobile-bottom-nav {
+                display: none !important;
+            }
+        }
+
+        /* ========== 移动端底部导航样式 ========== */
+        .mobile-bottom-nav {
+            display: none;  /* 默认隐藏，仅移动端显示 */
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 65px;
+            background: rgba(26, 26, 46, 0.98);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            z-index: 1000;
+            
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: env(safe-area-inset-bottom); /* iPhone 安全区适配 */
+        }
+
+        .mobile-bottom-nav .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.75rem;
+            gap: 3px;
+            flex: 1;
+            height: 100%;
+            transition: all 0.3s;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+
+        .mobile-bottom-nav .nav-item:hover,
+        .mobile-bottom-nav .nav-item.active {
+            color: var(--primary-color);
+        }
+
+        .mobile-bottom-nav .nav-icon {
+            font-size: 1.4rem;
+            line-height: 1;
+        }
+
+        .mobile-bottom-nav .nav-text {
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
     <!-- 导航栏 -->
-    <nav>
+    <nav class="desktop-nav">
         <div class="container">
             <div class="logo">🔷 NodePy 自动化工作流</div>
             <ul>
@@ -1081,8 +1224,8 @@
 
     <!-- 联系作者弹窗 -->
     <div class="modal-overlay" id="contactModal" onclick="closeModal(event)">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModalBtn()">×</button>
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModalBtn()" aria-label="关闭弹窗">×</button>
             <h3 class="modal-title">💬 联系作者</h3>
             <div class="qr-codes">
                 <div class="qr-item">
@@ -1095,6 +1238,7 @@
                 </div>
             </div>
             <p class="qr-tip">扫码添加作者或加入交流群，获取技术支持和最新动态</p>
+            <p class="modal-hint">💡 点击右上角 <strong>×</strong> 或空白处关闭弹窗</p>
         </div>
     </div>
 
@@ -1212,6 +1356,88 @@
             var s = document.getElementsByTagName('script')[0];
             s.parentNode.insertBefore(bp, s);
         })();
+
+        // ========== 移动端底部导航交互 ==========
+        // 滚动高亮当前导航项
+        function highlightActiveNavItem() {
+            const sections = document.querySelectorAll('section[id]');
+            const navItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
+            
+            sections.forEach(section => {
+                const rect = section.getBoundingClientRect();
+                // 当 section 顶部接近视口顶部时
+                if (rect.top <= 100 && rect.bottom >= 100) {
+                    navItems.forEach(item => {
+                        item.classList.remove('active');
+                        const href = item.getAttribute('href');
+                        if (href === `#${section.id}`) {
+                            item.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }
+
+        // 监听滚动事件
+        window.addEventListener('scroll', function() {
+            highlightActiveNavItem();
+        });
+
+        // 平滑滚动
+        document.querySelectorAll('.mobile-bottom-nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (href !== '#') {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+
+        // 桌面端导航也添加平滑滚动
+        document.querySelectorAll('.desktop-nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // 初始化高亮
+        setTimeout(highlightActiveNavItem, 100);
     </script>
+
+    <!-- 移动端底部导航栏 -->
+    <nav class="mobile-bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">首页</span>
+        </a>
+        <a href="#features" class="nav-item">
+            <span class="nav-icon">✨</span>
+            <span class="nav-text">特性</span>
+        </a>
+        <a href="#use-cases" class="nav-item">
+            <span class="nav-icon">📋</span>
+            <span class="nav-text">场景</span>
+        </a>
+        <a href="#nodes" class="nav-item">
+            <span class="nav-icon">📦</span>
+            <span class="nav-text">节点</span>
+        </a>
+        <a href="#workflow" class="nav-item">
+            <span class="nav-icon">🔄</span>
+            <span class="nav-text">流程</span>
+        </a>
+        <button class="nav-item" onclick="openModal()">
+            <span class="nav-icon">💬</span>
+            <span class="nav-text">联系</span>
+        </button>
+    </nav>
 </body>
 </html>
