@@ -4,7 +4,10 @@
 [![PySide6](https://img.shields.io/badge/PySide6-6.5.0+-green.svg)](https://pypi.org/project/PySide6/)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-**简易中文节点 Python 编辑器** 是一款面向非程序员的图形化编程工具，通过拖拽节点和连接线即可构建可执行的数据流图。支持自定义 Python 节点、AI 代码生成、多线程并发处理等高级功能。
+**简易中文节点 Python 编辑器**（NodePy）是一款面向非程序员的图形化编程工具，通过拖拽节点和连接线即可构建可执行的数据流图。支持自定义 Python 节点、AI 代码生成、多线程并发处理等高级功能。
+
+> 🌐 **官方网站**: [www.nodepy.top](https://www.nodepy.top)  
+> 📥 **下载地址**: [https://www.nodepy.top/files/download.html](https://www.nodepy.top/files/download.html)
 
 ![界面显示](logo-img/%E7%95%8C%E9%9D%A2%E6%98%BE%E7%A4%BA.png)
 
@@ -628,39 +631,6 @@ python -m utils.setup_embedded_python check
 
 ---
 
-## 📜 版本历史
-
-### v1.4.0 - 多线程处理（2026-02）
-- ✅ 新增"多线程处理"节点
-- ✅ 可配置线程数量和返回顺序
-- ✅ 独立子进程执行，错误隔离
-- ✅ 实时进度显示
-
-### v1.3.0 - 正则提取（2026-02）
-- ✅ 新增"正则提取"节点
-- ✅ 智能正则表达式生成器
-- ✅ 模板标记功能
-- ✅ 多捕获组支持
-
-### v1.2.0 - 循环节点增强（2026-01）
-- ✅ 区间循环和 List 循环
-- ✅ 外部节点输入控制
-- ✅ 节点组功能（Ctrl+G）
-- ✅ 嵌套循环支持
-
-### v1.1.0 - AI 辅助（2026-01）
-- ✅ AI 节点代码生成器
-- ✅ 正则表达式智能生成
-- ✅ 拼音搜索优化
-
-### v1.0.0 - 初始版本（2025-12）
-- ✅ 基础节点编辑功能
-- ✅ 内置节点库
-- ✅ 自定义节点支持
-- ✅ JSON 持久化
-
----
-
 ## 📄 许可证
 
 MIT License
@@ -675,4 +645,12 @@ MIT License
 
 ---
 
-**反馈与支持**：如有问题或建议，请提交 Issue 或联系开发者。
+## 📬 联系作者
+
+如有问题、建议或商务合作，请扫描下方二维码添加联系方式：
+
+![作者联系方式二维码](服务器/files/作者二维码.jpg)
+
+---
+
+**反馈与支持**：如有问题或建议，请提交 Issue 或通过上方二维码联系开发者。
