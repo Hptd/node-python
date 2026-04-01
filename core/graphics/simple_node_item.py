@@ -2,8 +2,8 @@
 
 import inspect
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsItem
-from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QVariantAnimation
-from PySide6.QtGui import QColor, QBrush, QPen, QFont, QPainter, QLinearGradient
+from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QVariantAnimation, QRectF
+from PySide6.QtGui import QColor, QBrush, QPen, QFont, QPainter, QLinearGradient, QPainterPath
 
 from ..nodes.node_library import LOCAL_NODE_LIBRARY
 from .port_item import PortItem
@@ -188,7 +188,7 @@ class SimpleNodeItem(QGraphicsRectItem):
         bg_color = theme_manager.get_color("node_bg")
         border_color = theme_manager.get_color("node_border")
         text_color = QColor(theme_manager.get_color("node_text"))
-        
+
         # 状态颜色覆盖
         if self._status == self.STATUS_RUNNING:
             bg_color = theme_manager.get_color("node_running")
@@ -197,16 +197,20 @@ class SimpleNodeItem(QGraphicsRectItem):
             bg_color = theme_manager.get_color("node_error")
             border_color = theme_manager.get_color("node_error_border")
             text_color = QColor(theme_manager.get_color("node_error_text"))
-        
+
         # 选中状态优先
         if self.isSelected():
             bg_color = theme_manager.get_color("node_bg_selected")
 
-        # 应用画刷和画笔
-        self.setBrush(QColor(bg_color))
-        self.setPen(QPen(QColor(border_color), 2))
+        # 绘制圆角矩形背景（2px 圆角）
+        corner_radius = 2
+        path = QPainterPath()
+        path.addRoundedRect(self.rect(), corner_radius, corner_radius)
 
-        super().paint(painter, option, widget)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setBrush(QColor(bg_color))
+        painter.setPen(QPen(QColor(border_color), 2))
+        painter.drawPath(path)
 
         # 绘制节点名称
         painter.setPen(text_color)
@@ -215,7 +219,7 @@ class SimpleNodeItem(QGraphicsRectItem):
         margin = 10
         text_rect = self.rect().adjusted(margin, margin, -margin, -margin)
         painter.drawText(text_rect, Qt.AlignCenter, self.name)
-        
+
         # 运行状态动画效果：边框闪烁
         if self._status == self.STATUS_RUNNING and self._animation_timer:
             # 计算闪烁透明度
@@ -224,14 +228,18 @@ class SimpleNodeItem(QGraphicsRectItem):
             glow_color.setAlpha(alpha)
             painter.setPen(QPen(glow_color, 4))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(self.rect().adjusted(-2, -2, 2, 2))
-        
+            glow_path = QPainterPath()
+            glow_path.addRoundedRect(self.rect().adjusted(-2, -2, 2, 2), corner_radius, corner_radius)
+            painter.drawPath(glow_path)
+
         # 错误状态：显示错误标记
         if self._status == self.STATUS_ERROR:
             painter.setPen(QPen(QColor(theme_manager.get_color("node_error_border")), 3))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(self.rect().adjusted(-1, -1, 1, 1))
-            
+            error_path = QPainterPath()
+            error_path.addRoundedRect(self.rect().adjusted(-1, -1, 1, 1), corner_radius, corner_radius)
+            painter.drawPath(error_path)
+
             # 在节点右上角显示错误图标
             painter.setPen(QColor("#FF0000"))
             painter.setFont(QFont("Arial", 8, QFont.Bold))
