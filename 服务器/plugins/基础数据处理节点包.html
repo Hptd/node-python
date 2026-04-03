@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基础数据处理节点包使用教程 - 简易中文节点 Python 编辑器</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="../files/node-python-logo-64x64.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="../files/node-python-logo-64x64.ico" type="image/x-icon">
+
+    <style>
+        :root {
+            --primary-color: #4a9eff;
+            --secondary-color: #6c5ce7;
+            --accent-color: #00cec9;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: rgba(255,255,255,0.1);
+            --code-bg: #0d1117;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            line-height: 1.8;
+        }
+
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        nav .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav .back-btn {
+            background: var(--gradient-2);
+            color: var(--dark-bg);
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        nav .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        /* 主容器 */
+        .doc-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 6rem 2rem 4rem;
+        }
+
+        /* 标题区域 */
+        .doc-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-header h1 {
+            font-size: 2.5rem;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .doc-header .badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        /* 目录 */
+        .toc {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 3rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .toc h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .toc ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .toc a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+            display: block;
+            padding: 0.3rem 0;
+        }
+
+        .toc a:hover {
+            color: var(--primary-color);
+        }
+
+        /* 内容区域 */
+        .doc-content h2 {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            margin: 2.5rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-content h3 {
+            font-size: 1.4rem;
+            color: var(--accent-color);
+            margin: 2rem 0 0.8rem;
+            padding-left: 1rem;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .doc-content h4 {
+            font-size: 1.1rem;
+            color: var(--text-color);
+            margin: 1.5rem 0 0.5rem;
+        }
+
+        .doc-content p {
+            margin: 1rem 0;
+            color: var(--text-muted);
+        }
+
+        .doc-content ul, .doc-content ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+            color: var(--text-muted);
+        }
+
+        .doc-content li {
+            margin: 0.5rem 0;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: var(--card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background: rgba(74, 158, 255, 0.1);
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* 代码块 */
+        pre {
+            background: var(--code-bg);
+            padding: 1.5rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border-color);
+        }
+
+        code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+
+        p code, li code {
+            background: rgba(74, 158, 255, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            color: var(--accent-color);
+        }
+
+        /* 引用块 */
+        blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            background: rgba(74, 158, 255, 0.05);
+            border-radius: 0 10px 10px 0;
+        }
+
+        blockquote p {
+            color: var(--text-color);
+        }
+
+        /* 提示框 */
+        .tip {
+            background: rgba(0, 206, 201, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .tip strong {
+            color: var(--accent-color);
+        }
+
+        /* 节点卡片 */
+        .node-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .node-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 5px 20px rgba(74, 158, 255, 0.15);
+        }
+
+        .node-card h4 {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .node-card h4::before {
+            content: '📦';
+        }
+
+        .node-card .node-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .node-meta .meta-item {
+            background: rgba(74, 158, 255, 0.1);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--primary-color);
+        }
+
+        /* 图片 */
+        img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 链接 */
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* 页脚 */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+            color: var(--text-muted);
+        }
+
+        /* 分类标签 */
+        .category-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+            background: var(--gradient-2);
+            color: var(--dark-bg);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .doc-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .toc ul {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">📦 基础数据处理节点包</div>
+            <a href="../index.html" class="back-btn">← 返回首页</a>
+        </div>
+    </nav>
+
+    <div class="doc-container">
+        <div class="doc-header">
+            <h1>🔧 基础数据处理节点包使用教程</h1>
+            <p style="color: var(--text-muted); font-size: 1.1rem;">面向通用数据处理场景的基础工具节点集合</p>
+            <div class="badges">
+                <span class="badge">📦 25 个节点</span>
+                <span class="badge">🗂️ 5 大分类</span>
+                <span class="badge">🔧 零代码</span>
+                <span class="badge">📊 版本 1.0</span>
+            </div>
+        </div>
+
+        <div class="toc">
+            <h3>📑 目录</h3>
+            <ul>
+                <li><a href="#intro">📌 插件包介绍</a></li>
+                <li><a href="#install">📥 安装与依赖</a></li>
+                <li><a href="#file">📁 文件读写</a></li>
+                <li><a href="#json">📄 JSON 处理</a></li>
+                <li><a href="#string">🔤 字符串处理</a></li>
+                <li><a href="#validate">✅ 数据验证</a></li>
+                <li><a href="#list">📋 列表处理</a></li>
+            </ul>
+        </div>
+
+        <div class="doc-content">
+            <section id="intro">
+                <h2>📌 插件包介绍</h2>
+
+                <p><strong>基础数据处理节点包</strong>是专为通用数据处理场景设计的节点插件集合，提供文件读写、JSON 处理、字符串操作、数据验证、类型转换、列表处理等基础功能。无需编写代码，即可完成日常数据处理任务。</p>
+
+                <h3>适用场景</h3>
+                <ul>
+                    <li>✅ <strong>文件处理</strong>：读取/写入文本文件、JSON 文件</li>
+                    <li>✅ <strong>数据清洗</strong>：字符串处理、类型转换、空值检测</li>
+                    <li>✅ <strong>数据验证</strong>：邮箱、手机号、URL 格式校验</li>
+                    <li>✅ <strong>列表操作</strong>：去重、筛选、排序、合并</li>
+                    <li>✅ <strong>任何需要基础数据处理的场景</strong></li>
+                </ul>
+
+                <h3>核心价值</h3>
+                <table>
+                    <tr><th>价值点</th><th>说明</th></tr>
+                    <tr><td>🔤 零代码</td><td>通过拖拽节点完成数据处理流程</td></tr>
+                    <tr><td>📦 可复用</td><td>一键导入插件包，快速部署到本地</td></tr>
+                    <tr><td>👁️ 可视化</td><td>流程清晰可见，便于理解和修改</td></tr>
+                    <tr><td>🔌 可扩展</td><td>支持自定义节点，持续丰富功能</td></tr>
+                </table>
+
+                <h3>节点分类</h3>
+                <div class="badges" style="margin-top: 1rem;">
+                    <span class="badge">📁 文件读写（5 个）</span>
+                    <span class="badge">📄 JSON 处理（3 个）</span>
+                    <span class="badge">🔤 字符串处理（7 个）</span>
+                    <span class="badge">✅ 数据验证（5 个）</span>
+                    <span class="badge">📋 列表处理（5 个）</span>
+                </div>
+            </section>
+
+            <section id="install">
+                <h2>📥 安装与依赖</h2>
+
+                <h3>安装步骤</h3>
+                <ol>
+                    <li>下载 <a href="../downloads/plugins/基础数据处理节点包_20260403_073352.zip" download style="color: var(--primary-color); text-decoration: underline;">基础数据处理节点包.zip</a> 插件文件</li>
+                    <li>打开节点编辑器，点击工具栏【📥 导入节点插件】</li>
+                    <li>选择下载的 JSON 文件</li>
+                    <li>确认后节点将添加到左侧节点库中</li>
+                </ol>
+
+                <h3>第三方依赖</h3>
+                <p>本插件包为纯 Python 基础功能，<strong>无需额外安装第三方库</strong>，可直接使用。</p>
+
+                <div class="tip">
+                    <strong>💡 提示：</strong>如使用嵌入式 Python 环境，请确保环境配置正确。
+                </div>
+            </section>
+
+            <!-- 文件读写 -->
+            <section id="file">
+                <h2>📁 文件读写节点</h2>
+                <span class="category-badge">基础文件操作</span>
+
+                <div class="node-card">
+                    <h4>文件读取</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>读取文本文件内容。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>file_path</td><td>str</td><td>是</td><td>-</td><td>要读取的文件路径，支持绝对路径和相对路径</td></tr>
+                        <tr><td>encoding</td><td>str</td><td>否</td><td>"utf-8"</td><td>文件编码格式，默认为 "utf-8"。常见编码：utf-8, gbk, gb2312, latin-1 等</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>文件的完整文本内容。如果文件不存在或读取失败，返回空字符串 ""</p>
+                    <p><strong>示例：</strong><code>read_file("data.txt")</code> → "文件内容..."</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>文件写入</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：4 个参数</span>
+                        <span class="meta-item">输出：bool</span>
+                    </div>
+                    <p>将文本内容写入文件。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>file_path</td><td>str</td><td>是</td><td>-</td><td>要写入的文件路径</td></tr>
+                        <tr><td>content</td><td>str</td><td>是</td><td>-</td><td>要写入文件的文本内容</td></tr>
+                        <tr><td>encoding</td><td>str</td><td>否</td><td>"utf-8"</td><td>文件编码格式</td></tr>
+                        <tr><td>mode</td><td>str</td><td>否</td><td>"overwrite"</td><td>写入模式："overwrite"覆盖写入 / "append"追加写入</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>写入成功返回 True，失败返回 False</p>
+                    <p><strong>示例：</strong><code>write_file("output.txt", "Hello World")</code> → True</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>JSON 文件读取</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：any</span>
+                    </div>
+                    <p>读取 JSON 文件并解析为 Python 对象。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>file_path</td><td>str</td><td>是</td><td>-</td><td>要读取的 JSON 文件路径</td></tr>
+                        <tr><td>encoding</td><td>str</td><td>否</td><td>"utf-8"</td><td>文件编码格式</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>解析后的 Python 对象（dict、list、str、int、float 等）。如果读取或解析失败，返回 None</p>
+                    <p><strong>示例：</strong><code>read_json_file("config.json")</code> → {"name": "test", "value": 123}</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>JSON 文件写入</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：5 个参数</span>
+                        <span class="meta-item">输出：bool</span>
+                    </div>
+                    <p>将 Python 对象写入 JSON 文件。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>file_path</td><td>str</td><td>是</td><td>-</td><td>要写入的 JSON 文件路径</td></tr>
+                        <tr><td>data</td><td>any</td><td>是</td><td>-</td><td>要写入的 Python 对象</td></tr>
+                        <tr><td>encoding</td><td>str</td><td>否</td><td>"utf-8"</td><td>文件编码格式</td></tr>
+                        <tr><td>indent</td><td>int</td><td>否</td><td>4</td><td>JSON 缩进空格数，设置为 None 则不格式化（单行输出）</td></tr>
+                        <tr><td>ensure_ascii</td><td>bool</td><td>否</td><td>False</td><td>是否转义非 ASCII 字符：True-转义为 \\uXXXX 格式 / False-保留原始字符</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>写入成功返回 True，失败返回 False</p>
+                    <p><strong>示例：</strong><code>write_json_file("output.json", {"name": "测试"})</code> → True</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>文件是否存在</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：bool</span>
+                    </div>
+                    <p>检查文件或路径是否存在。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>file_path</td><td>str</td><td>是</td><td>-</td><td>要检查的文件或目录路径</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>如果路径存在返回 True，否则返回 False</p>
+                    <p><strong>示例：</strong><code>file_exists("data.txt")</code> → True</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>获取文件大小</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：int</span>
+                    </div>
+                    <p>获取文件大小。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>file_path</td><td>str</td><td>是</td><td>-</td><td>要获取大小的文件路径</td></tr>
+                        <tr><td>unit</td><td>str</td><td>否</td><td>"bytes"</td><td>返回值的单位："bytes"字节 / "KB"千字节 / "MB"兆字节 / "GB"吉字节</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>文件大小（根据指定单位返回整数值）。如果文件不存在或读取失败，返回 -1</p>
+                    <p><strong>示例：</strong><code>get_file_size("large_file.zip", unit="MB")</code> → 10</p>
+                </div>
+            </section>
+
+            <!-- JSON 处理 -->
+            <section id="json">
+                <h2>📄 JSON 处理节点</h2>
+                <span class="category-badge">JSON 数据操作</span>
+
+                <div class="node-card">
+                    <h4>JSON 校验</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：dict</span>
+                    </div>
+                    <p>校验输入字符串是否为合法的 JSON 格式。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要校验的 JSON 格式字符串</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>包含以下字段的字典：is_valid（是否有效）、error_message（错误信息）、data_type（数据类型）、parsed_data（解析后的数据）</p>
+                    <p><strong>示例：</strong><code>validate_json('{"name": "test"}')</code> → {"is_valid": True, "data_type": "object", ...}</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>文本转 JSON</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：dict</span>
+                    </div>
+                    <p>尝试将输入文本转换为合法的 JSON 对象。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_text</td><td>str</td><td>是</td><td>-</td><td>要转换的输入文本</td></tr>
+                        <tr><td>strict_mode</td><td>bool</td><td>否</td><td>False</td><td>是否启用严格模式：True-仅接受标准 JSON / False-尝试多种转换策略</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>包含以下字段的字典：success（是否成功）、data（转换后的数据）、original_type（原始类型）、conversion_method（转换方法）、error_message（错误信息）</p>
+                    <p><strong>示例：</strong><code>parse_to_json("{'name': 'test'}")</code> → {"success": True, "data": {"name": "test"}, ...}</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>JSON 格式化</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：3 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>将数据格式化为美观的 JSON 字符串。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_data</td><td>any</td><td>是</td><td>-</td><td>要格式化的数据</td></tr>
+                        <tr><td>indent</td><td>int</td><td>否</td><td>4</td><td>缩进空格数，设置为 0 或 None 则不格式化（单行输出）</td></tr>
+                        <tr><td>ensure_ascii</td><td>bool</td><td>否</td><td>False</td><td>是否转义非 ASCII 字符：True-转义 / False-保留原始字符</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>格式化后的 JSON 字符串。如果序列化失败，返回空字符串 ""</p>
+                    <p><strong>示例：</strong><code>format_json({"name": "测试", "value": 123})</code> → '{\n    "name": "测试",\n    "value": 123\n}'</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>JSON 路径提取</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：any</span>
+                    </div>
+                    <p>从 JSON 数据中提取指定路径的值。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>json_data</td><td>any</td><td>是</td><td>-</td><td>JSON 数据（dict 或 list）</td></tr>
+                        <tr><td>path</td><td>str</td><td>是</td><td>-</td><td>要提取的路径，支持格式："key"、"key1.key2"、"list[0]"、"list.0"、"data.items.0.name"</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>提取到的值。如果路径无效或中途失败，返回 None</p>
+                    <p><strong>示例：</strong><code>extract_json_path({"user": {"name": "test"}}, "user.name")</code> → "test"</p>
+                </div>
+            </section>
+
+            <!-- 字符串处理 -->
+            <section id="string">
+                <h2>🔤 字符串处理节点</h2>
+                <span class="category-badge">文本编辑工具</span>
+
+                <div class="node-card">
+                    <h4>转大写</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>将字符串转换为大写。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要转换的输入字符串</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>转换后的大写字符串</p>
+                    <p><strong>示例：</strong><code>to_upper("hello world")</code> → "HELLO WORLD"</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>转小写</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>将字符串转换为小写。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要转换的输入字符串</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>转换后的小写字符串</p>
+                    <p><strong>示例：</strong><code>to_lower("HELLO WORLD")</code> → "hello world"</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>去除空白</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>去除字符串空白字符。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要处理的输入字符串</td></tr>
+                        <tr><td>mode</td><td>str</td><td>否</td><td>"both"</td><td>去除模式："both"两端 / "left"左侧 / "right"右侧</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>去除空白后的字符串</p>
+                    <p><strong>示例：</strong><code>strip_string("  hello  ", mode="left")</code> → "hello  "</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>字符串分割</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：3 个参数</span>
+                        <span class="meta-item">输出：list</span>
+                    </div>
+                    <p>按分隔符分割字符串。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要分割的输入字符串</td></tr>
+                        <tr><td>separator</td><td>str</td><td>否</td><td>","</td><td>分隔符</td></tr>
+                        <tr><td>max_split</td><td>int</td><td>否</td><td>-1</td><td>最大分割次数：-1-不限制 / 0 或正整数 - 最多分割指定次数</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>分割后的字符串列表</p>
+                    <p><strong>示例：</strong><code>split_string("a,b,c,d", separator=",", max_split=2)</code> → ["a", "b", "c,d"]</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>字符串合并</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>将字符串列表合并为单个字符串。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_list</td><td>list</td><td>是</td><td>-</td><td>要合并的列表</td></tr>
+                        <tr><td>separator</td><td>str</td><td>否</td><td>","</td><td>连接用的分隔符</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>合并后的字符串。如果处理失败，返回空字符串 ""</p>
+                    <p><strong>示例：</strong><code>join_strings(["a", "b", "c"], separator="-")</code> → "a-b-c"</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>字符串替换</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：4 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>替换字符串中的子串。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>原始输入字符串</td></tr>
+                        <tr><td>old</td><td>str</td><td>是</td><td>-</td><td>要替换的子串（被替换的内容）</td></tr>
+                        <tr><td>new</td><td>str</td><td>是</td><td>-</td><td>新的子串（替换后的内容）</td></tr>
+                        <tr><td>count</td><td>int</td><td>否</td><td>-1</td><td>最大替换次数：-1-替换所有 / 0 或正整数 - 最多替换指定次数</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>替换后的新字符串</p>
+                    <p><strong>示例：</strong><code>replace_string("aaa", "a", "b", count=2)</code> → "bba"</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>字符串截取</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：3 个参数</span>
+                        <span class="meta-item">输出：str</span>
+                    </div>
+                    <p>截取字符串子串。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>原始输入字符串</td></tr>
+                        <tr><td>start</td><td>int</td><td>是</td><td>-</td><td>起始索引（从 0 开始）。正数 - 从左往右数 / 负数 - 从右往左数</td></tr>
+                        <tr><td>end</td><td>int</td><td>否</td><td>None</td><td>结束索引（不包含该位置）。None-截取到字符串末尾</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>截取后的子串</p>
+                    <p><strong>示例：</strong><code>substring("hello world", 0, 5)</code> → "hello"</p>
+                </div>
+            </section>
+
+            <!-- 数据验证 -->
+            <section id="validate">
+                <h2>✅ 数据验证节点</h2>
+                <span class="category-badge">格式校验工具</span>
+
+                <div class="node-card">
+                    <h4>邮箱校验</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：dict</span>
+                    </div>
+                    <p>校验字符串是否为有效的邮箱地址格式。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要校验的邮箱地址字符串</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>包含以下字段的字典：is_valid（是否有效）、message（校验结果信息）、domain（邮箱域名）</p>
+                    <p><strong>示例：</strong><code>validate_email("test@example.com")</code> → {"is_valid": True, "message": "Valid", "domain": "example.com"}</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>手机号校验</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：dict</span>
+                    </div>
+                    <p>校验字符串是否为有效的手机号码格式。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要校验的手机号码字符串</td></tr>
+                        <tr><td>country_code</td><td>str</td><td>否</td><td>"CN"</td><td>国家/地区代码："CN"-中国大陆</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>包含以下字段的字典：is_valid（是否有效）、message（校验结果信息）、formatted（格式化后的手机号）</p>
+                    <p><strong>示例：</strong><code>validate_phone("13812345678")</code> → {"is_valid": True, "message": "Valid", "formatted": "13812345678"}</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>URL 校验</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：dict</span>
+                    </div>
+                    <p>校验字符串是否为有效的 URL 格式。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_string</td><td>str</td><td>是</td><td>-</td><td>要校验的 URL 字符串</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>包含以下字段的字典：is_valid（是否有效）、message（校验结果信息）、scheme（协议）、domain（域名）</p>
+                    <p><strong>示例：</strong><code>validate_url("https://www.example.com/path")</code> → {"is_valid": True, "scheme": "https", "domain": "www.example.com"}</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>空值检测</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：bool</span>
+                    </div>
+                    <p>检测值是否为空。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_value</td><td>any</td><td>是</td><td>-</td><td>要检测的任意类型值</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>如果值为空返回 True，否则返回 False</p>
+                    <p><strong>示例：</strong><code>is_empty("")</code> → True</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>数字检测</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：bool</span>
+                    </div>
+                    <p>检测值是否为数字或可转换为数字的字符串。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_value</td><td>any</td><td>是</td><td>-</td><td>要检测的任意类型值</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>如果是数字或可转换为数字返回 True，否则返回 False</p>
+                    <p><strong>示例：</strong><code>is_numeric("123")</code> → True</p>
+                </div>
+            </section>
+
+            <!-- 列表处理 -->
+            <section id="list">
+                <h2>📋 列表处理节点</h2>
+                <span class="category-badge">列表数据操作</span>
+
+                <div class="node-card">
+                    <h4>列表去重</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：list</span>
+                    </div>
+                    <p>去除列表中的重复元素。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_list</td><td>list</td><td>是</td><td>-</td><td>要去重的列表。如果不是列表类型，返回空列表</td></tr>
+                        <tr><td>keep_order</td><td>bool</td><td>否</td><td>True</td><td>是否保持原始顺序：True-保持顺序（遍历去重） / False-不保证顺序（set 去重，更快）</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>去重后的新列表</p>
+                    <p><strong>示例：</strong><code>list_unique([1, 2, 2, 3, 3, 3])</code> → [1, 2, 3]</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>列表筛选</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：2 个参数</span>
+                        <span class="meta-item">输出：list</span>
+                    </div>
+                    <p>筛选列表中的元素。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_list</td><td>list</td><td>是</td><td>-</td><td>要筛选的列表。如果不是列表类型，返回空列表</td></tr>
+                        <tr><td>filter_type</td><td>str</td><td>否</td><td>"not_empty"</td><td>筛选类型："not_empty"去除空值 / "string_only"仅保留字符串 / "number_only"仅保留数字 / "dict_only"仅保留字典</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>筛选后的新列表</p>
+                    <p><strong>示例：</strong><code>list_filter([1, "a", 2.5, {}], filter_type="number_only")</code> → [1, 2.5]</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>列表排序</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：3 个参数</span>
+                        <span class="meta-item">输出：list</span>
+                    </div>
+                    <p>对列表进行排序。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_list</td><td>list</td><td>是</td><td>-</td><td>要排序的列表。如果不是列表类型，返回空列表</td></tr>
+                        <tr><td>order</td><td>str</td><td>否</td><td>"asc"</td><td>排序顺序："asc"升序 / "desc"降序</td></tr>
+                        <tr><td>key</td><td>str</td><td>否</td><td>None</td><td>当列表元素为字典时，指定按哪个键排序</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>排序后的新列表。如果排序失败，返回原列表</p>
+                    <p><strong>示例：</strong><code>list_sort([3, 1, 4], order="desc")</code> → [4, 3, 1]</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>列表合并</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：3 个参数</span>
+                        <span class="meta-item">输出：list</span>
+                    </div>
+                    <p>合并两个列表。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>list1</td><td>list</td><td>是</td><td>-</td><td>第一个待合并的列表。如果不是列表，转换为空列表</td></tr>
+                        <tr><td>list2</td><td>list</td><td>是</td><td>-</td><td>第二个待合并的列表。如果不是列表，转换为空列表</td></tr>
+                        <tr><td>remove_duplicates</td><td>bool</td><td>否</td><td>False</td><td>是否去除重复项：True-去重后返回 / False-直接合并</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>合并后的新列表，根据参数决定是否去重</p>
+                    <p><strong>示例：</strong><code>list_merge([1, 2], [2, 3], remove_duplicates=True)</code> → [1, 2, 3]</p>
+                </div>
+
+                <div class="node-card">
+                    <h4>列表长度</h4>
+                    <div class="node-meta">
+                        <span class="meta-item">输入：1 个参数</span>
+                        <span class="meta-item">输出：int</span>
+                    </div>
+                    <p>获取列表长度。</p>
+                    <table>
+                        <tr><th>参数名</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+                        <tr><td>input_list</td><td>any</td><td>是</td><td>-</td><td>要获取长度的对象。支持：list、tuple、set、str、dict，其他类型返回 0</td></tr>
+                    </table>
+                    <p><strong>返回：</strong>对象的元素数量。如果类型不支持，返回 0</p>
+                    <p><strong>示例：</strong><code>list_length([1, 2, 3])</code> → 3</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025-2026 简易中文节点 Python 编辑器 | 基础数据处理节点包 v1.0</p>
+        <p style="margin-top: 0.5rem;">
+            <a href="../index.html">🏠 返回首页</a> |
+            <a href="../files/README.html">📖 使用教程</a> |
+            <a href="../files/faq.html">❓ 常见问题</a>
+        </p>
+    </footer>
+
+    <script>
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 代码块复制功能
+        document.querySelectorAll('pre').forEach(pre => {
+            const button = document.createElement('button');
+            button.textContent = '复制';
+            button.style.cssText = 'position: absolute; right: 10px; top: 10px; padding: 4px 8px; background: var(--primary-color); border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px;';
+
+            pre.style.position = 'relative';
+            pre.appendChild(button);
+
+            button.addEventListener('click', () => {
+                const code = pre.querySelector('code').textContent;
+                navigator.clipboard.writeText(code);
+                button.textContent = '已复制!';
+                setTimeout(() => {
+                    button.textContent = '复制';
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
