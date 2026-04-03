@@ -1,0 +1,310 @@
+{
+  "plugin_type": "node_plugin",
+  "version": "1.0",
+  "name": "基础数据处理节点包",
+  "description": "提供文件读写、JSON 处理、字符串处理、数据验证、类型转换、列表处理等基础数据处理功能",
+  "author": "基础数据处理节点项目组",
+  "created_at": "2026-04-03T07:33:52.474665",
+  "dependencies": [],
+  "node_count": 33,
+  "categories": {
+    "文件读写": {
+      "nodes": [
+        {
+          "name": "文件读取",
+          "source_code": "def read_file(file_path: str, encoding: str = \"utf-8\") -> str:\n    \"\"\"\n    读取文本文件内容 (Read File Content)。\n\n    从指定路径读取文本文件的完整内容。如果文件不存在或读取失败，返回空字符串。\n    支持自定义字符编码，默认使用 UTF-8 编码。\n\n    参数:\n        file_path (str): 要读取的文件路径，支持绝对路径和相对路径\n        encoding (str, 可选): 文件编码格式，默认为 \"utf-8\"。常见编码：utf-8, gbk, gb2312, latin-1 等\n\n    返回:\n        str: 文件的完整文本内容。如果文件不存在或读取失败，返回空字符串 \"\"\n\n    示例:\n        >>> read_file(\"data.txt\")\n        \"文件内容...\"\n\n        >>> read_file(\"data_gbk.txt\", encoding=\"gbk\")\n        \"GBK 编码文件的内容...\"\n    \"\"\"\n    import os\n    try:\n        if not os.path.exists(file_path):\n            return \"\"\n        with open(file_path, \"r\", encoding=encoding) as f:\n            return f.read()\n    except Exception:\n        return \"\"",
+          "parameters": [
+            "file_path",
+            "encoding"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "读取文本文件内容 (Read File Content)。从指定路径读取文本文件的完整内容。如果文件不存在或读取失败，返回空字符串。支持自定义字符编码，默认使用 UTF-8 编码。",
+          "dependencies": []
+        },
+        {
+          "name": "文件写入",
+          "source_code": "def write_file(file_path: str, content: str, encoding: str = \"utf-8\", mode: str = \"overwrite\") -> bool:\n    \"\"\"\n    将文本内容写入文件 (Write File Content)。\n\n    将指定的文本内容写入到文件中。如果文件所在目录不存在，会自动创建。\n    支持覆盖写入和追加写入两种模式。\n\n    参数:\n        file_path (str): 要写入的文件路径，支持绝对路径和相对路径\n        content (str): 要写入文件的文本内容\n        encoding (str, 可选): 文件编码格式，默认为 \"utf-8\"。常见编码：utf-8, gbk, gb2312, latin-1 等\n        mode (str, 可选): 写入模式，默认为 \"overwrite\"（覆盖写入）。\n                        \"overwrite\" - 覆盖原文件内容\n                        \"append\" - 在文件末尾追加内容\n\n    返回:\n        bool: 写入成功返回 True，失败返回 False（如权限不足、路径无效等）\n\n    示例:\n        >>> write_file(\"output.txt\", \"Hello World\")\n        True\n\n        >>> write_file(\"log.txt\", \"\\n新日志\", mode=\"append\")\n        True\n    \"\"\"\n    import os\n    try:\n        d = os.path.dirname(file_path)\n        if d and not os.path.exists(d):\n            os.makedirs(d, exist_ok=True)\n        m = \"a\" if mode == \"append\" else \"w\"\n        with open(file_path, m, encoding=encoding) as f:\n            f.write(content)\n        return True\n    except Exception:\n        return False",
+          "parameters": [
+            "file_path",
+            "content",
+            "encoding",
+            "mode"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "将文本内容写入文件 (Write File Content)。将指定的文本内容写入到文件中。如果文件所在目录不存在，会自动创建。支持覆盖写入和追加写入两种模式。",
+          "dependencies": []
+        },
+        {
+          "name": "JSON 文件读取",
+          "source_code": "def read_json_file(file_path: str, encoding: str = \"utf-8\") -> any:\n    \"\"\"\n    读取 JSON 文件并解析为 Python 对象 (Read JSON File)。\n\n    从指定路径读取 JSON 格式的文件，并将其解析为 Python 对象（字典、列表等）。\n    如果文件不存在或 JSON 格式无效，返回 None。\n\n    参数:\n        file_path (str): 要读取的 JSON 文件路径\n        encoding (str, 可选): 文件编码格式，默认为 \"utf-8\"\n\n    返回:\n        any: 解析后的 Python 对象（dict、list、str、int、float 等）。如果读取或解析失败，返回 None\n\n    示例:\n        >>> read_json_file(\"config.json\")\n        {\"name\": \"test\", \"value\": 123}\n\n        >>> read_json_file(\"data.json\")\n        [{\"id\": 1}, {\"id\": 2}]\n    \"\"\"\n    import json, os\n    try:\n        if not os.path.exists(file_path):\n            return None\n        with open(file_path, \"r\", encoding=encoding) as f:\n            return json.load(f)\n    except Exception:\n        return None",
+          "parameters": [
+            "file_path",
+            "encoding"
+          ],
+          "return_type": "any",
+          "docstring": "读取 JSON 文件并解析为 Python 对象 (Read JSON File)。从指定路径读取 JSON 格式的文件，并将其解析为 Python 对象。如果文件不存在或 JSON 格式无效，返回 None。",
+          "dependencies": []
+        },
+        {
+          "name": "JSON 文件写入",
+          "source_code": "def write_json_file(file_path: str, data: any, encoding: str = \"utf-8\", indent: int = 4, ensure_ascii: bool = False) -> bool:\n    \"\"\"\n    将 Python 对象写入 JSON 文件 (Write JSON File)。\n\n    将 Python 对象（字典、列表等）序列化为 JSON 格式并写入到文件中。\n    支持自定义缩进和是否转义非 ASCII 字符。\n\n    参数:\n        file_path (str): 要写入的 JSON 文件路径\n        data (any): 要写入的 Python 对象（dict、list、str、int、float 等）\n        encoding (str, 可选): 文件编码格式，默认为 \"utf-8\"\n        indent (int, 可选): JSON 缩进空格数，默认为 4。设置为 None 则不格式化（单行输出）\n        ensure_ascii (bool, 可选): 是否转义非 ASCII 字符，默认为 False（保留中文等字符原样）。\n                                  True - 转义为 \\\\uXXXX 格式\n                                  False - 保留原始字符\n\n    返回:\n        bool: 写入成功返回 True，失败返回 False\n\n    示例:\n        >>> write_json_file(\"output.json\", {\"name\": \"测试\", \"value\": 123})\n        True\n\n        >>> write_json_file(\"compact.json\", data, indent=None)\n        True\n    \"\"\"\n    import json, os\n    try:\n        d = os.path.dirname(file_path)\n        if d and not os.path.exists(d):\n            os.makedirs(d, exist_ok=True)\n        with open(file_path, \"w\", encoding=encoding) as f:\n            json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii)\n        return True\n    except Exception:\n        return False",
+          "parameters": [
+            "file_path",
+            "data",
+            "encoding",
+            "indent",
+            "ensure_ascii"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "将 Python 对象写入 JSON 文件 (Write JSON File)。将 Python 对象序列化为 JSON 格式并写入到文件中。支持自定义缩进和是否转义非 ASCII 字符。",
+          "dependencies": []
+        },
+        {
+          "name": "文件是否存在",
+          "source_code": "def file_exists(file_path: str) -> bool:\n    \"\"\"\n    检查文件或路径是否存在 (Check File Exists)。\n\n    检查指定路径的文件或目录是否存在于文件系统中。\n\n    参数:\n        file_path (str): 要检查的文件或目录路径\n\n    返回:\n        bool: 如果路径存在返回 True，否则返回 False\n\n    示例:\n        >>> file_exists(\"data.txt\")\n        True\n\n        >>> file_exists(\"nonexistent.txt\")\n        False\n    \"\"\"\n    import os\n    return os.path.exists(file_path)",
+          "parameters": [
+            "file_path"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "检查文件或路径是否存在 (Check File Exists)。检查指定路径的文件或目录是否存在于文件系统中。",
+          "dependencies": []
+        }
+      ]
+    },
+    "JSON 处理": {
+      "nodes": [
+        {
+          "name": "JSON 校验",
+          "source_code": "def validate_json(input_string: str) -> dict:\n    \"\"\"\n    校验输入字符串是否为合法的 JSON 格式 (Validate JSON)。\n\n    检查输入字符串是否符合 JSON 语法规范，并返回详细的校验结果。\n    如果 JSON 有效，还会返回解析后的数据类型和值。\n\n    参数:\n        input_string (str): 要校验的 JSON 格式字符串\n\n    返回:\n        dict: 包含以下字段的字典:\n            - is_valid (bool): 是否为有效的 JSON\n            - error_message (str): 错误信息（如果有效则为空）\n            - data_type (str): 数据类型（object、array、string、number、boolean、null）\n            - parsed_data (any): 解析后的 Python 对象（如果无效则为 None）\n\n    示例:\n        >>> validate_json('{\"name\": \"test\"}')\n        {\"is_valid\": True, \"error_message\": \"\", \"data_type\": \"object\", \"parsed_data\": {\"name\": \"test\"}}\n\n        >>> validate_json('invalid')\n        {\"is_valid\": False, \"error_message\": \"...\", \"data_type\": \"invalid\", \"parsed_data\": None}\n    \"\"\"\n    import json\n    if not input_string or not str(input_string).strip():\n        return {\"is_valid\": False, \"error_message\": \"Input string is empty\", \"data_type\": \"empty\", \"parsed_data\": None}\n    try:\n        data = json.loads(str(input_string))\n        t = type(data).__name__\n        if data is None: t = \"null\"\n        elif isinstance(data, bool): t = \"boolean\"\n        elif isinstance(data, (int, float)): t = \"number\"\n        elif isinstance(data, str): t = \"string\"\n        elif isinstance(data, list): t = \"array\"\n        elif isinstance(data, dict): t = \"object\"\n        return {\"is_valid\": True, \"error_message\": \"\", \"data_type\": t, \"parsed_data\": data}\n    except Exception as e:\n        return {\"is_valid\": False, \"error_message\": str(e), \"data_type\": \"invalid\", \"parsed_data\": None}",
+          "parameters": [
+            "input_string"
+          ],
+          "return_type": "<class 'dict'>",
+          "docstring": "校验输入字符串是否为合法的 JSON 格式 (Validate JSON)。检查输入字符串是否符合 JSON 语法规范，并返回详细的校验结果。",
+          "dependencies": []
+        },
+        {
+          "name": "文本转 JSON",
+          "source_code": "def parse_to_json(input_text: str, strict_mode: bool = False) -> dict:\n    \"\"\"\n    尝试将输入文本转换为合法的 JSON 对象 (Parse to JSON)。\n\n    使用多种策略尝试将输入文本转换为 JSON 对象：\n    1. 首先尝试直接使用 json.loads() 解析\n    2. 在宽松模式下，尝试使用 ast.literal_eval() 解析 Python 字面量\n    3. 尝试将单引号替换为双引号后再次解析\n    4. 如果都失败，返回原始文本包装结果\n\n    参数:\n        input_text (str): 要转换的输入文本\n        strict_mode (bool, 可选): 是否启用严格模式，默认为 False。\n                                  True - 仅接受标准 JSON 格式，失败时不尝试其他转换\n                                  False - 尝试多种转换策略\n\n    返回:\n        dict: 包含以下字段的字典:\n            - success (bool): 转换是否成功\n            - data (any): 转换后的数据\n            - original_type (str): 原始数据类型识别结果\n            - conversion_method (str): 使用的转换方法\n            - error_message (str): 错误信息（如果成功则为空）\n\n    示例:\n        >>> parse_to_json('{\"name\": \"test\"}')\n        {\"success\": True, \"data\": {\"name\": \"test\"}, \"original_type\": \"json\", ...}\n\n        >>> parse_to_json(\"{'name': 'test'}\")\n        {\"success\": True, \"data\": {\"name\": \"test\"}, \"original_type\": \"malformed_json\", ...}\n    \"\"\"\n    import json, ast, re\n    if not input_text or not str(input_text).strip():\n        return {\"success\": False, \"data\": None, \"original_type\": \"empty\", \"conversion_method\": \"none\", \"error_message\": \"Input text is empty\"}\n    text = str(input_text).strip()\n    try:\n        return {\"success\": True, \"data\": json.loads(text), \"original_type\": \"json\", \"conversion_method\": \"json.loads\", \"error_message\": \"\"}\n    except:\n        pass\n    if strict_mode:\n        return {\"success\": False, \"data\": None, \"original_type\": \"invalid_json\", \"conversion_method\": \"none\", \"error_message\": \"Strict mode\"}\n    try:\n        data = ast.literal_eval(text)\n        if isinstance(data, (dict, list, str, int, float, bool, type(None))):\n            return {\"success\": True, \"data\": data, \"original_type\": \"python_literal\", \"conversion_method\": \"ast.literal_eval\", \"error_message\": \"\"}\n    except:\n        pass\n    try:\n        return {\"success\": True, \"data\": json.loads(text.replace(\"\\'\", '\"')), \"original_type\": \"malformed_json\", \"conversion_method\": \"quote_replacement\", \"error_message\": \"\"}\n    except:\n        pass\n    return {\"success\": False, \"data\": {\"raw\": text}, \"original_type\": \"plain_text\", \"conversion_method\": \"raw_wrapper\", \"error_message\": \"Could not parse\"}",
+          "parameters": [
+            "input_text",
+            "strict_mode"
+          ],
+          "return_type": "<class 'dict'>",
+          "docstring": "尝试将输入文本转换为合法的 JSON 对象 (Parse to JSON)。使用多种策略尝试将输入文本转换为 JSON 对象。",
+          "dependencies": []
+        },
+        {
+          "name": "JSON 格式化",
+          "source_code": "def format_json(input_data: any, indent: int = 4, ensure_ascii: bool = False) -> str:\n    \"\"\"\n    将数据格式化为美观的 JSON 字符串 (Format JSON)。\n\n    将任意 Python 对象序列化为格式化的 JSON 字符串，便于阅读或输出。\n\n    参数:\n        input_data (any): 要格式化的数据（dict、list、str、int、float 等）\n        indent (int, 可选): 缩进空格数，默认为 4。设置为 0 或 None 则不格式化（单行输出）\n        ensure_ascii (bool, 可选): 是否转义非 ASCII 字符，默认为 False（保留中文等字符原样）。\n                                  True - 转义为 \\\\uXXXX 格式\n                                  False - 保留原始字符\n\n    返回:\n        str: 格式化后的 JSON 字符串。如果序列化失败，返回空字符串 \"\"\n\n    示例:\n        >>> format_json({\"name\": \"测试\", \"value\": 123})\n        '{\\n    \"name\": \"测试\",\\n    \"value\": 123\\n}'\n\n        >>> format_json({\"name\": \"测试\"}, indent=2, ensure_ascii=True)\n        '{\\n  \"name\": \"\\\\\\\\u6d4b\\\\\\\\u8bd5\"\\n}'\n    \"\"\"\n    import json\n    try:\n        return json.dumps(input_data, indent=indent, ensure_ascii=ensure_ascii)\n    except:\n        return \"\"",
+          "parameters": [
+            "input_data",
+            "indent",
+            "ensure_ascii"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "将数据格式化为美观的 JSON 字符串 (Format JSON)。将任意 Python 对象序列化为格式化的 JSON 字符串，便于阅读或输出。",
+          "dependencies": []
+        }
+      ]
+    },
+    "字符串处理": {
+      "nodes": [
+        {
+          "name": "转大写",
+          "source_code": "def to_upper(input_string: str) -> str:\n    \"\"\"\n    将字符串转换为大写 (To Upper Case)。\n\n    将输入字符串中的所有字符转换为大写字母。\n    支持中文等多字节字符（中文不受影响）。\n\n    参数:\n        input_string (str): 要转换的输入字符串\n\n    返回:\n        str: 转换后的大写字符串\n\n    示例:\n        >>> to_upper(\"hello world\")\n        \"HELLO WORLD\"\n\n        >>> to_upper(\"Hello 测试\")\n        \"HELLO 测试\"\n    \"\"\"\n    return str(input_string).upper()",
+          "parameters": [
+            "input_string"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "将字符串转换为大写 (To Upper Case)。将输入字符串中的所有字符转换为大写字母。",
+          "dependencies": []
+        },
+        {
+          "name": "转小写",
+          "source_code": "def to_lower(input_string: str) -> str:\n    \"\"\"\n    将字符串转换为小写 (To Lower Case)。\n\n    将输入字符串中的所有字符转换为小写字母。\n    支持中文等多字节字符（中文不受影响）。\n\n    参数:\n        input_string (str): 要转换的输入字符串\n\n    返回:\n        str: 转换后的小写字符串\n\n    示例:\n        >>> to_lower(\"HELLO WORLD\")\n        \"hello world\"\n\n        >>> to_lower(\"HELLO 测试\")\n        \"hello 测试\"\n    \"\"\"\n    return str(input_string).lower()",
+          "parameters": [
+            "input_string"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "将字符串转换为小写 (To Lower Case)。将输入字符串中的所有字符转换为小写字母。",
+          "dependencies": []
+        },
+        {
+          "name": "去除空白",
+          "source_code": "def strip_string(input_string: str, mode: str = \"both\") -> str:\n    \"\"\"\n    去除字符串空白字符 (Strip String)。\n\n    去除字符串两端或一端的空白字符（空格、制表符、换行符等）。\n\n    参数:\n        input_string (str): 要处理的输入字符串\n        mode (str, 可选): 去除模式，默认为 \"both\"。\n                         \"both\" - 去除两端空白\n                         \"left\" - 仅去除左侧（开头）空白\n                         \"right\" - 仅去除右侧（末尾）空白\n\n    返回:\n        str: 去除空白后的字符串\n\n    示例:\n        >>> strip_string(\"  hello  \")\n        \"hello\"\n\n        >>> strip_string(\"  hello  \", mode=\"left\")\n        \"hello  \"\n\n        >>> strip_string(\"  hello  \", mode=\"right\")\n        \"  hello\"\n    \"\"\"\n    s = str(input_string)\n    if mode == \"left\": return s.lstrip()\n    if mode == \"right\": return s.rstrip()\n    return s.strip()",
+          "parameters": [
+            "input_string",
+            "mode"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "去除字符串空白字符 (Strip String)。去除字符串两端或一端的空白字符。",
+          "dependencies": []
+        },
+        {
+          "name": "字符串分割",
+          "source_code": "def split_string(input_string: str, separator: str = \",\", max_split: int = -1) -> list:\n    \"\"\"\n    按分隔符分割字符串 (Split String)。\n\n    将字符串按照指定的分隔符分割成列表。\n\n    参数:\n        input_string (str): 要分割的输入字符串\n        separator (str, 可选): 分隔符，默认为逗号 \",\"\n        max_split (int, 可选): 最大分割次数，默认为 -1（不限制）。\n                              -1 - 不限制分割次数\n                              0 或正整数 - 最多分割指定次数\n\n    返回:\n        list: 分割后的字符串列表\n\n    示例:\n        >>> split_string(\"a,b,c\")\n        [\"a\", \"b\", \"c\"]\n\n        >>> split_string(\"a,b,c,d\", separator=\",\", max_split=2)\n        [\"a\", \"b\", \"c,d\"]\n    \"\"\"\n    s = str(input_string)\n    if max_split == -1: return s.split(separator)\n    return s.split(separator, max_split)",
+          "parameters": [
+            "input_string",
+            "separator",
+            "max_split"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "按分隔符分割字符串 (Split String)。将字符串按照指定的分隔符分割成列表。",
+          "dependencies": []
+        },
+        {
+          "name": "字符串合并",
+          "source_code": "def join_strings(input_list: list, separator: str = \",\") -> str:\n    \"\"\"\n    将字符串列表合并为单个字符串 (Join Strings)。\n\n    使用指定的分隔符将列表中的元素连接成一个字符串。\n    非字符串元素会自动转换为字符串。\n\n    参数:\n        input_list (list): 要合并的列表，包含任意可转换为字符串的元素\n        separator (str, 可选): 连接用的分隔符，默认为逗号 \",\"\n\n    返回:\n        str: 合并后的字符串。如果处理失败，返回空字符串 \"\"\n\n    示例:\n        >>> join_strings([\"a\", \"b\", \"c\"])\n        \"a,b,c\"\n\n        >>> join_strings([\"a\", \"b\", \"c\"], separator=\"-\")\n        \"a-b-c\"\n\n        >>> join_strings([1, 2, 3], separator=\" | \")\n        \"1 | 2 | 3\"\n    \"\"\"\n    try:\n        return separator.join(str(item) for item in input_list)\n    except:\n        return \"\"",
+          "parameters": [
+            "input_list",
+            "separator"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "将字符串列表合并为单个字符串 (Join Strings)。使用指定的分隔符将列表中的元素连接成一个字符串。",
+          "dependencies": []
+        },
+        {
+          "name": "字符串替换",
+          "source_code": "def replace_string(input_string: str, old: str, new: str, count: int = -1) -> str:\n    \"\"\"\n    替换字符串中的子串 (Replace String)。\n\n    将字符串中指定的子串替换为新的子串。\n\n    参数:\n        input_string (str): 原始输入字符串\n        old (str): 要替换的子串（被替换的内容）\n        new (str): 新的子串（替换后的内容）\n        count (int, 可选): 最大替换次数，默认为 -1（替换所有出现）。\n                         -1 - 替换所有匹配项\n                         0 或正整数 - 最多替换指定次数\n\n    返回:\n        str: 替换后的新字符串\n\n    示例:\n        >>> replace_string(\"hello world\", \"world\", \"Python\")\n        \"hello Python\"\n\n        >>> replace_string(\"aaa\", \"a\", \"b\", count=2)\n        \"bba\"\n    \"\"\"\n    s = str(input_string)\n    if count == -1: return s.replace(old, new)\n    return s.replace(old, new, count)",
+          "parameters": [
+            "input_string",
+            "old",
+            "new",
+            "count"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "替换字符串中的子串 (Replace String)。将字符串中指定的子串替换为新的子串。",
+          "dependencies": []
+        },
+        {
+          "name": "字符串截取",
+          "source_code": "def substring(input_string: str, start: int, end: int = None) -> str:\n    \"\"\"\n    截取字符串子串 (Substring)。\n\n    从字符串中提取指定范围的子串（Python 切片语法）。\n\n    参数:\n        input_string (str): 原始输入字符串\n        start (int): 起始索引（从 0 开始）。\n                    正数 - 从左往右数\n                    负数 - 从右往左数（-1 表示最后一个字符）\n        end (int, 可选): 结束索引（不包含该位置）。\n                        None - 截取到字符串末尾\n                        正数 - 从左往右数\n                        负数 - 从右往左数\n\n    返回:\n        str: 截取后的子串\n\n    示例:\n        >>> substring(\"hello world\", 0, 5)\n        \"hello\"\n\n        >>> substring(\"hello world\", 6)\n        \"world\"\n\n        >>> substring(\"hello world\", -5)\n        \"world\"\n    \"\"\"\n    s = str(input_string)\n    if end is None: return s[start:]\n    return s[start:end]",
+          "parameters": [
+            "input_string",
+            "start",
+            "end"
+          ],
+          "return_type": "<class 'str'>",
+          "docstring": "截取字符串子串 (Substring)。从字符串中提取指定范围的子串。",
+          "dependencies": []
+        }
+      ]
+    },
+    "数据验证": {
+      "nodes": [
+        {
+          "name": "邮箱校验",
+          "source_code": "def validate_email(input_string: str) -> dict:\n    \"\"\"\n    校验字符串是否为有效的邮箱地址格式 (Validate Email)。\n\n    使用正则表达式检查输入字符串是否符合常见的邮箱地址格式。\n    支持常见的邮箱格式，如 username@domain.com。\n\n    参数:\n        input_string (str): 要校验的邮箱地址字符串\n\n    返回:\n        dict: 包含以下字段的字典:\n            - is_valid (bool): 是否为有效的邮箱格式\n            - message (str): 校验结果信息（\"Empty\"-空，\"Valid\"-有效，\"Invalid\"-无效）\n            - domain (str): 邮箱域名部分（如果有效），否则为空字符串\n\n    示例:\n        >>> validate_email(\"test@example.com\")\n        {\"is_valid\": True, \"message\": \"Valid\", \"domain\": \"example.com\"}\n\n        >>> validate_email(\"invalid-email\")\n        {\"is_valid\": False, \"message\": \"Invalid\", \"domain\": \"\"}\n    \"\"\"\n    import re\n    if not input_string or not str(input_string).strip():\n        return {\"is_valid\": False, \"message\": \"Empty\", \"domain\": \"\"}\n    email = str(input_string).strip()\n    pattern = r\"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$\"\n    if re.match(pattern, email):\n        return {\"is_valid\": True, \"message\": \"Valid\", \"domain\": email.split(\"@\")[1]}\n    return {\"is_valid\": False, \"message\": \"Invalid\", \"domain\": \"\"}",
+          "parameters": [
+            "input_string"
+          ],
+          "return_type": "<class 'dict'>",
+          "docstring": "校验字符串是否为有效的邮箱地址格式 (Validate Email)。使用正则表达式检查输入字符串是否符合常见的邮箱地址格式。",
+          "dependencies": []
+        },
+        {
+          "name": "手机号校验",
+          "source_code": "def validate_phone(input_string: str, country_code: str = \"CN\") -> dict:\n    \"\"\"\n    校验字符串是否为有效的手机号码格式 (Validate Phone Number)。\n\n    检查输入字符串是否符合指定国家的手机号码格式。\n    目前主要支持中国大陆手机号（11 位，1 开头，第二位为 3-9）。\n\n    参数:\n        input_string (str): 要校验的手机号码字符串\n        country_code (str, 可选): 国家/地区代码，默认为 \"CN\"（中国大陆）。\n                                  \"CN\" - 中国大陆手机号\n\n    返回:\n        dict: 包含以下字段的字典:\n            - is_valid (bool): 是否为有效的手机号格式\n            - message (str): 校验结果信息（\"Empty\"-空，\"Valid\"-有效，\"Invalid...\"-无效）\n            - formatted (str): 格式化后的手机号（如果有效），否则为空字符串\n\n    示例:\n        >>> validate_phone(\"13812345678\")\n        {\"is_valid\": True, \"message\": \"Valid\", \"formatted\": \"13812345678\"}\n\n        >>> validate_phone(\"12345678901\")\n        {\"is_valid\": False, \"message\": \"Invalid or unsupported\", \"formatted\": \"\"}\n    \"\"\"\n    import re\n    if not input_string or not str(input_string).strip():\n        return {\"is_valid\": False, \"message\": \"Empty\", \"formatted\": \"\"}\n    phone = str(input_string).strip()\n    if country_code == \"CN\":\n        pattern = r\"^1[3-9]\\d{9}$\"\n        if re.match(pattern, phone):\n            return {\"is_valid\": True, \"message\": \"Valid\", \"formatted\": phone}\n    return {\"is_valid\": False, \"message\": \"Invalid or unsupported\", \"formatted\": \"\"}",
+          "parameters": [
+            "input_string",
+            "country_code"
+          ],
+          "return_type": "<class 'dict'>",
+          "docstring": "校验字符串是否为有效的手机号码格式 (Validate Phone Number)。检查输入字符串是否符合指定国家的手机号码格式。",
+          "dependencies": []
+        },
+        {
+          "name": "URL 校验",
+          "source_code": "def validate_url(input_string: str) -> dict:\n    \"\"\"\n    校验字符串是否为有效的 URL 格式 (Validate URL)。\n\n    检查输入字符串是否符合标准的 URL 格式，包含协议（scheme）和域名（netloc）。\n    支持 http、https、ftp 等常见协议。\n\n    参数:\n        input_string (str): 要校验的 URL 字符串\n\n    返回:\n        dict: 包含以下字段的字典:\n            - is_valid (bool): 是否为有效的 URL 格式\n            - message (str): 校验结果信息（\"Empty\"-空，\"Valid\"-有效，\"Invalid\"-无效）\n            - scheme (str): URL 协议部分（如 http、https），如果无效则为空\n            - domain (str): URL 域名部分，如果无效则为空\n\n    示例:\n        >>> validate_url(\"https://www.example.com/path\")\n        {\"is_valid\": True, \"message\": \"Valid\", \"scheme\": \"https\", \"domain\": \"www.example.com\"}\n\n        >>> validate_url(\"not-a-url\")\n        {\"is_valid\": False, \"message\": \"Invalid\", \"scheme\": \"\", \"domain\": \"\"}\n    \"\"\"\n    from urllib.parse import urlparse\n    if not input_string or not str(input_string).strip():\n        return {\"is_valid\": False, \"message\": \"Empty\", \"scheme\": \"\", \"domain\": \"\"}\n    url = str(input_string).strip()\n    try:\n        p = urlparse(url)\n        if p.scheme and p.netloc:\n            return {\"is_valid\": True, \"message\": \"Valid\", \"scheme\": p.scheme, \"domain\": p.netloc}\n    except:\n        pass\n    return {\"is_valid\": False, \"message\": \"Invalid\", \"scheme\": \"\", \"domain\": \"\"}",
+          "parameters": [
+            "input_string"
+          ],
+          "return_type": "<class 'dict'>",
+          "docstring": "校验字符串是否为有效的 URL 格式 (Validate URL)。检查输入字符串是否符合标准的 URL 格式。",
+          "dependencies": []
+        },
+        {
+          "name": "空值检测",
+          "source_code": "def is_empty(input_value: any) -> bool:\n    \"\"\"\n    检测值是否为空 (Is Empty)。\n\n    检查输入值是否为空值。支持多种类型的空值判断：\n    - None 直接判定为空\n    - 字符串、列表、字典、元组、集合：长度为 0 判定为空\n    - 其他类型：返回 False\n\n    参数:\n        input_value (any): 要检测的任意类型值\n\n    返回:\n        bool: 如果值为空返回 True，否则返回 False\n\n    示例:\n        >>> is_empty(None)\n        True\n\n        >>> is_empty(\"\")\n        True\n\n        >>> is_empty([])\n        True\n\n        >>> is_empty({})\n        True\n\n        >>> is_empty(\"hello\")\n        False\n    \"\"\"\n    if input_value is None: return True\n    if isinstance(input_value, (str, list, dict, tuple, set)):\n        return len(input_value) == 0\n    return False",
+          "parameters": [
+            "input_value"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "检测值是否为空 (Is Empty)。检查输入值是否为空值。支持多种类型的空值判断。",
+          "dependencies": []
+        },
+        {
+          "name": "数字检测",
+          "source_code": "def is_numeric(input_value: any) -> bool:\n    \"\"\"\n    检测值是否为数字或可转换为数字的字符串 (Is Numeric)。\n\n    检查输入值是否为数字类型，或者是否为可转换为数字的字符串。\n    支持整数、浮点数、布尔值以及数字字符串。\n\n    参数:\n        input_value (any): 要检测的任意类型值\n\n    返回:\n        bool: 如果是数字或可转换为数字返回 True，否则返回 False\n\n    示例:\n        >>> is_numeric(123)\n        True\n\n        >>> is_numeric(3.14)\n        True\n\n        >>> is_numeric(\"123\")\n        True\n\n        >>> is_numeric(\"abc\")\n        False\n    \"\"\"\n    if isinstance(input_value, (int, float, bool)): return True\n    if isinstance(input_value, str):\n        try:\n            float(input_value)\n            return True\n        except:\n            return False\n    return False",
+          "parameters": [
+            "input_value"
+          ],
+          "return_type": "<class 'bool'>",
+          "docstring": "检测值是否为数字或可转换为数字的字符串 (Is Numeric)。检查输入值是否为数字类型或可转换为数字的字符串。",
+          "dependencies": []
+        }
+      ]
+    },
+    "列表处理": {
+      "nodes": [
+        {
+          "name": "列表去重",
+          "source_code": "def list_unique(input_list: list, keep_order: bool = True) -> list:\n    \"\"\"\n    去除列表中的重复元素 (List Unique)。\n\n    移除列表中的重复项，可选择是否保持原始顺序。\n    去重时将元素转换为字符串作为唯一标识，无法转换的元素直接保留。\n\n    参数:\n        input_list (list): 要去重的列表。如果不是列表类型，返回空列表\n        keep_order (bool, 可选): 是否保持原始顺序，默认为 True。\n                                True - 保持原始顺序（使用遍历去重）\n                                False - 不保证顺序（使用 set 去重，更快）\n\n    返回:\n        list: 去重后的新列表\n\n    示例:\n        >>> list_unique([1, 2, 2, 3, 3, 3])\n        [1, 2, 3]\n\n        >>> list_unique([1, 2, 2, 3], keep_order=False)\n        [1, 2, 3]  # 顺序可能不同\n    \"\"\"\n    if not isinstance(input_list, list): return []\n    if keep_order:\n        seen, result = set(), []\n        for item in input_list:\n            try:\n                k = str(item)\n                if k not in seen:\n                    seen.add(k)\n                    result.append(item)\n            except:\n                result.append(item)\n        return result\n    try: return list(set(input_list))\n    except: return list_unique(input_list, True)",
+          "parameters": [
+            "input_list",
+            "keep_order"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "去除列表中的重复元素 (List Unique)。移除列表中的重复项，可选择是否保持原始顺序。",
+          "dependencies": []
+        },
+        {
+          "name": "列表筛选",
+          "source_code": "def list_filter(input_list: list, filter_type: str = \"not_empty\") -> list:\n    \"\"\"\n    筛选列表中的元素 (List Filter)。\n\n    根据指定的筛选类型过滤列表中的元素。\n\n    参数:\n        input_list (list): 要筛选的列表。如果不是列表类型，返回空列表\n        filter_type (str, 可选): 筛选类型，默认为 \"not_empty\"。\n                                \"not_empty\" - 去除空值（None、空字符串、空容器）\n                                \"string_only\" - 仅保留字符串\n                                \"number_only\" - 仅保留数字（int/float，不含 bool）\n                                \"dict_only\" - 仅保留字典\n\n    返回:\n        list: 筛选后的新列表\n\n    示例:\n        >>> list_filter([1, None, \"\", \"hello\", 0])\n        [1, \"hello\", 0]\n\n        >>> list_filter([1, \"a\", 2.5, {}], filter_type=\"number_only\")\n        [1, 2.5]\n\n        >>> list_filter([1, \"a\", {}], filter_type=\"string_only\")\n        [\"a\"]\n    \"\"\"\n    if not isinstance(input_list, list): return []\n    def is_empty(v):\n        if v is None: return True\n        if isinstance(v, (str, list, dict, tuple, set)): return len(v) == 0\n        return False\n    if filter_type == \"not_empty\": return [i for i in input_list if not is_empty(i)]\n    if filter_type == \"string_only\": return [i for i in input_list if isinstance(i, str)]\n    if filter_type == \"number_only\": return [i for i in input_list if isinstance(i, (int, float)) and not isinstance(i, bool)]\n    if filter_type == \"dict_only\": return [i for i in input_list if isinstance(i, dict)]\n    return input_list",
+          "parameters": [
+            "input_list",
+            "filter_type"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "筛选列表中的元素 (List Filter)。根据指定的筛选类型过滤列表中的元素。",
+          "dependencies": []
+        },
+        {
+          "name": "列表排序",
+          "source_code": "def list_sort(input_list: list, order: str = \"asc\", key: str = None) -> list:\n    \"\"\"\n    对列表进行排序 (List Sort)。\n\n    对列表中的元素进行升序或降序排序。\n    支持字典列表按指定键排序。\n\n    参数:\n        input_list (list): 要排序的列表。如果不是列表类型，返回空列表\n        order (str, 可选): 排序顺序，默认为 \"asc\"（升序）。\n                          \"asc\" - 升序（从小到大）\n                          \"desc\" - 降序（从大到小）\n        key (str, 可选): 当列表元素为字典时，指定按哪个键排序。\n                        None - 直接对元素排序\n\n    返回:\n        list: 排序后的新列表。如果排序失败，返回原列表\n\n    示例:\n        >>> list_sort([3, 1, 4, 1, 5])\n        [1, 1, 3, 4, 5]\n\n        >>> list_sort([3, 1, 4], order=\"desc\")\n        [4, 3, 1]\n\n        >>> list_sort([{\"name\": \"b\"}, {\"name\": \"a\"}], key=\"name\")\n        [{\"name\": \"a\"}, {\"name\": \"b\"}]\n    \"\"\"\n    if not isinstance(input_list, list): return []\n    try:\n        reverse = order.lower() == \"desc\"\n        if key and input_list and isinstance(input_list[0], dict):\n            return sorted(input_list, key=lambda x: x.get(key, \"\"), reverse=reverse)\n        return sorted(input_list, reverse=reverse)\n    except:\n        return input_list",
+          "parameters": [
+            "input_list",
+            "order",
+            "key"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "对列表进行排序 (List Sort)。对列表中的元素进行升序或降序排序。支持字典列表按指定键排序。",
+          "dependencies": []
+        },
+        {
+          "name": "列表合并",
+          "source_code": "def list_merge(list1: list, list2: list, remove_duplicates: bool = False) -> list:\n    \"\"\"\n    合并两个列表 (List Merge)。\n\n    将两个列表合并为一个新列表，可选择是否去除重复元素。\n    如果传入的参数不是列表类型，会自动转换为空列表。\n    去重时将元素转换为字符串作为唯一标识，无法序列化的元素直接保留。\n\n    参数:\n        list1 (list): 第一个待合并的列表。如果不是列表，转换为空列表\n        list2 (list): 第二个待合并的列表。如果不是列表，转换为空列表\n        remove_duplicates (bool, 可选): 是否去除重复项，默认为 False（不去重）。\n                                        True - 去重后返回\n                                        False - 直接合并\n\n    返回:\n        list: 合并后的新列表，根据参数决定是否去重\n\n    示例:\n        >>> list_merge([1, 2], [2, 3])\n        [1, 2, 2, 3]\n\n        >>> list_merge([1, 2], [2, 3], remove_duplicates=True)\n        [1, 2, 3]\n    \"\"\"\n    if not isinstance(list1, list): list1 = []\n    if not isinstance(list2, list): list2 = []\n    merged = list1 + list2\n    if remove_duplicates:\n        seen, result = set(), []\n        for item in merged:\n            try:\n                k = str(item)\n                if k not in seen:\n                    seen.add(k)\n                    result.append(item)\n            except:\n                result.append(item)\n        return result\n    return merged",
+          "parameters": [
+            "list1",
+            "list2",
+            "remove_duplicates"
+          ],
+          "return_type": "<class 'list'>",
+          "docstring": "合并两个列表 (List Merge)。将两个列表合并为一个新列表，可选择是否去除重复元素。",
+          "dependencies": []
+        },
+        {
+          "name": "列表长度",
+          "source_code": "def list_length(input_list: any) -> int:\n    \"\"\"\n    获取列表长度 (List Length)。\n\n    获取列表或其他可迭代对象的元素数量。\n    支持列表、元组、集合、字符串、字典等类型。\n\n    参数:\n        input_list (any): 要获取长度的对象。\n                         支持：list、tuple、set、str、dict\n                         其他类型返回 0\n\n    返回:\n        int: 对象的元素数量。如果类型不支持，返回 0\n\n    示例:\n        >>> list_length([1, 2, 3])\n        3\n\n        >>> list_length(\"hello\")\n        5\n\n        >>> list_length({\"a\": 1, \"b\": 2})\n        2\n\n        >>> list_length(123)\n        0\n    \"\"\"\n    if isinstance(input_list, (list, tuple, set, str, dict)): return len(input_list)\n    return 0",
+          "parameters": [
+            "input_list"
+          ],
+          "return_type": "<class 'int'>",
+          "docstring": "获取列表长度 (List Length)。获取列表或其他可迭代对象的元素数量。",
+          "dependencies": []
+        }
+      ]
+    }
+  }
+}
