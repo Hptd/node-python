@@ -79,10 +79,12 @@ class CategoryHeader(QFrame):
 class NodeItem(QFrame):
     """节点项 - 可点击选择"""
     clicked = Signal(str)
-    
+    entered = Signal()
+
     def __init__(self, node_name: str, parent=None):
         super().__init__(parent)
         self.node_name = node_name
+        self._keyboard_selected = False
         self._setup_ui()
         
     def _setup_ui(self):
@@ -107,7 +109,9 @@ class NodeItem(QFrame):
         
     def _update_style(self):
         hover_bg = theme_manager.get_color('hover_bg')
-        selected_bg = theme_manager.get_color('selection')
+        keyboard_bg = theme_manager.get_color('primary')
+        self._hover_bg = hover_bg
+        self._keyboard_bg = keyboard_bg
         self.setStyleSheet(f"""
             NodeItem {{
                 background: transparent;
@@ -117,6 +121,33 @@ class NodeItem(QFrame):
                 background: {hover_bg};
             }}
         """)
+
+    def set_keyboard_selected(self, selected: bool):
+        self._keyboard_selected = selected
+        if selected:
+            self.setStyleSheet(f"""
+                NodeItem {{
+                    background: {self._keyboard_bg};
+                    border-radius: 3px;
+                }}
+                NodeItem:hover {{
+                    background: {self._keyboard_bg};
+                }}
+            """)
+        else:
+            self.setStyleSheet(f"""
+                NodeItem {{
+                    background: transparent;
+                    border-radius: 3px;
+                }}
+                NodeItem:hover {{
+                    background: {self._hover_bg};
+                }}
+            """)
+
+    def enterEvent(self, event):
+        self.entered.emit()
+        super().enterEvent(event)
         
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
@@ -193,6 +224,10 @@ class CategorySection(QWidget):
         self.setVisible(has_visible)
         return has_visible
         
+    def get_visible_node_items(self):
+        """获取所有可见的 NodeItem（用于键盘导航）"""
+        return [item for item in self.node_items if item.isVisible()]
+
     def set_expanded(self, expanded: bool):
         """设置展开/收缩状态"""
         self.header.set_expanded(expanded)
@@ -206,6 +241,7 @@ class NodeSearchMenu(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.category_sections = {}
+        self._keyboard_selected_idx = -1
         self._setup_ui()
         
     def _setup_ui(self):
@@ -294,6 +330,8 @@ class NodeSearchMenu(QFrame):
                 
             section = CategorySection(category_name, node_names)
             section.node_selected.connect(self._on_node_selected)
+            for item in section.node_items:
+                item.entered.connect(self._on_item_entered)
             # 默认展开
             section.set_expanded(True)
             
@@ -306,6 +344,11 @@ class NodeSearchMenu(QFrame):
         """搜索文本变化"""
         for section in self.category_sections.values():
             section.filter_nodes(text)
+        self._clear_keyboard_selection()
+        # 搜索后自动高亮第一个可见项
+        visible = self._collect_visible_items()
+        if visible:
+            self._move_selection_to(0)
             
     def _on_node_selected(self, node_name: str):
         """节点被选中"""
@@ -344,15 +387,79 @@ class NodeSearchMenu(QFrame):
         # 延迟设置焦点，确保输入法正常工作
         QTimer.singleShot(10, lambda: self.search_edit.setFocus())
         
+    def _collect_visible_items(self):
+        """收集所有可见的 NodeItem（按分类排序）"""
+        items = []
+        for category_name in sorted(self.category_sections.keys()):
+            section = self.category_sections[category_name]
+            if section.isVisible():
+                items.extend(section.get_visible_node_items())
+        return items
+
+    def _clear_keyboard_selection(self):
+        """清除键盘高亮"""
+        if self._keyboard_selected_idx >= 0:
+            visible = self._collect_visible_items()
+            if self._keyboard_selected_idx < len(visible):
+                visible[self._keyboard_selected_idx].set_keyboard_selected(False)
+        self._keyboard_selected_idx = -1
+
+    def _move_selection_to(self, idx):
+        """将键盘选择移动到指定索引"""
+        visible = self._collect_visible_items()
+        if not visible:
+            self._keyboard_selected_idx = -1
+            return
+        idx = max(0, min(idx, len(visible) - 1))
+        if idx == self._keyboard_selected_idx:
+            return
+        self._clear_keyboard_selection()
+        self._keyboard_selected_idx = idx
+        visible[idx].set_keyboard_selected(True)
+        # 确保选中项在滚动区域可见（仅 ScrollArea 父级）
+        self._ensure_item_visible(visible[idx])
+
+    def _ensure_item_visible(self, item):
+        """确保节点项在滚动区域内可见"""
+        # 向上查找 QScrollArea
+        parent = item.parent()
+        while parent and parent != self:
+            from PySide6.QtWidgets import QScrollArea
+            if isinstance(parent, QScrollArea):
+                parent.ensureWidgetVisible(item, 0, 10)
+                break
+            parent = parent.parent()
+
+    def _on_item_entered(self):
+        """鼠标进入 NodeItem 时清除键盘选择"""
+        self._clear_keyboard_selection()
+
     def keyPressEvent(self, event):
         """处理键盘事件"""
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            # Enter 键选择第一个可见节点
-            first_node = self.get_first_visible_node()
-            if first_node:
-                self._on_node_selected(first_node)
+            visible = self._collect_visible_items()
+            if self._keyboard_selected_idx >= 0 and self._keyboard_selected_idx < len(visible):
+                self._on_node_selected(visible[self._keyboard_selected_idx].node_name)
+            else:
+                first_node = self.get_first_visible_node()
+                if first_node:
+                    self._on_node_selected(first_node)
+        elif event.key() == Qt.Key_Down:
+            visible = self._collect_visible_items()
+            if visible:
+                new_idx = self._keyboard_selected_idx + 1
+                if new_idx >= len(visible):
+                    new_idx = 0
+                self._move_selection_to(new_idx)
+        elif event.key() == Qt.Key_Up:
+            visible = self._collect_visible_items()
+            if visible:
+                new_idx = self._keyboard_selected_idx - 1
+                if new_idx < 0:
+                    new_idx = len(visible) - 1
+                self._move_selection_to(new_idx)
         else:
             super().keyPressEvent(event)
             
