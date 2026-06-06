@@ -18,7 +18,7 @@ node_print._source = '''def node_print(data):
 '''
 
 
-def const_bool(value= True) -> bool:
+def const_bool(value=True) -> bool:
     """
     布尔常量节点。
     将任意输入转换为布尔值。
@@ -39,7 +39,7 @@ def const_bool(value= True) -> bool:
     return bool(value)
 
 
-const_bool._source = '''def const_bool(value= True) -> bool:
+const_bool._source = '''def const_bool(value=True) -> bool:
     """
     布尔常量节点。
     将任意输入转换为布尔值。

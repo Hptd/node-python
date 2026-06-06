@@ -23,6 +23,7 @@ from ..graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopN
 from ..graphics.simple_node_item import SimpleNodeItem
 from .graph_executor import topological_sort
 from .embedded_executor import get_executor as get_embedded_executor
+from ..nodes.builtin_node_source import BUILTIN_NODE_SOURCE, extract_func_name, extract_imports
 
 # 异步节点类型列表 - 这些节点需要逐次执行以等待异步操作完成
 ASYNC_NODE_TYPES = {
@@ -108,8 +109,8 @@ def _execute_node(node: SimpleNodeItem, all_nodes: List[SimpleNodeItem],
                 source_code = inspect.getsource(node.func)
             
             # 提取导入
-            imports = _extract_imports(source_code)
-            
+            imports = extract_imports(source_code)
+
             result = executor.execute_node(source_code, kwargs, imports, timeout=30)
             node.result = result
             node.set_status(SimpleNodeItem.STATUS_SUCCESS)
@@ -123,21 +124,6 @@ def _execute_node(node: SimpleNodeItem, all_nodes: List[SimpleNodeItem],
         node.result = result
         node.set_status(SimpleNodeItem.STATUS_SUCCESS)
         return result
-
-
-def _extract_imports(code: str) -> List[str]:
-    """从代码中提取导入的模块"""
-    imports = []
-    
-    # 匹配 import xxx
-    import_pattern = r'^import\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-    imports.extend(re.findall(import_pattern, code, re.MULTILINE))
-    
-    # 匹配 from xxx import
-    from_pattern = r'^from\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-    imports.extend(re.findall(from_pattern, code, re.MULTILINE))
-    
-    return list(set(imports))
 
 
 def _has_async_nodes(nodes: List[SimpleNodeItem]) -> bool:
@@ -232,26 +218,13 @@ def _execute_loop_sequential(
                             if isinstance(source_node, LoopNodeItem) and conn.start_port.port_name == '迭代值':
                                 # 将当前迭代值设置为节点的参数值
                                 node.param_values[port.port_name] = current_value
-                                with open('F:/Python Project/node-python/loop_debug.log', 'a', encoding='utf-8') as debug_f:
-                                    debug_f.write(f"  [DEBUG] 设置节点 {node.name} 的参数 {port.port_name} = {current_value}\n")
+                                # Debug logging removed — use project-relative path if needed
                                 break
 
             # 使用批量执行器执行当前迭代
-            # 调试：记录传入的节点
-            with open('F:/Python Project/node-python/loop_debug.log', 'a', encoding='utf-8') as debug_f:
-                debug_f.write(f"\n=== 迭代 {index + 1} ===\n")
-                debug_f.write(f"nodes_to_execute 数量：{len(nodes_to_execute)}\n")
-                for i, node in enumerate(nodes_to_execute):
-                    node_name = getattr(node, 'loop_name', getattr(node, 'name', 'Unknown'))
-                    debug_f.write(f"  节点 {i}: {node_name} (type={type(node).__name__})\n")
-                    debug_f.write(f"    param_values: {node.param_values}\n")
-            
             batch_executor = BatchGraphExecutor(executor.python_exe)
             success, results, logs = batch_executor.execute_graph(nodes_to_execute)
             
-            # 调试：记录执行结果
-            with open('F:/Python Project/node-python/loop_debug.log', 'a', encoding='utf-8') as debug_f:
-                debug_f.write(f"执行结果：success={success}, results={results}\n")
 
             if success:
                 # 获取所有节点的结果
@@ -368,16 +341,16 @@ def _execute_loop_batch(
                 source_code = inspect.getsource(node.func)
         else:
             # 内置节点使用内置代码映射
-            source_code = _get_builtin_node_code(node.name)
+            source_code = BUILTIN_NODE_SOURCE.get(node.name)
             if not source_code:
                 continue
         
         # 提取导入
-        imports = _extract_imports(source_code)
+        imports = extract_imports(source_code)
         all_imports.update(imports)
         
         # 提取函数名
-        func_name = _extract_func_name(source_code)
+        func_name = extract_func_name(source_code)
         node_functions.append({
             'node': node,
             'func_name': func_name,
@@ -410,146 +383,6 @@ def _execute_loop_batch(
     except Exception as e:
         colored_print(f"  批量循环执行出错：{e}", "error")
         raise
-
-
-def _get_builtin_node_code(node_name: str) -> Optional[str]:
-    """获取内置节点的源代码"""
-    BUILTIN_NODE_SOURCE = {
-        "打印节点": '''def node_print(data):
-    """打印输出节点"""
-    print(f"执行结果：{data}")
-    return data''',
-        "字符串": '''def const_string(value= "") -> str:
-    """
-    字符串常量节点。
-    将任意输入转换为字符串值。
-
-    转换规则:
-    - None → 空字符串
-    - 其他类型 → 使用 str() 转换
-    """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_string(value)''',
-        "整数": '''def const_int(value= 0) -> int:
-    """
-    整数常量节点。
-    将任意输入转换为整数值。
-
-    转换规则:
-    - 数字类型 (int/float) → 截断取整
-    - 布尔类型 → True=1, False=0
-    - 字符串 → 尝试解析为数字，失败返回 0
-    - 其他类型 → 返回 0
-    """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_int(value)''',
-        "浮点数": '''def const_float(value= 0.0) -> float:
-    """
-    浮点数常量节点。
-    将任意输入转换为浮点数值。
-
-    转换规则:
-    - 数字类型 (int/float) → 直接转换
-    - 布尔类型 → True=1.0, False=0.0
-    - 字符串 → 尝试解析为 float，失败返回 0.0
-    - 其他类型 → 返回 0.0
-    """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_float(value)''',
-        "布尔": '''def const_bool(value= True) -> bool:
-    """
-    布尔常量节点。
-    将任意输入转换为布尔值。
-
-    转换规则:
-    - 字符串 "false", "0", "no", "off" (不区分大小写) → False
-    - 空值 (None, "", [], {}) → False
-    - 数字 0, 0.0 → False
-    - 其他情况 → True
-    """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_bool(value)''',
-        "列表": '''def const_list(value= None) -> list:
-    """
-    列表常量节点。
-    将任意输入转换为列表值。
-
-    转换规则:
-    - None → 空列表
-    - list/tuple/set → 直接转换
-    - dict → 转为键值对列表
-    - 字符串 → 尝试 JSON 解析，失败则逗号分割，再失败则单元素列表
-    - 其他标量类型 → 包装为单元素列表
-    """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_list(value)''',
-        "字典": '''def const_dict(value= None) -> dict:
-    """
-    字典常量节点。
-    将任意输入转换为字典值。
-
-    转换规则:
-    - None → 空字典
-    - dict → 原样返回
-    - 字符串 → 尝试 JSON 解析，失败则尝试键值对格式，再失败返回空字典
-    - 列表 → 如果是键值对列表则转换，否则转为索引字典
-    - 其他类型 → 返回空字典
-    """
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_dict(value)''',
-        "数据提取": '''def extract_data(data: dict, path: str = "") -> any:
-    """数据提取节点"""
-    if not data or not path:
-        return None
-    if not isinstance(data, dict):
-        try:
-            import json
-            data = json.loads(data) if isinstance(data, str) else data
-        except Exception:
-            return None
-    import re
-    tokens = re.findall(r'([^\\.\\[\\]]+)|\\[(\\d+)\\]', path)
-    keys = []
-    for token in tokens:
-        if token[0]:
-            keys.append(token[0])
-        elif token[1]:
-            keys.append(int(token[1]))
-    if not keys:
-        keys = path.split('.')
-    current = data
-    try:
-        for key in keys:
-            if isinstance(current, dict):
-                current = current.get(key)
-            elif isinstance(current, list):
-                if isinstance(key, int) and 0 <= key < len(current):
-                    current = current[key]
-                else:
-                    return None
-            else:
-                return None
-            if current is None:
-                return None
-        return current
-    except Exception:
-        return None''',
-        "数据类型检测": '''def type_test(data) -> None:
-    """数据类型检测节点"""
-    result = f"输入数据类型为：{type(data)}"
-    print(result)
-    return result''',
-    }
-    return BUILTIN_NODE_SOURCE.get(node_name)
-
-
-def _extract_func_name(code: str) -> str:
-    """从代码中提取函数名"""
-    pattern = r'^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\('
-    matches = re.findall(pattern, code, re.MULTILINE)
-    if not matches:
-        raise ValueError("代码中未找到函数定义")
-    return matches[0]
 
 
 def _build_loop_execution_script(
@@ -670,7 +503,7 @@ def _build_loop_execution_script(
     
     # 执行主函数
     script_parts.append("# ==================== 执行主函数 ====================")
-    script_parts.append(f"iterator_values = json.loads('{iterator_values_json}')")
+    script_parts.append(f"iterator_values = json.loads({repr(iterator_values_json)})")
     script_parts.append("all_results = []")
     script_parts.append("")
     script_parts.append("for iter_idx, iterator_value in enumerate(iterator_values):")

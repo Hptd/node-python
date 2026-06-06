@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QMainWindow, QGraphicsScene, QDockWidget, QWidget
                                QHBoxLayout, QLabel, QTextEdit, QToolBar, QPushButton,
                                QInputDialog, QMessageBox, QApplication, QTreeWidgetItem,
                                QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox,
-                               QMenu, QDialog)
+                               QMenu, QDialog, QGroupBox, QComboBox)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QTextCursor, QColor, QTextCharFormat
 
@@ -438,7 +438,6 @@ class SimplePyFlowWindow(QMainWindow):
 
     def _setup_library_node_properties(self, node_name: str):
         """为本地节点库中的节点显示属性面板"""
-        from PySide6.QtWidgets import QLabel
 
         # 特殊节点类型处理：循环节点
         if node_name == "区间循环":
@@ -1111,8 +1110,7 @@ class SimplePyFlowWindow(QMainWindow):
 
     def _setup_loop_node_properties(self, loop_item):
         """为循环节点设置属性面板 UI"""
-        from PySide6.QtWidgets import QGroupBox, QVBoxLayout, QLabel, QSpinBox, QTextEdit
-        
+
         self._clear_param_inputs()
         self._current_node_item = loop_item  # 保存当前循环节点引用
 
@@ -1168,8 +1166,7 @@ class SimplePyFlowWindow(QMainWindow):
         self.error_text.setVisible(False)
         
         # 创建循环节点专用属性 UI
-        from PySide6.QtWidgets import QGroupBox, QVBoxLayout, QLabel
-        
+
         # 区间循环参数
         if isinstance(loop_item, RangeLoopNodeItem):
             # Range 参数组
@@ -1312,8 +1309,6 @@ class SimplePyFlowWindow(QMainWindow):
 
     def _setup_multithread_node_properties(self, node_item: MultithreadNodeItem):
         """为多线程处理节点设置属性面板 UI"""
-        from PySide6.QtWidgets import (QGroupBox, QVBoxLayout, QLabel,
-                                       QSpinBox, QTextEdit, QComboBox)
 
         self._current_node_item = node_item
 

@@ -24,189 +24,11 @@ from core.graphics.simple_node_item import SimpleNodeItem
 from core.graphics.loop_node_item import LoopNodeItem, RangeLoopNodeItem, ListLoopNodeItem
 from core.graphics.multithread_node_item import MultithreadNodeItem
 from core.engine.graph_executor import topological_sort
+from core.nodes.builtin_node_source import BUILTIN_NODE_SOURCE, extract_func_name, extract_imports
 
 
 class PythonExporter:
     """Python 文件导出器"""
-
-    # 内置节点源代码映射
-    BUILTIN_NODE_SOURCE = {
-        "打印节点": '''def node_print(data):
-    """打印输出节点"""
-    print(f"执行结果：{data}")
-    return data''',
-
-        "字符串": '''def const_string(value= "") -> str:
-    """
-    字符串常量节点。
-    将任意输入转换为字符串值。
-    """
-    if value is None:
-        return ""
-    return str(value)''',
-
-        "整数": '''def const_int(value= 0) -> int:
-    """
-    整数常量节点。
-    将任意输入转换为整数值。
-    """
-    if isinstance(value, bool):
-        return 1 if value else 0
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        return int(value)
-    if isinstance(value, str):
-        try:
-            return int(value.strip())
-        except ValueError:
-            try:
-                return int(float(value.strip()))
-            except ValueError:
-                return 0
-    return 0''',
-
-        "浮点数": '''def const_float(value= 0.0) -> float:
-    """
-    浮点数常量节点。
-    将任意输入转换为浮点数值。
-    """
-    if isinstance(value, bool):
-        return 1.0 if value else 0.0
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value.strip())
-        except ValueError:
-            return 0.0
-    return 0.0''',
-
-        "布尔": '''def const_bool(value= True) -> bool:
-    """
-    布尔常量节点。
-    将任意输入转换为布尔值。
-    """
-    if isinstance(value, str):
-        lower_val = value.strip().lower()
-        if lower_val in ('false', '0', 'no', 'off', 'none'):
-            return False
-        if lower_val in ('true', '1', 'yes', 'on'):
-            return True
-    return bool(value)''',
-
-        "列表": '''def const_list(value= None) -> list:
-    """
-    列表常量节点。
-    将任意输入转换为列表值。
-    """
-    import json
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    if isinstance(value, (tuple, set)):
-        return list(value)
-    if isinstance(value, dict):
-        return list(value.items())
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, list):
-                return parsed
-        except (json.JSONDecodeError, ValueError):
-            pass
-        if ',' in value:
-            return [item.strip() for item in value.split(',')]
-        return [value]
-    return [value]''',
-
-        "字典": '''def const_dict(value= None) -> dict:
-    """
-    字典常量节点。
-    将任意输入转换为字典值。
-    """
-    import json
-    if value is None:
-        return {}
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, dict):
-                return parsed
-        except (json.JSONDecodeError, ValueError):
-            pass
-        try:
-            result = {}
-            for pair in value.split(','):
-                if '=' in pair:
-                    k, v = pair.split('=', 1)
-                    result[k.strip()] = v.strip()
-            if result:
-                return result
-        except Exception:
-            pass
-        return {}
-    if isinstance(value, list):
-        if all(isinstance(item, (tuple, list)) and len(item) == 2 for item in value):
-            return dict(value)
-        return {i: v for i, v in enumerate(value)}
-    return {}''',
-
-        "数据提取": '''def extract_data(data: dict, path: str = "") -> any:
-    """数据提取节点"""
-    if not data or not path:
-        return None
-    if not isinstance(data, dict):
-        try:
-            import json
-            data = json.loads(data) if isinstance(data, str) else data
-        except Exception:
-            return None
-    import re
-    tokens = re.findall(r'([^.\\[\\]]+)|\\[(\\d+)\\]', path)
-    keys = []
-    for token in tokens:
-        if token[0]:
-            keys.append(token[0])
-        elif token[1]:
-            keys.append(int(token[1]))
-    if not keys:
-        keys = path.split('.')
-    current = data
-    try:
-        for key in keys:
-            if isinstance(current, dict):
-                current = current.get(key)
-            elif isinstance(current, list):
-                if isinstance(key, int) and 0 <= key < len(current):
-                    current = current[key]
-                else:
-                    return None
-            else:
-                return None
-            if current is None:
-                return None
-        return current
-    except Exception:
-        return None''',
-
-        "数据类型检测": '''def type_test(data) -> None:
-    """数据类型检测节点"""
-    result = f"输入数据类型为：{type(data)}"
-    print(result)
-    return result''',
-
-        "文件选择器": '''def file_picker(file_filter: str = "全部文件 (*)", selected_file_path: str = "") -> str:
-    """文件选择器节点"""
-    return selected_file_path''',
-
-        "文件夹选择器": '''def folder_picker(folder_path: str = "") -> str:
-    """文件夹选择器节点"""
-    return folder_path''',
-    }
 
     def __init__(self, nodes: List[Any]):
         """初始化导出器
@@ -249,7 +71,7 @@ class PythonExporter:
                 continue
                 
             source_code, func_name = self._get_node_code(node)
-            imports = self._extract_imports(source_code)
+            imports = extract_imports(source_code)
             self.all_imports.update(imports)
 
             unique_func_name = f"{func_name}_{idx}"
@@ -270,30 +92,15 @@ class PythonExporter:
             else:
                 raise RuntimeError(f"自定义节点 {node.name} 没有源代码")
         else:
-            if node.name in self.BUILTIN_NODE_SOURCE:
-                source = self.BUILTIN_NODE_SOURCE[node.name]
+            if node.name in BUILTIN_NODE_SOURCE:
+                source = BUILTIN_NODE_SOURCE[node.name]
             elif hasattr(node, 'func') and hasattr(node.func, '_source'):
                 source = node.func._source
             else:
                 raise RuntimeError(f"节点 {node.name} 没有可用的源代码")
 
-        func_name = self._extract_func_name(source)
+        func_name = extract_func_name(source)
         return source, func_name
-
-    def _extract_func_name(self, code: str) -> str:
-        pattern = r'^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\('
-        matches = re.findall(pattern, code, re.MULTILINE)
-        if not matches:
-            raise ValueError("代码中未找到函数定义")
-        return matches[0]
-
-    def _extract_imports(self, code: str) -> List[str]:
-        imports = []
-        import_pattern = r'^import\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-        imports.extend(re.findall(import_pattern, code, re.MULTILINE))
-        from_pattern = r'^from\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-        imports.extend(re.findall(from_pattern, code, re.MULTILINE))
-        return list(set(imports))
 
     def _build_script(self) -> str:
         parts = [
@@ -445,41 +252,6 @@ NodePython 导出的工作流
         lines.append("    main()")
 
         return '\n'.join(lines)
-
-    def _build_simple_node_code(self, node: SimpleNodeItem, idx: int) -> List[str]:
-        lines = []
-        unique_func_name = None
-        
-        for nf in self.node_functions:
-            if nf['index'] == idx:
-                unique_func_name = nf['unique_name']
-                break
-        
-        if unique_func_name is None:
-            return lines
-        
-        lines.append(f"    # 执行节点 {idx}: {node.name}")
-        lines.append("    try:")
-
-        kwargs = {}
-        for port in node.input_ports:
-            kwargs[port.port_name] = self._get_input_value_code(node, port.port_name)
-
-        args_str = ', '.join([f"{k}={v}" for k, v in kwargs.items()])
-        lines.append(f"        result_{idx} = {unique_func_name}({args_str})")
-        lines.append(f"        results['node_{idx}'] = {{")
-        lines.append(f"            'success': True,")
-        lines.append(f"            'result': result_{idx},")
-        lines.append(f"            'node_name': '{node.name}'")
-        lines.append(f"        }}")
-        lines.append(f"        logs.append(f'节点 {node.name} 执行完成：{{result_{idx}}}')")
-        lines.append("    except Exception as e:")
-        lines.append(f"        error_msg = f'节点 {node.name} 执行出错：{{e}}'")
-        lines.append(f"        results['node_{idx}'] = {{'success': False, 'error': error_msg}}")
-        lines.append(f"        logs.append(error_msg)")
-        lines.append("")
-        
-        return lines
 
     def _get_loop_input_code(self, node: LoopNodeItem, port_name: str) -> str:
         """获取循环节点输入端口的值"""

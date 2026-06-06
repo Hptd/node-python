@@ -12,6 +12,7 @@ from pathlib import Path
 from core.nodes.node_library import (NODE_LIBRARY_CATEGORIZED, LOCAL_NODE_LIBRARY,
                                       CUSTOM_CATEGORIES, add_node_to_library)
 from utils.constants import STORAGE_DIR, CUSTOM_NODES_FILE
+from utils.sandbox import SandboxChecker
 
 
 def get_storage_path() -> Path:
@@ -109,6 +110,17 @@ def load_custom_nodes() -> bool:
                     continue
                 
                 func_name = func_defs[0].name
+
+                # 安全检查
+                checker = SandboxChecker()
+                check_result = checker.check_code(source_code)
+                if not check_result.is_safe:
+                    print(f"节点 '{name}' 未通过安全检查:")
+                    for error in check_result.errors:
+                        print(f"  - {error}")
+                    for warning in check_result.warnings:
+                        print(f"  警告: {warning}")
+                    continue
 
                 # 编译执行
                 # 注意：必须提供 __builtins__，否则 import 语句在某些环境下会失败

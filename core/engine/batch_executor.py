@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from ..graphics.simple_node_item import SimpleNodeItem
 from ..graphics.loop_node_item import LoopNodeItem
+from ..nodes.builtin_node_source import BUILTIN_NODE_SOURCE, extract_func_name, extract_imports
 
 
 class BatchGraphExecutor:
@@ -139,7 +140,6 @@ class BatchGraphExecutor:
                             # 只计算来自 nodes 列表内部的连接
                             if source_node in nodes_set:
                                 in_degree[node] += 1
-                                break  # 一个端口只计一次
 
         queue = [node for node in nodes if in_degree[node] == 0]
         sorted_nodes = []
@@ -181,7 +181,7 @@ class BatchGraphExecutor:
             func_code, func_name = self._get_node_code(node)
             
             # 提取导入
-            imports = self._extract_imports(func_code)
+            imports = extract_imports(func_code)
             all_imports.update(imports)
             
             # 构建节点函数（添加唯一后缀避免重名）
@@ -309,227 +309,6 @@ class BatchGraphExecutor:
     
     def _get_node_code(self, node: SimpleNodeItem) -> Tuple[str, str]:
         """获取节点的函数代码和函数名"""
-        # 内置节点源代码映射
-        BUILTIN_NODE_SOURCE = {
-            "打印节点": '''def node_print(data):
-    """打印输出节点"""
-    print(f"执行结果: {data}")
-    return data''',
-            "字符串": '''def const_string(value= "") -> str:
-    """
-    字符串常量节点。
-    将任意输入转换为字符串值。
-
-    转换规则:
-    - None → 空字符串
-    - 其他类型 → 使用 str() 转换
-    """
-    if value is None:
-        return ""
-    return str(value)''',
-            "整数": '''def const_int(value= 0) -> int:
-    """
-    整数常量节点。
-    将任意输入转换为整数值。
-
-    转换规则:
-    - 数字类型 (int/float) → 截断取整
-    - 布尔类型 → True=1, False=0
-    - 字符串 → 尝试解析为数字，失败返回 0
-    - 其他类型 → 返回 0
-    """
-    if isinstance(value, bool):
-        return 1 if value else 0
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        return int(value)
-    if isinstance(value, str):
-        try:
-            return int(value.strip())
-        except ValueError:
-            try:
-                return int(float(value.strip()))
-            except ValueError:
-                return 0
-    return 0''',
-            "浮点数": '''def const_float(value= 0.0) -> float:
-    """
-    浮点数常量节点。
-    将任意输入转换为浮点数值。
-
-    转换规则:
-    - 数字类型 (int/float) → 直接转换
-    - 布尔类型 → True=1.0, False=0.0
-    - 字符串 → 尝试解析为 float，失败返回 0.0
-    - 其他类型 → 返回 0.0
-    """
-    if isinstance(value, bool):
-        return 1.0 if value else 0.0
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value.strip())
-        except ValueError:
-            return 0.0
-    return 0.0''',
-            "布尔": '''def const_bool(value= True) -> bool:
-    """
-    布尔常量节点。
-    将任意输入转换为布尔值。
-
-    转换规则:
-    - 字符串 "false", "0", "no", "off" (不区分大小写) → False
-    - 空值 (None, "", [], {}) → False
-    - 数字 0, 0.0 → False
-    - 其他情况 → True
-    """
-    if isinstance(value, str):
-        lower_val = value.strip().lower()
-        if lower_val in ('false', '0', 'no', 'off', 'none'):
-            return False
-        if lower_val in ('true', '1', 'yes', 'on'):
-            return True
-    return bool(value)''',
-            "列表": '''def const_list(value= None) -> list:
-    """
-    列表常量节点。
-    将任意输入转换为列表值。
-
-    转换规则:
-    - None → 空列表
-    - list/tuple/set → 直接转换
-    - dict → 转为键值对列表
-    - 字符串 → 尝试 JSON 解析，失败则逗号分割，再失败则单元素列表
-    - 其他标量类型 → 包装为单元素列表
-    """
-    import json
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    if isinstance(value, (tuple, set)):
-        return list(value)
-    if isinstance(value, dict):
-        return list(value.items())
-    if isinstance(value, str):
-        # 尝试 JSON 解析
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, list):
-                return parsed
-        except (json.JSONDecodeError, ValueError):
-            pass
-        # 尝试逗号分割
-        if ',' in value:
-            return [item.strip() for item in value.split(',')]
-        # 单元素列表
-        return [value]
-    # 其他类型包装为列表
-    return [value]''',
-            "字典": '''def const_dict(value= None) -> dict:
-    """
-    字典常量节点。
-    将任意输入转换为字典值。
-
-    转换规则:
-    - None → 空字典
-    - dict → 原样返回
-    - 字符串 → 尝试 JSON 解析，失败则尝试键值对格式，再失败返回空字典
-    - 列表 → 如果是键值对列表则转换，否则转为索引字典
-    - 其他类型 → 返回空字典
-    """
-    import json
-    if value is None:
-        return {}
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, str):
-        # 尝试 JSON 解析
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, dict):
-                return parsed
-        except (json.JSONDecodeError, ValueError):
-            pass
-        # 尝试键值对格式 (a=1,b=2)
-        try:
-            result = {}
-            for pair in value.split(','):
-                if '=' in pair:
-                    k, v = pair.split('=', 1)
-                    result[k.strip()] = v.strip()
-            if result:
-                return result
-        except Exception:
-            pass
-        return {}
-    if isinstance(value, list):
-        # 检查是否为键值对列表
-        if all(isinstance(item, (tuple, list)) and len(item) == 2 for item in value):
-            return dict(value)
-        # 否则转为索引字典
-        return {i: v for i, v in enumerate(value)}
-    return {}''',
-            "数据提取": '''def extract_data(data: dict, path: str = "") -> any:
-    """数据提取节点"""
-    if not data or not path:
-        return None
-
-    if not isinstance(data, dict):
-        try:
-            import json
-            data = json.loads(data) if isinstance(data, str) else data
-        except Exception:
-            return None
-
-    # 解析路径（支持点号和方括号两种格式）
-    import re
-    # 将 "items[0].name" 或 "items.0.name" 统一处理
-    tokens = re.findall(r'([^\\.\\[\\]]+)|\\[(\\d+)\\]', path)
-    keys = []
-    for token in tokens:
-        if token[0]:  # 字段名
-            keys.append(token[0])
-        elif token[1]:  # 数组索引
-            keys.append(int(token[1]))
-
-    # 如果没有解析到任何key，尝试直接按点号分割
-    if not keys:
-        keys = path.split('.')
-
-    # 遍历路径
-    current = data
-    try:
-        for key in keys:
-            if isinstance(current, dict):
-                current = current.get(key)
-            elif isinstance(current, list):
-                if isinstance(key, int) and 0 <= key < len(current):
-                    current = current[key]
-                else:
-                    return None
-            else:
-                return None
-            if current is None:
-                return None
-        return current
-    except Exception:
-        return None''',
-            "数据类型检测": '''def type_test(data) -> None:
-    """数据类型检测节点"""
-    result = f"输入数据类型为：{type(data)}"
-    print(result)
-    return result''',
-            "文件选择器": '''def file_picker(file_filter: str = "全部文件 (*)", selected_file_path: str = "") -> str:
-    """文件选择器节点 - 返回已选择的文件路径"""
-    return selected_file_path''',
-            "文件夹选择器": '''def folder_picker(folder_path: str = "") -> str:
-    """文件夹选择器节点 - 返回已选择的文件夹路径"""
-    return folder_path'''
-        }
-        
         # 获取节点源代码
         if hasattr(node, 'is_custom_node') and node.is_custom_node:
             # 自定义节点
@@ -547,32 +326,8 @@ class BatchGraphExecutor:
                 raise RuntimeError(f"节点 {node.name} 没有可用的源代码")
         
         # 提取函数名
-        func_name = self._extract_func_name(source)
+        func_name = extract_func_name(source)
         return source, func_name
-    
-    def _extract_func_name(self, code: str) -> str:
-        """从代码中提取函数名"""
-        pattern = r'^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\('
-        matches = re.findall(pattern, code, re.MULTILINE)
-        
-        if not matches:
-            raise ValueError("代码中未找到函数定义")
-        
-        return matches[0]
-    
-    def _extract_imports(self, code: str) -> List[str]:
-        """从代码中提取导入的模块"""
-        imports = []
-        
-        # 匹配 import xxx
-        import_pattern = r'^import\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-        imports.extend(re.findall(import_pattern, code, re.MULTILINE))
-        
-        # 匹配 from xxx import
-        from_pattern = r'^from\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-        imports.extend(re.findall(from_pattern, code, re.MULTILINE))
-        
-        return list(set(imports))
     
     def _build_node_call(
         self,

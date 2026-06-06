@@ -198,9 +198,6 @@ class EmbeddedPythonExecutor:
         # 使用 json.dumps 来安全地转义代码字符串
         func_code_escaped = json.dumps(func_code, ensure_ascii=False)
         
-        # 再次转义 args_json，防止插入到脚本中时反斜杠被解释为转义字符
-        # json.dumps 会返回带引号的字符串，我们需要去掉外层引号
-        args_json_escaped = json.dumps(args_json, ensure_ascii=False)[1:-1]
 
         script = f'''# -*- coding: utf-8 -*-
 import sys
@@ -247,7 +244,7 @@ if __name__ == "__main__":
             print("__ERROR_END__", file=sys.stderr)
             sys.exit(1)
 
-        args = json.loads('{args_json_escaped}')
+        args = json.loads({repr(args_json)})
         result = {func_name}(**args)
         
         # 序列化结果
@@ -280,7 +277,7 @@ if __name__ == "__main__":
         使用正则表达式匹配函数定义，
         要求代码中必须且只能定义一个顶层函数。
         """
-        pattern = r'^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\('
+        pattern = r'^def\s+([^\s(]+)\s*\('
         matches = re.findall(pattern, code, re.MULTILINE)
         
         if not matches:

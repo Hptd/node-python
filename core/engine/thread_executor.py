@@ -18,6 +18,7 @@ from typing import List, Any, Set, Tuple
 from ..graphics.simple_node_item import SimpleNodeItem
 from ..graphics.multithread_node_item import MultithreadNodeItem
 from .graph_executor import topological_sort
+from ..nodes.builtin_node_source import BUILTIN_NODE_SOURCE, extract_func_name, extract_imports
 
 _print_lock = threading.Lock()
 
@@ -97,49 +98,6 @@ def _get_nodes_connected_to_thread_node(
 # 辅助：代码提取
 # ──────────────────────────────────────────────
 
-def _extract_imports(code: str) -> List[str]:
-    imports = []
-    imports.extend(re.findall(r'^import\s+([a-zA-Z_][a-zA-Z0-9_]*)', code, re.MULTILINE))
-    imports.extend(re.findall(r'^from\s+([a-zA-Z_][a-zA-Z0-9_]*)', code, re.MULTILINE))
-    return list(set(imports))
-
-
-def _extract_func_name(code: str) -> str:
-    matches = re.findall(r'^def\s+([^\s(]+)\s*\(', code, re.MULTILINE)
-    if not matches:
-        raise ValueError("代码中未找到函数定义")
-    return matches[0]
-
-
-_BUILTIN_CODE = {
-    "打印节点": 'def node_print(data):\n    print(data)\n    return data',
-    "字符串": '''def const_string(value= "") -> str:
-    """字符串常量节点。将任意输入转换为字符串值。"""
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_string(value)''',
-    "整数": '''def const_int(value= 0) -> int:
-    """整数常量节点。将任意输入转换为整数值。"""
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_int(value)''',
-    "浮点数": '''def const_float(value= 0.0) -> float:
-    """浮点数常量节点。将任意输入转换为浮点数值。"""
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_float(value)''',
-    "布尔": '''def const_bool(value= True) -> bool:
-    """布尔常量节点。将任意输入转换为布尔值。"""
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_bool(value)''',
-    "列表": '''def const_list(value= None) -> list:
-    """列表常量节点。将任意输入转换为列表值。"""
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_list(value)''',
-    "字典": '''def const_dict(value= None) -> dict:
-    """字典常量节点。将任意输入转换为字典值。"""
-    from utils.type_converter import TypeConverter
-    return TypeConverter.to_dict(value)''',
-}
-
-
 def _get_node_source(node: SimpleNodeItem) -> str:
     if hasattr(node, 'is_custom_node') and node.is_custom_node:
         src = getattr(node.func, '_custom_source', None)
@@ -147,7 +105,7 @@ def _get_node_source(node: SimpleNodeItem) -> str:
             src = inspect.getsource(node.func)
         return src
     # 内置节点
-    src = _BUILTIN_CODE.get(node.name)
+    src = BUILTIN_NODE_SOURCE.get(node.name)
     if src:
         return src
     # 尝试从 _source 属性获取
@@ -177,9 +135,9 @@ def _build_iteration_script(
         src = _get_node_source(node)
         if not src:
             continue
-        all_imports.update(_extract_imports(src))
+        all_imports.update(extract_imports(src))
         try:
-            func_name = _extract_func_name(src)
+            func_name = extract_func_name(src)
         except ValueError:
             continue
         node_functions.append({'node': node, 'func_name': func_name, 'source': src, 'idx': idx})
