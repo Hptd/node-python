@@ -44,8 +44,12 @@ class EmbeddedPythonSetup:
         
         # 确定目标目录
         if target_dir is None:
-            # 默认安装到项目根目录
-            self.target_dir = Path(__file__).parent.parent.resolve()
+            # PyInstaller --onefile 打包后 __file__ 指向临时目录（每次运行会变），
+            # 必须使用 exe 所在目录才能持久化保存 python_embedded
+            if getattr(sys, 'frozen', False):
+                self.target_dir = Path(sys.executable).parent.resolve()
+            else:
+                self.target_dir = Path(__file__).parent.parent.resolve()
         else:
             self.target_dir = Path(target_dir).resolve()
         
